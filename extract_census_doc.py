@@ -13,9 +13,17 @@ logrecno = '89'  # Evanston city, IL
 
 
 def sum(data, *columns):
-    # An adimittedly unclear way of summing the data in the specified columns, assuming "null" is zero
-    reduce(lambda x, y: (x + y if x and y else (x if not y else (y if not x else 0))),
-        map(lambda col: data[col], columns))
+    def reduce_fn(x, y):
+        if x and y:
+            return x + y
+        elif x and not y:
+            return x
+        elif y and not x:
+            return y
+        else:
+            return None
+
+    return reduce(reduce_fn, map(lambda col: data[col], columns))
 
 
 doc = dict(population=dict(), geography=dict(), education=dict())
@@ -41,6 +49,7 @@ doc['population']['total'] = data['b010030001']
 cur.execute("SELECT * FROM acs2010_1yr.B01001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
 data = cur.fetchone()
 
+print "gender"
 doc['population']['gender'] = OrderedDict([
     ('0-9',   dict(male=sum(data, 'b010010003', 'b010010004'),
                  female=sum(data, 'b010010027', 'b010010028'))),
@@ -61,6 +70,7 @@ doc['population']['gender'] = OrderedDict([
     ('80+',   dict(male=sum(data, 'b010010024', 'b010010025'),
                  female=sum(data, 'b010010048', 'b010010049')))
 ])
+print "end gender"
 
 cur.execute("SELECT * FROM acs2010_1yr.B15001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
 data = cur.fetchone()
