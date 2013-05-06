@@ -13,7 +13,9 @@ logrecno = '89'  # Evanston city, IL
 
 
 def sum(data, *columns):
-    return reduce(lambda x, y: x+y if (x and y) else 0, map(lambda col: data[col], columns))
+    # An adimittedly unclear way of summing the data in the specified columns, assuming "null" is zero
+    reduce(lambda x, y: (x + y if x and y else (x if not y else (y if not x else 0))),
+        map(lambda col: data[col], columns))
 
 
 doc = dict(population=dict(), geography=dict(), education=dict())
