@@ -101,24 +101,24 @@ def geo_summary(geoid):
     data = g.cur.fetchone()
 
     doc['population']['gender'] = OrderedDict([
-        ('0-9',   dict(male=maybe_int(sum(data, 'b01010003', 'b01010004')),
-                     female=maybe_int(sum(data, 'b01010027', 'b01010028')))),
-        ('10-19', dict(male=maybe_int(sum(data, 'b01010005', 'b01010006', 'b01010007')),
-                     female=maybe_int(sum(data, 'b01010029', 'b01010030', 'b01010031')))),
-        ('20-29', dict(male=maybe_int(sum(data, 'b01010008', 'b01010009', 'b01010010', 'b01010011')),
-                     female=maybe_int(sum(data, 'b01010032', 'b01010033', 'b01010034', 'b01010035')))),
-        ('30-39', dict(male=maybe_int(sum(data, 'b01010012', 'b01010013')),
-                     female=maybe_int(sum(data, 'b01010036', 'b01010037')))),
-        ('40-49', dict(male=maybe_int(sum(data, 'b01010014', 'b01010015')),
-                     female=maybe_int(sum(data, 'b01010038', 'b01010039')))),
-        ('50-59', dict(male=maybe_int(sum(data, 'b01010016', 'b01010017')),
-                     female=maybe_int(sum(data, 'b01010040', 'b01010041')))),
-        ('60-69', dict(male=maybe_int(sum(data, 'b01010018', 'b01010019', 'b01010020', 'b01010021')),
-                     female=maybe_int(sum(data, 'b01010042', 'b01010043', 'b01010044', 'b01010045')))),
-        ('70-79', dict(male=maybe_int(sum(data, 'b01010022', 'b01010023')),
-                     female=maybe_int(sum(data, 'b01010046', 'b01010047')))),
-        ('80+',   dict(male=maybe_int(sum(data, 'b01010024', 'b01010025')),
-                     female=maybe_int(sum(data, 'b01010048', 'b01010049'))))
+        ('0-9',   dict(male=maybe_int(sum(data, 'b01001003', 'b01001004')),
+                     female=maybe_int(sum(data, 'b01001027', 'b01001028')))),
+        ('10-19', dict(male=maybe_int(sum(data, 'b01001005', 'b01001006', 'b01001007')),
+                     female=maybe_int(sum(data, 'b01001029', 'b01001030', 'b01001031')))),
+        ('20-29', dict(male=maybe_int(sum(data, 'b01001008', 'b01001009', 'b01001010', 'b01001011')),
+                     female=maybe_int(sum(data, 'b01001032', 'b01001033', 'b01001034', 'b01001035')))),
+        ('30-39', dict(male=maybe_int(sum(data, 'b01001012', 'b01001013')),
+                     female=maybe_int(sum(data, 'b01001036', 'b01001037')))),
+        ('40-49', dict(male=maybe_int(sum(data, 'b01001014', 'b01001015')),
+                     female=maybe_int(sum(data, 'b01001038', 'b01001039')))),
+        ('50-59', dict(male=maybe_int(sum(data, 'b01001016', 'b01001017')),
+                     female=maybe_int(sum(data, 'b01001040', 'b01001041')))),
+        ('60-69', dict(male=maybe_int(sum(data, 'b01001018', 'b01001019', 'b01001020', 'b01001021')),
+                     female=maybe_int(sum(data, 'b01001042', 'b01001043', 'b01001044', 'b01001045')))),
+        ('70-79', dict(male=maybe_int(sum(data, 'b01001022', 'b01001023')),
+                     female=maybe_int(sum(data, 'b01001046', 'b01001047')))),
+        ('80+',   dict(male=maybe_int(sum(data, 'b01001024', 'b01001025')),
+                     female=maybe_int(sum(data, 'b01001048', 'b01001049'))))
     ])
 
     g.cur.execute("SELECT * FROM B15001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
