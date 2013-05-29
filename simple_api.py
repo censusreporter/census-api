@@ -80,25 +80,25 @@ def geo_summary(geoid):
     doc = dict(population=dict(), geography=dict(), education=dict())
 
     g.cur.execute("SELECT * FROM geoheader WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
-    data = cur.fetchone()
+    data = g.cur.fetchone()
     doc['geography'] = dict(name=data['name'],
                             stusab=data['stusab'],
                             sumlevel=data['sumlevel'])
 
     g.cur.execute("SELECT * FROM B01002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
-    data = cur.fetchone()
+    data = g.cur.fetchone()
 
     doc['population']['median_age'] = dict(total=maybe_int(data['b010020001']),
                                            male=maybe_int(data['b010020002']),
                                            female=maybe_int(data['b010020003']))
 
     g.cur.execute("SELECT * FROM B01003 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
-    data = cur.fetchone()
+    data = g.cur.fetchone()
 
     doc['population']['total'] = maybe_int(data['b010030001'])
 
     g.cur.execute("SELECT * FROM B01001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
-    data = cur.fetchone()
+    data = g.cur.fetchone()
 
     doc['population']['gender'] = OrderedDict([
         ('0-9',   dict(male=maybe_int(sum(data, 'b010010003', 'b010010004')),
@@ -122,7 +122,7 @@ def geo_summary(geoid):
     ])
 
     g.cur.execute("SELECT * FROM B15001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
-    data = cur.fetchone()
+    data = g.cur.fetchone()
 
     doc['education']['attainment'] = OrderedDict([
         ('<9th Grade',                      maybe_int(sum(data, 'b150010004', 'b150010012', 'b150010020', 'b150010028', 'b150010036', 'b150010045', 'b150010053', 'b150010061', 'b150010069', 'b150010077'))),
@@ -135,7 +135,7 @@ def geo_summary(geoid):
     ])
 
     g.cur.execute("SELECT * FROM C16001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
-    data = cur.fetchone()
+    data = g.cur.fetchone()
 
     doc['language'] = OrderedDict([
         ('English Only',        maybe_int(data['c160010002'])),
@@ -153,7 +153,7 @@ def geo_summary(geoid):
     ])
 
     g.cur.execute("SELECT * FROM B27010 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
-    data = cur.fetchone()
+    data = g.cur.fetchone()
 
     doc['insurance'] = OrderedDict([
         ('No Insurance',                maybe_int(sum(data, 'b270100017', 'b270100033', 'b270100050', 'b270100053'))),
