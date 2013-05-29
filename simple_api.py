@@ -42,9 +42,15 @@ def maybe_int(i):
     return int(i) if i else i
 
 
-def find_geoid(geoid):
+def find_geoid(geoid, acs=None):
     "Find the best acs to use for a given geoid or None if the geoid is not found."
-    for acs in allowed_acs:
+
+    if acs:
+        acs_to_search = [acs]
+    else:
+        acs_to_search = allowed_acs
+
+    for acs in acs_to_search:
         g.cur.execute("SELECT stusab,logrecno FROM %s.geoheader WHERE geoid=%%s" % acs, [geoid])
         if g.cur.rowcount == 1:
             result = g.cur.fetchone()
