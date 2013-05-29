@@ -8,7 +8,12 @@ from collections import OrderedDict
 app = Flask(__name__)
 
 allowed_acs = set([
+    'acs2007_1yr',
+    'acs2007_3yr',
+    'acs2008_1yr',
+    'acs2008_3yr',
     'acs2009_1yr',
+    'acs2009_3yr',
     'acs2010_1yr',
     'acs2010_3yr',
     'acs2010_5yr',
