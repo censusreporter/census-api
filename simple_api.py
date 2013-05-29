@@ -77,7 +77,9 @@ def geo_summary(geoid):
 
     g.cur.execute("SET search_path=%s", [acs])
 
-    doc = dict(population=dict(), geography=dict(), education=dict())
+    doc = dict(metadata=dict(), population=dict(), geography=dict(), education=dict())
+
+    doc['metadata']['acs'] = acs
 
     g.cur.execute("SELECT * FROM geoheader WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
