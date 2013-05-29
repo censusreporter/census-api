@@ -182,43 +182,49 @@ def geo_summary(acs, state, logrecno):
         ('Graduate or Professional Degree', maybe_int(sum(data, 'b15001010', 'b15001018', 'b15001026', 'b15001034', 'b15001042', 'b15001051', 'b15001059', 'b15001067', 'b15001075', 'b15001083')))
     ])
 
-    g.cur.execute("SELECT * FROM C16001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
-    data = g.cur.fetchone()
+    try:
+        g.cur.execute("SELECT * FROM C16001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+        data = g.cur.fetchone()
 
-    doc['language'] = OrderedDict([
-        ('English Only',        maybe_int(data['c16001002'])),
-        ('Spanish',             maybe_int(data['c16001003'])),
-        ('French',              maybe_int(data['c16001004'])),
-        ('German',              maybe_int(data['c16001005'])),
-        ('Slavic',              maybe_int(data['c16001006'])),
-        ('Other Indo-European', maybe_int(data['c16001007'])),
-        ('Korean',              maybe_int(data['c16001008'])),
-        ('Chinese',             maybe_int(data['c16001009'])),
-        ('Vietnamese',          maybe_int(data['c16001010'])),
-        ('Tagalong',            maybe_int(data['c16001011'])),
-        ('Other Asian',         maybe_int(data['c16001012'])),
-        ('Other & Unspecified', maybe_int(data['c16001013']))
-    ])
+        doc['language'] = OrderedDict([
+            ('English Only',        maybe_int(data['c16001002'])),
+            ('Spanish',             maybe_int(data['c16001003'])),
+            ('French',              maybe_int(data['c16001004'])),
+            ('German',              maybe_int(data['c16001005'])),
+            ('Slavic',              maybe_int(data['c16001006'])),
+            ('Other Indo-European', maybe_int(data['c16001007'])),
+            ('Korean',              maybe_int(data['c16001008'])),
+            ('Chinese',             maybe_int(data['c16001009'])),
+            ('Vietnamese',          maybe_int(data['c16001010'])),
+            ('Tagalong',            maybe_int(data['c16001011'])),
+            ('Other Asian',         maybe_int(data['c16001012'])),
+            ('Other & Unspecified', maybe_int(data['c16001013']))
+        ])
+    except:
+        pass
 
-    g.cur.execute("SELECT * FROM B27010 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
-    data = g.cur.fetchone()
+    try:
+        g.cur.execute("SELECT * FROM B27010 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+        data = g.cur.fetchone()
 
-    doc['insurance'] = OrderedDict([
-        ('No Insurance',                maybe_int(sum(data, 'b27010017', 'b27010033', 'b27010050', 'b27010053'))),
-        ('Employer Only',               maybe_int(sum(data, 'b27010004', 'b27010020', 'b27010036', 'b27010054'))),
-        ('Direct-Purchase Only',        maybe_int(sum(data, 'b27010005', 'b27010021', 'b27010037', 'b27010055'))),
-        ('Medicare Only',               maybe_int(sum(data, 'b27010006', 'b27010022', 'b27010038'             ))),
-        ('Medicaid/Means-Tested Only',  maybe_int(sum(data, 'b27010007', 'b27010023', 'b27010039'             ))),
-        ('Tricare/Military Only',       maybe_int(sum(data, 'b27010008', 'b27010024', 'b27010040', 'b27010056'))),
-        ('VA Health Care Only',         maybe_int(sum(data, 'b27010009', 'b27010025', 'b27010041', 'b27010057'))),
-        ('Employer+Direct Purchase',    maybe_int(sum(data, 'b27010011', 'b27010027', 'b27010043', 'b27010058'))),
-        ('Employer+Medicare',           maybe_int(sum(data, 'b27010012', 'b27010028', 'b27010044', 'b27010059'))),
-        ('Direct+Medicare',             maybe_int(sum(data,                           'b27010045', 'b27010060'))),
-        ('Medicare+Medicaid',           maybe_int(sum(data, 'b27010013', 'b27010029', 'b27010046', 'b27010061'))),
-        ('Other Private-Only',          maybe_int(sum(data, 'b27010014', 'b27010030', 'b27010047', 'b27010062'))),
-        ('Other Public-Only',           maybe_int(sum(data, 'b27010015', 'b27010031', 'b27010048', 'b27010064'))),
-        ('Other',                       maybe_int(sum(data, 'b27010016', 'b27010032', 'b27010049', 'b27010065')))
-    ])
+        doc['insurance'] = OrderedDict([
+            ('No Insurance',                maybe_int(sum(data, 'b27010017', 'b27010033', 'b27010050', 'b27010053'))),
+            ('Employer Only',               maybe_int(sum(data, 'b27010004', 'b27010020', 'b27010036', 'b27010054'))),
+            ('Direct-Purchase Only',        maybe_int(sum(data, 'b27010005', 'b27010021', 'b27010037', 'b27010055'))),
+            ('Medicare Only',               maybe_int(sum(data, 'b27010006', 'b27010022', 'b27010038'             ))),
+            ('Medicaid/Means-Tested Only',  maybe_int(sum(data, 'b27010007', 'b27010023', 'b27010039'             ))),
+            ('Tricare/Military Only',       maybe_int(sum(data, 'b27010008', 'b27010024', 'b27010040', 'b27010056'))),
+            ('VA Health Care Only',         maybe_int(sum(data, 'b27010009', 'b27010025', 'b27010041', 'b27010057'))),
+            ('Employer+Direct Purchase',    maybe_int(sum(data, 'b27010011', 'b27010027', 'b27010043', 'b27010058'))),
+            ('Employer+Medicare',           maybe_int(sum(data, 'b27010012', 'b27010028', 'b27010044', 'b27010059'))),
+            ('Direct+Medicare',             maybe_int(sum(data,                           'b27010045', 'b27010060'))),
+            ('Medicare+Medicaid',           maybe_int(sum(data, 'b27010013', 'b27010029', 'b27010046', 'b27010061'))),
+            ('Other Private-Only',          maybe_int(sum(data, 'b27010014', 'b27010030', 'b27010047', 'b27010062'))),
+            ('Other Public-Only',           maybe_int(sum(data, 'b27010015', 'b27010031', 'b27010048', 'b27010064'))),
+            ('Other',                       maybe_int(sum(data, 'b27010016', 'b27010032', 'b27010049', 'b27010065')))
+        ])
+    except:
+        pass
 
     return json.dumps(doc)
 
