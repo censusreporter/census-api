@@ -49,7 +49,7 @@ def find_geoid(geoid):
         if g.cur.rowcount == 1:
             result = g.cur.fetchone()
             return (acs, result['stusab'], result['logrecno'])
-    return None
+    return (None, None, None)
 
 
 @app.before_request
