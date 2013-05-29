@@ -68,8 +68,8 @@ def hello():
     return "Hello World!"
 
 
-@app.route("/1.0/geoid/search")
-def geoid_search():
+@app.route("/1.0/latest/geoid/search")
+def latest_geoid_search():
     term = request.args.get('name')
 
     if not term:
@@ -89,13 +89,28 @@ def geoid_search():
     return json.dumps(result)
 
 
-@app.route("/1.0/summary/<geoid>")
-def geo_summary(geoid):
-    acs, state, logrecno = find_geoid(geoid)
+@app.route("/1.0/<acs>/geoid/search")
+def acs_geoid_search(acs):
+    term = request.args.get('name')
 
-    if not acs:
-        abort(404, 'None of the ACS I know about have that geoid.')
+    if not term:
+        abort(400, "Provide a 'name' argument to search for.")
 
+    if acs not in allowed_acs:
+        abort(404, "I don't know anything about that ACS.")
+
+    term = "%s%%" % term
+
+    g.cur.execute("SELECT geoid,stusab as state,name FROM %s.geoheader WHERE name LIKE %%s LIMIT 5" % acs, [term])
+    if g.cur.rowcount > 0:
+        result = g.cur.fetchall()
+        for r in result:
+            r['acs'] = acs
+
+    return json.dumps(result)
+
+
+def geo_summary(acs, state, logrecno):
     g.cur.execute("SET search_path=%s", [acs])
 
     doc = OrderedDict([('metadata', dict()),
@@ -199,6 +214,25 @@ def geo_summary(geoid):
     ])
 
     return json.dumps(doc)
+
+
+@app.route("/1.0/<acs>/summary/<geoid>")
+def acs_geo_summary(acs, geoid):
+    acs, state, logrecno = find_geoid(geoid, acs)
+
+    if not acs:
+        abort(404, 'That ACS doesn\'t know about have that geoid.')
+
+    return geo_summary(acs, state, logrecno)
+
+@app.route("/1.0/latest/summary/<geoid>")
+def latest_geo_summary(geoid):
+    acs, state, logrecno = find_geoid(geoid)
+
+    if not acs:
+        abort(404, 'None of the ACS I know about have that geoid.')
+
+    return geo_summary(acs, state, logrecno)
 
 
 @app.route("/1.0/<acs>/<table>")
