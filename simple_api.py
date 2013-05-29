@@ -77,7 +77,10 @@ def geo_summary(geoid):
 
     g.cur.execute("SET search_path=%s", [acs])
 
-    doc = dict(metadata=dict(), population=dict(), geography=dict(), education=dict())
+    doc = OrderedDict([(metadata, dict()),
+                       (population, dict()),
+                       (geography, dict()),
+                       (education, dict())])
 
     doc['metadata']['acs'] = acs
 
