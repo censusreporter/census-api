@@ -45,9 +45,10 @@ def maybe_int(i):
 def find_geoid(geoid):
     "Find the best acs to use for a given geoid or None if the geoid is not found."
     for acs in allowed_acs:
-        g.cur.execute("SELECT geoid FROM %s.geoheader WHERE geoid=%%s" % acs, [geoid])
+        g.cur.execute("SELECT stusab,logrecno FROM %s.geoheader WHERE geoid=%%s" % acs, [geoid])
         if g.cur.rowcount == 1:
-            return acs
+            result = g.cur.fetchone()
+            return (acs, result['stusab'], result['logrecno'])
     return None
 
 
@@ -69,7 +70,7 @@ def hello():
 
 @app.route("/1.0/summary/<geoid>")
 def geo_summary(geoid):
-    acs = find_geoid(geoid)
+    acs, state, logrecno = find_geoid(geoid)
 
     if not acs:
         abort(404, 'None of the ACS I know about have that geoid.')
