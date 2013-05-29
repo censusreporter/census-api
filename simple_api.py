@@ -101,6 +101,7 @@ def acs_geoid_search(acs):
 
     term = "%s%%" % term
 
+    result = []
     g.cur.execute("SELECT geoid,stusab as state,name FROM %s.geoheader WHERE name LIKE %%s LIMIT 5" % acs, [term])
     if g.cur.rowcount > 0:
         result = g.cur.fetchall()
