@@ -79,9 +79,11 @@ def geoid_search():
 
     result = []
     for acs in allowed_acs:
-        g.cur.execute("SELECT geoid FROM %s.geoheader WHERE name LIKE %%s LIMIT 5" % acs, [term])
+        g.cur.execute("SELECT geoid,stusab as state,name FROM %s.geoheader WHERE name LIKE %%s LIMIT 5" % acs, [term])
         if g.cur.rowcount > 0:
             result = g.cur.fetchall()
+            for r in result:
+                r['acs'] = acs
             break
 
     return json.dumps(result)
