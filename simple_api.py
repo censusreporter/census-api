@@ -68,6 +68,25 @@ def hello():
     return "Hello World!"
 
 
+@app.route("/1.0/geoid/search")
+def geoid_search():
+    term = request.args.get('name')
+
+    if not term:
+        abort(400, "Provide a 'name' argument to search for.")
+
+    term = "%s%%" % term
+
+    result = []
+    for acs in allowed_acs:
+        g.cur.execute("SELECT geoid FROM %s.geoheader WHERE name LIKE %%s LIMIT 5" % acs, [term])
+        if g.cur.rowcount > 0:
+            result = g.cur.fetchall()
+            break
+
+    return json.dumps(result)
+
+
 @app.route("/1.0/summary/<geoid>")
 def geo_summary(geoid):
     acs, state, logrecno = find_geoid(geoid)
