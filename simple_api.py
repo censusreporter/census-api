@@ -168,6 +168,70 @@ def geo_summary(acs, state, logrecno):
                                                     state=None,
                                                     nation=None))
 
+    pop_dict['fraction_over_65'] = dict(table_id='b01001',
+                                        universe=None,
+                                        name=None,
+                                        values=dict(this=maybe_float((sum(data, 'b01001020', 'b01001021', 'b01001022', 'b01001023', 'b01001024', 'b01001025') +
+                                                                     sum(data, 'b01001044', 'b01001045', 'b01001046', 'b01001047', 'b01001048', 'b01001049')) /
+                                                                     data['b01001001'], 3),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
+    pop_dict['fraction_male'] = dict(table_id='b01001',
+                                        universe=None,
+                                        name=None,
+                                        values=dict(this=maybe_float(data['b01001002'] /
+                                                                     data['b01001001'], 3),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
+    pop_dict['fraction_white'] = dict(table_id='b02001',
+                                        universe=None,
+                                        name=None,
+                                        values=dict(this=maybe_float(data['b02001002'] /
+                                                                     data['b02001001'], 3),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
+    pop_dict['fraction_black'] = dict(table_id='b02001',
+                                        universe=None,
+                                        name=None,
+                                        values=dict(this=maybe_float(data['b02001003'] /
+                                                                     data['b02001001'], 3),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
+    pop_dict['fraction_native_american'] = dict(table_id='b02001',
+                                        universe=None,
+                                        name=None,
+                                        values=dict(this=maybe_float(data['b02001004'] /
+                                                                     data['b02001001'], 3),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
+    pop_dict['fraction_asian'] = dict(table_id='b02001',
+                                        universe=None,
+                                        name=None,
+                                        values=dict(this=maybe_float(data['b02001005'] /
+                                                                     data['b02001001'], 3),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
+    pop_dict['fraction_other'] = dict(table_id='b02001',
+                                        universe=None,
+                                        name=None,
+                                        values=dict(this=maybe_float(data['b02001006'] /
+                                                                     data['b02001001'], 3),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
     return json.dumps(doc)
 
 
