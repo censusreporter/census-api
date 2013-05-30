@@ -139,7 +139,7 @@ def geo_summary(acs, state, logrecno):
 
     g.cur.execute("SELECT * FROM geoheader WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
-    doc['geography'].extend(dict(name=data['name'],
+    doc['geography'].update(dict(name=data['name'],
                                  pretty_name=None,
                                  stusab=data['stusab'],
                                  sumlevel=data['sumlevel'],
