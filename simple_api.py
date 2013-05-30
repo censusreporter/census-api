@@ -280,6 +280,43 @@ def geo_summary(acs, state, logrecno):
                                                     state=None,
                                                     nation=None))
 
+    g.cur.execute("SELECT * FROM B19301 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    income_dict = dict()
+    doc['economics']['income'] = income_dict
+
+    income_dict['per capita income in the last 12 months'] = dict(table_id='b19301',
+                                        universe=None,
+                                        name=None,
+                                        values=dict(this=maybe_int(data['b19301001']),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
+    g.cur.execute("SELECT * FROM B19013 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    income_dict['median household income'] = dict(table_id='b19013',
+                                        universe=None,
+                                        name=None,
+                                        values=dict(this=maybe_int(data['b19013001']),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
+    g.cur.execute("SELECT * FROM B17001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    income_dict['fraction below poverty line'] = dict(table_id='b17001',
+                                        universe=None,
+                                        name=None,
+                                        values=dict(this=maybe_float(data['b17001002'] /
+                                                                     data['b17001001'], 3),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
     return json.dumps(doc)
 
 
