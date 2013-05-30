@@ -158,7 +158,9 @@ def geo_summary(acs, state, logrecno):
                                          state=None,
                                          nation=None))
 
-    pop_dict['fraction_under_18'] = dict(table_id='b01001',
+    age_dict = dict()
+    doc['demographics']['age'] = age_dict
+    age_dict['fraction_under_18'] = dict(table_id='b01001',
                                         universe=None,
                                         name=None,
                                         values=dict(this=maybe_float((sum(data, 'b01001003', 'b01001004', 'b01001005', 'b01001006') +
@@ -168,7 +170,7 @@ def geo_summary(acs, state, logrecno):
                                                     state=None,
                                                     nation=None))
 
-    pop_dict['fraction_over_65'] = dict(table_id='b01001',
+    age_dict['fraction_over_65'] = dict(table_id='b01001',
                                         universe=None,
                                         name=None,
                                         values=dict(this=maybe_float((sum(data, 'b01001020', 'b01001021', 'b01001022', 'b01001023', 'b01001024', 'b01001025') +
@@ -178,7 +180,9 @@ def geo_summary(acs, state, logrecno):
                                                     state=None,
                                                     nation=None))
 
-    pop_dict['fraction_male'] = dict(table_id='b01001',
+    gender_dict = dict()
+    doc['demographics']['gender'] = gender_dict
+    gender_dict['fraction_male'] = dict(table_id='b01001',
                                         universe=None,
                                         name=None,
                                         values=dict(this=maybe_float(data['b01001002'] /
@@ -187,10 +191,21 @@ def geo_summary(acs, state, logrecno):
                                                     state=None,
                                                     nation=None))
 
+    gender_dict['fraction_female'] = dict(table_id='b01001',
+                                        universe=None,
+                                        name=None,
+                                        values=dict(this=maybe_float(data['b01001026'] /
+                                                                     data['b01001001'], 3),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
     g.cur.execute("SELECT * FROM B02001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
 
-    pop_dict['fraction_white'] = dict(table_id='b02001',
+    race_dict = dict()
+    doc['demographics']['race'] = race_dict
+    race_dict['fraction_white'] = dict(table_id='b02001',
                                         universe=None,
                                         name=None,
                                         values=dict(this=maybe_float(data['b02001002'] /
@@ -199,7 +214,7 @@ def geo_summary(acs, state, logrecno):
                                                     state=None,
                                                     nation=None))
 
-    pop_dict['fraction_black'] = dict(table_id='b02001',
+    race_dict['fraction_black'] = dict(table_id='b02001',
                                         universe=None,
                                         name=None,
                                         values=dict(this=maybe_float(data['b02001003'] /
@@ -208,7 +223,7 @@ def geo_summary(acs, state, logrecno):
                                                     state=None,
                                                     nation=None))
 
-    pop_dict['fraction_native_american'] = dict(table_id='b02001',
+    race_dict['fraction_native_american'] = dict(table_id='b02001',
                                         universe=None,
                                         name=None,
                                         values=dict(this=maybe_float(data['b02001004'] /
@@ -217,7 +232,7 @@ def geo_summary(acs, state, logrecno):
                                                     state=None,
                                                     nation=None))
 
-    pop_dict['fraction_asian'] = dict(table_id='b02001',
+    race_dict['fraction_asian'] = dict(table_id='b02001',
                                         universe=None,
                                         name=None,
                                         values=dict(this=maybe_float(data['b02001005'] /
@@ -226,7 +241,7 @@ def geo_summary(acs, state, logrecno):
                                                     state=None,
                                                     nation=None))
 
-    pop_dict['fraction_other'] = dict(table_id='b02001',
+    race_dict['fraction_other'] = dict(table_id='b02001',
                                         universe=None,
                                         name=None,
                                         values=dict(this=maybe_float(data['b02001006'] /
