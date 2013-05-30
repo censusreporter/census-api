@@ -352,7 +352,7 @@ def geo_summary(acs, state, logrecno):
     households_dict['number of households'] = dict(table_id='b11001',
                                         universe=None,
                                         name=None,
-                                        values=dict(this=maybe_int(data['b110001001']),
+                                        values=dict(this=maybe_int(data['b11001001']),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
