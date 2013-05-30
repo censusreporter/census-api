@@ -153,10 +153,10 @@ def geo_summary(acs, state, logrecno):
     pop_dict['total'] = dict(table_id='b01001',
                              universe=None,
                              name=None,
-                             values=dict(this=maybe_int(data['b01001001'],
+                             values=dict(this=maybe_int(data['b01001001']),
                                          county=None,
                                          state=None,
-                                         nation=None)))
+                                         nation=None))
 
     pop_dict['percent_under_18'] = dict(table_id='b01001',
                                         universe=None,
