@@ -161,8 +161,7 @@ def geo_summary(acs, state, logrecno):
     pop_dict['percent_under_18'] = dict(table_id='b01001',
                                         universe=None,
                                         name=None,
-                                        values=dict(this=maybe_float('%0.1f',
-                                                                    (sum(data, 'b01001003', 'b01001004', 'b01001005', 'b01001006') +
+                                        values=dict(this=maybe_float((sum(data, 'b01001003', 'b01001004', 'b01001005', 'b01001006') +
                                                                      sum(data, 'b01001027', 'b01001028', 'b01001029', 'b01001030')) /
                                                                      data['b01001001']),
                                                     county=None,
