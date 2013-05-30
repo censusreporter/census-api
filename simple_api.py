@@ -317,6 +317,153 @@ def geo_summary(acs, state, logrecno):
                                                     state=None,
                                                     nation=None))
 
+    g.cur.execute("SELECT * FROM B15002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    attainment_dict = dict()
+    doc['education']['attainment'] = attainment_dict
+
+    attainment_dict['fraction age 25+ with high school or higher'] = dict(table_id='b15002',
+                                        universe=None,
+                                        name=None,
+                                        values=dict(this=maybe_float((sum(data, 'b15002011', 'b15002012', 'b15002013', 'b15002014', 'b15002015', 'b15002016', 'b15002017', 'b15002018') +
+                                                                     sum(data, 'b15002028', 'b15002029', 'b15002030', 'b15002031', 'b15002032', 'b15002033', 'b15002034', 'b15002035')) /
+                                                                     data['b15002001'], 3),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
+    attainment_dict['fraction age 25+ with bachelor degree or higher'] = dict(table_id='b15002',
+                                        universe=None,
+                                        name=None,
+                                        values=dict(this=maybe_float((sum(data, 'b15002015', 'b15002016', 'b15002017', 'b15002018') +
+                                                                     sum(data, 'b15002032', 'b15002033', 'b15002034', 'b15002035')) /
+                                                                     data['b15002001'], 3),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
+    g.cur.execute("SELECT * FROM B11001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    households_dict = dict()
+    doc['families']['households'] = households_dict
+
+    households_dict['number of households'] = dict(table_id='b11001',
+                                        universe=None,
+                                        name=None,
+                                        values=dict(this=maybe_int(data['b110001001']),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
+    g.cur.execute("SELECT * FROM B11001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    migration_dict = dict()
+    doc['housing']['migration'] = migration_dict
+
+    migration_dict['fraction living in same house 1+ year'] = dict(table_id='b11001',
+                                        universe=None,
+                                        name=None,
+                                        values=dict(this=maybe_float(data['b11001017'] / data['b11001001'], 3),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
+    g.cur.execute("SELECT * FROM B25001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    units_dict = dict()
+    doc['housing']['units'] = units_dict
+
+    units_dict['number of housing units'] = dict(table_id='b25001',
+                                        universe=None,
+                                        name=None,
+                                        values=dict(this=maybe_int(data['b25001001']),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
+    g.cur.execute("SELECT * FROM B25024 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    units_dict['fraction of units in multi-unit structures'] = dict(table_id='b25024',
+                                        universe=None,
+                                        name=None,
+                                        values=dict(this=maybe_float(sum(data, 'b25024004', 'b25024005', 'b25024006', 'b25024007', 'b25024008', 'b25024009') /
+                                                                    data['b25024001'], 3),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
+    g.cur.execute("SELECT * FROM B25003 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    ownership_dict = dict()
+    doc['housing']['ownership'] = ownership_dict
+
+    ownership_dict['fraction homeownership'] = dict(table_id='b25003',
+                                        universe=None,
+                                        name=None,
+                                        values=dict(this=maybe_float(data['b25003002'] / data['b25003001'], 3),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
+    g.cur.execute("SELECT * FROM B25077 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    ownership_dict['median value of owner occupied housing unit'] = dict(table_id='b25077',
+                                        universe=None,
+                                        name=None,
+                                        values=dict(this=maybe_int(data['b25077001']),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
+    g.cur.execute("SELECT * FROM B05002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    foreign_dict = dict()
+    doc['sociocultural']['persons'] = foreign_dict
+
+    foreign_dict['fraction foreign born'] = dict(table_id='b05002',
+                                        universe=None,
+                                        name=None,
+                                        values=dict(this=maybe_float(data['b05002013'] / data['b05002001'], 3),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
+    g.cur.execute("SELECT * FROM B16001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    language_dict = dict()
+    doc['sociocultural']['language'] = language_dict
+
+    language_dict['fraction of people speaking languages other than english at home'] = dict(table_id='b16001',
+                                        universe=None,
+                                        name=None,
+                                        values=dict(this=maybe_float((data['b16001001']-data['b16001002']) / data['b16001001'], 3),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
+    g.cur.execute("SELECT * FROM B21002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    veterans_dict = dict()
+    doc['veterans']['total'] = veterans_dict
+
+    veterans_dict['number of veterans'] = dict(table_id='b21002',
+                                        universe=None,
+                                        name=None,
+                                        values=dict(this=maybe_int(data['b21002001']),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
     return json.dumps(doc)
 
 
