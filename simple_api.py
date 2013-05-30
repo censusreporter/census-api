@@ -357,16 +357,16 @@ def geo_summary(acs, state, logrecno):
                                                     state=None,
                                                     nation=None))
 
-    g.cur.execute("SELECT * FROM B11001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B07001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
 
     migration_dict = dict()
     doc['housing']['migration'] = migration_dict
 
-    migration_dict['fraction living in same house 1+ year'] = dict(table_id='b11001',
+    migration_dict['fraction living in same house 1+ year'] = dict(table_id='b07001',
                                         universe=None,
                                         name=None,
-                                        values=dict(this=maybe_float(data['b11001017'] / data['b11001001'], 3),
+                                        values=dict(this=maybe_float(data['b07001017'] / data['b07001001'], 3),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
