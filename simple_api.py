@@ -456,7 +456,7 @@ def geo_summary(acs, state, logrecno):
     return json.dumps(doc)
 
 
-@app.route("/1.0/<acs>/summary/<geoid>")
+@app.route("/1.0/<acs>/<geoid>/summary")
 def acs_geo_summary(acs, geoid):
     acs, state, logrecno = find_geoid(geoid, acs)
 
@@ -465,7 +465,7 @@ def acs_geo_summary(acs, geoid):
 
     return geo_summary(acs, state, logrecno)
 
-@app.route("/1.0/latest/summary/<geoid>")
+@app.route("/1.0/latest/<geoid>/summary")
 def latest_geo_summary(geoid):
     acs, state, logrecno = find_geoid(geoid)
 
