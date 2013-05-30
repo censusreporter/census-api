@@ -187,6 +187,9 @@ def geo_summary(acs, state, logrecno):
                                                     state=None,
                                                     nation=None))
 
+    g.cur.execute("SELECT * FROM B02001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
     pop_dict['fraction_white'] = dict(table_id='b02001',
                                         universe=None,
                                         name=None,
