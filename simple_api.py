@@ -162,12 +162,12 @@ def geo_summary(acs, state, logrecno):
                                         universe=None,
                                         name=None,
                                         values=dict(this=maybe_float('%0.1f',
-                                                                     (sum(data, 'b01001003', 'b01001004', 'b01001005', 'b01001006') +
-                                                                      sum(data, 'b01001027', 'b01001028', 'b01001029', 'b01001030')) /
-                                                                      data['b01001001']),
+                                                                    (sum(data, 'b01001003', 'b01001004', 'b01001005', 'b01001006') +
+                                                                     sum(data, 'b01001027', 'b01001028', 'b01001029', 'b01001030')) /
+                                                                     data['b01001001']),
                                                     county=None,
                                                     state=None,
-                                                    nation=None)))
+                                                    nation=None))
 
     return json.dumps(doc)
 
