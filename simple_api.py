@@ -250,6 +250,36 @@ def geo_summary(acs, state, logrecno):
                                                     state=None,
                                                     nation=None))
 
+    race_dict['fraction_native_islander'] = dict(table_id='b02001',
+                                        universe=None,
+                                        name=None,
+                                        values=dict(this=maybe_float(data['b02001007'] /
+                                                                     data['b02001001'], 3),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
+    race_dict['fraction_two_or_more'] = dict(table_id='b02001',
+                                        universe=None,
+                                        name=None,
+                                        values=dict(this=maybe_float(data['b02001008'] /
+                                                                     data['b02001001'], 3),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
+    g.cur.execute("SELECT * FROM B03001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    race_dict['fraction_hispanic'] = dict(table_id='b03001',
+                                        universe=None,
+                                        name=None,
+                                        values=dict(this=maybe_float(data['b03001003'] /
+                                                                     data['b03001001'], 3),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
     return json.dumps(doc)
 
 
