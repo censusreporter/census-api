@@ -11,7 +11,7 @@ def deploy(branch='master'):
 
     # Install required packages
     sudo('apt-get update')
-    sudo('apt-get install -y git')
+    sudo('apt-get install -y git libpq-dev python-dev')
 
     # Install up to virtualenv
     sudo('apt-get install -y python-setuptools')
