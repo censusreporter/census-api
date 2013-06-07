@@ -27,8 +27,8 @@ def deploy(branch='master'):
     sudo('rm -f /etc/apache2/sites-available/%s' % host)
     upload_template('./server/apache2/site', '/etc/apache2/sites-available/%s' % host, use_sudo=True, context={
         'domainname': host,
-        'project_path': '%s/censusreporter' % code_dir,
-        'venv_path': '%s/lib/python2.7/site-packages' % virtualenv_dir
+        'project_path': '%s/census_extractomatic' % (code_dir),
+        'venv_path': '%s/lib/python2.7/site-packages' % (virtualenv_dir),
     })
     sudo('a2ensite %s' % host)
 
@@ -38,7 +38,7 @@ def deploy(branch='master'):
     sudo('pip install virtualenv')
 
     # Create virtualenv and add our django app to its PYTHONPATH
-    sudo('virtualenv --no-site-packages %s' % virtualenv_name)
+    sudo('virtualenv --no-site-packages %s' % virtualenv_dir)
 
     with settings(warn_only=True):
         if sudo('test -d %s' % code_dir).failed:
@@ -48,7 +48,7 @@ def deploy(branch='master'):
         sudo('git pull origin %s' % branch)
 
         # Install pip requirements
-        sudo('source %s/bin/activate && pip install -r requirements.txt' % virtualenv_name)
+        sudo('source %s/bin/activate && pip install -r requirements.txt' % virtualenv_dir)
 
         # Make sure everything is correctly owned
         sudo('chown www-data:www-data -R %s %s' % (code_dir, virtualenv_dir))

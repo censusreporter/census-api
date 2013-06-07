@@ -4,11 +4,11 @@ WSGIPythonPath %(project_path)s:%(venv_path)s
     ServerName %(domainname)s
     ServerAdmin admin@%(domainname)s
 
-    WSGIScriptAlias / %(project_path)/api.wsgi
+    WSGIScriptAlias / %(project_path)s/api.wsgi
 
-    <Directory %(project_path)>
-        WSGIProcessGroup %(domainname)
-        WSGIApplicationGroup %{GLOBAL}
+    <Directory %(project_path)s>
+        WSGIProcessGroup %(domainname)s
+        WSGIApplicationGroup %%{GLOBAL}
         Order deny,allow
         Allow from all
     </Directory>
