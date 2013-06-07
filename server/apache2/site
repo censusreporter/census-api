@@ -1,0 +1,18 @@
+WSGIPythonPath %(project_path)s:%(venv_path)s
+
+<VirtualHost *:80>
+    ServerName %(domainname)s
+    ServerAdmin admin@%(domainname)s
+
+    WSGIScriptAlias / %(project_path)/api.wsgi
+
+    <Directory %(project_path)>
+        WSGIProcessGroup %(domainname)
+        WSGIApplicationGroup %{GLOBAL}
+        Order deny,allow
+        Allow from all
+    </Directory>
+
+    ErrorLog /var/log/apache2/%(domainname)s.error.log
+    CustomLog /var/log/apache2/%(domainname)s.access.log combined
+</VirtualHost>
