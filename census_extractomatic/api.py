@@ -121,7 +121,7 @@ def acs_geoid_search(acs):
     return json.dumps(result)
 
 
-def geo_summary(acs, state, logrecno):
+def geo_profile(acs, state, logrecno):
     g.cur.execute("SET search_path=%s", [acs])
 
     doc = OrderedDict([('geography', dict()),
@@ -460,23 +460,23 @@ def geo_summary(acs, state, logrecno):
     return json.dumps(doc)
 
 
-@app.route("/1.0/<acs>/<geoid>/summary")
-def acs_geo_summary(acs, geoid):
+@app.route("/1.0/<acs>/<geoid>/profile")
+def acs_geo_profile(acs, geoid):
     acs, state, logrecno = find_geoid(geoid, acs)
 
     if not acs:
         abort(404, 'That ACS doesn\'t know about have that geoid.')
 
-    return geo_summary(acs, state, logrecno)
+    return geo_profile(acs, state, logrecno)
 
-@app.route("/1.0/latest/<geoid>/summary")
-def latest_geo_summary(geoid):
+@app.route("/1.0/latest/<geoid>/profile")
+def latest_geo_profile(geoid):
     acs, state, logrecno = find_geoid(geoid)
 
     if not acs:
         abort(404, 'None of the ACS I know about have that geoid.')
 
-    return geo_summary(acs, state, logrecno)
+    return geo_profile(acs, state, logrecno)
 
 
 @app.route("/1.0/<acs>/<table>")
