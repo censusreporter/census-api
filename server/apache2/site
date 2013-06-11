@@ -7,8 +7,6 @@ WSGIPythonPath %(project_path)s:%(venv_path)s
     WSGIScriptAlias / %(project_path)s/api.wsgi
 
     <Directory %(project_path)s>
-        WSGIProcessGroup %(domainname)s
-        WSGIApplicationGroup %%{GLOBAL}
         Order deny,allow
         Allow from all
     </Directory>

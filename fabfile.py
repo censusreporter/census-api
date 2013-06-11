@@ -39,6 +39,8 @@ def deploy(branch='master'):
 
     # Create virtualenv and add our django app to its PYTHONPATH
     sudo('virtualenv --no-site-packages %s' % virtualenv_dir)
+    sudo('rm -f %s/lib/python2.7/site-packages/censusreporter.pth' % virtualenv_dir)
+    append('%s/lib/python2.7/site-packages/censusreporter.pth' % virtualenv_dir, '%s/census_extractomatic' % code_dir, use_sudo=True)
 
     with settings(warn_only=True):
         if sudo('test -d %s' % code_dir).failed:
