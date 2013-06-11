@@ -1,3 +1,5 @@
+from __future__ import division
+
 from flask import Flask
 from flask import abort, request, g
 import json
@@ -285,7 +287,7 @@ def geo_profile(acs, state, logrecno):
     age_dict['median_age'] = dict(table_id='b01002',
                                     universe='Total population',
                                     name='Median age',
-                                    values=dict(this=maybe_int(data['b01002001']),
+                                    values=dict(this=maybe_float(data['b01002001']),
                                                 county=None,
                                                 state=None,
                                                 nation=None))
@@ -293,7 +295,7 @@ def geo_profile(acs, state, logrecno):
     age_dict['median_age_male'] = dict(table_id='b01002',
                                         universe='Total population',
                                         name='Median age male',
-                                        values=dict(this=maybe_int(data['b01002002']),
+                                        values=dict(this=maybe_float(data['b01002002']),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
@@ -301,7 +303,7 @@ def geo_profile(acs, state, logrecno):
     age_dict['median_age_female'] = dict(table_id='b01002',
                                         universe='Total population',
                                         name='Median age female',
-                                        values=dict(this=maybe_int(data['b01002003']),
+                                        values=dict(this=maybe_float(data['b01002003']),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
