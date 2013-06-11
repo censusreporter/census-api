@@ -1,12 +1,12 @@
+# For real division instead of sometimes-integer
+from __future__ import division
+
 from flask import Flask
 from flask import abort, request, g
 import json
 import psycopg2
 import psycopg2.extras
 from collections import OrderedDict
-
-# For real division instead of sometimes-integer
-from __future__ import division
 
 app = Flask(__name__)
 
