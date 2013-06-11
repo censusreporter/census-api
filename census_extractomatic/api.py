@@ -8,6 +8,7 @@ import psycopg2.extras
 from collections import OrderedDict
 
 app = Flask(__name__)
+app.debug = True
 
 if not app.debug:
     import logging
