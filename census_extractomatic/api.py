@@ -9,7 +9,6 @@ from collections import OrderedDict
 from __future__ import division
 
 app = Flask(__name__)
-app.debug = True
 
 if not app.debug:
     import logging
