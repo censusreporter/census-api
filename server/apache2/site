@@ -4,9 +4,12 @@ WSGIPythonPath %(project_path)s:%(venv_path)s
     ServerName %(domainname)s
     ServerAdmin admin@%(domainname)s
 
+    WSGIDaemonProcess %(domainname)s user=www-data group=www-data threads=5
     WSGIScriptAlias / %(project_path)s/api.wsgi
 
     <Directory %(project_path)s>
+        WSGIProcessGroup %(domainname)s
+        WSGIApplicationGroup %%{GLOBAL}
         Order deny,allow
         Allow from all
     </Directory>

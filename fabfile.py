@@ -27,7 +27,7 @@ def deploy(branch='master'):
     sudo('rm -f /etc/apache2/sites-available/%s' % host)
     upload_template('./server/apache2/site', '/etc/apache2/sites-available/%s' % host, use_sudo=True, context={
         'domainname': host,
-        'project_path': '%s/census_extractomatic' % (code_dir),
+        'project_path': code_dir,
         'venv_path': '%s/lib/python2.7/site-packages' % (virtualenv_dir),
     })
     sudo('a2ensite %s' % host)
@@ -40,7 +40,7 @@ def deploy(branch='master'):
     # Create virtualenv and add our django app to its PYTHONPATH
     sudo('virtualenv --no-site-packages %s' % virtualenv_dir)
     sudo('rm -f %s/lib/python2.7/site-packages/censusreporter.pth' % virtualenv_dir)
-    append('%s/lib/python2.7/site-packages/censusreporter.pth' % virtualenv_dir, '%s/census_extractomatic' % code_dir, use_sudo=True)
+    append('%s/lib/python2.7/site-packages/censusreporter.pth' % virtualenv_dir, code_dir, use_sudo=True)
 
     with settings(warn_only=True):
         if sudo('test -d %s' % code_dir).failed:
