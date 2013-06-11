@@ -597,7 +597,7 @@ def geo_profile(acs, state, logrecno):
                                         universe='Population 5 years and over',
                                         name='Persons with language other than English spoken at home',
                                         data_years=default_data_years,
-                                        values=dict(this=maybe_float(maybe_percent(data['b16001001']-data['b16001002']), data['b16001001'])),
+                                        values=dict(this=maybe_float(maybe_percent(data['b16001001']-data['b16001002'], data['b16001001'])),
                                                     county=None,
                                                     state=None,
                                                     nation=None)
