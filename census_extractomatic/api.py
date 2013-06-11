@@ -70,6 +70,13 @@ def maybe_float(i, decimals=1):
     return round(float(i), decimals) if i else i
 
 
+def maybe_percent(numerator, denominator, decimals=1):
+    if not numerator or not denominator:
+        return None
+
+    return round(numerator / denominator, decimals) * 100
+
+
 def find_geoid(geoid, acs=None):
     "Find the best acs to use for a given geoid or None if the geoid is not found."
 
@@ -253,9 +260,9 @@ def geo_profile(acs, state, logrecno):
     age_dict['percent_under_18'] = dict(table_id='b01001',
                                         universe='Total population',
                                         name='Under 18',
-                                        values=dict(this=maybe_float((sum(data, 'b01001003', 'b01001004', 'b01001005', 'b01001006') +
-                                                                     sum(data, 'b01001027', 'b01001028', 'b01001029', 'b01001030')) /
-                                                                     data['b01001001'] * 100),
+                                        values=dict(this=maybe_percent((sum(data, 'b01001003', 'b01001004', 'b01001005', 'b01001006') +
+                                                                     sum(data, 'b01001027', 'b01001028', 'b01001029', 'b01001030')),
+                                                                     data['b01001001']),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
@@ -263,9 +270,9 @@ def geo_profile(acs, state, logrecno):
     age_dict['percent_over_65'] = dict(table_id='b01001',
                                         universe='Total population',
                                         name='65 and over',
-                                        values=dict(this=maybe_float((sum(data, 'b01001020', 'b01001021', 'b01001022', 'b01001023', 'b01001024', 'b01001025') +
-                                                                     sum(data, 'b01001044', 'b01001045', 'b01001046', 'b01001047', 'b01001048', 'b01001049')) /
-                                                                     data['b01001001'] * 100),
+                                        values=dict(this=maybe_percent((sum(data, 'b01001020', 'b01001021', 'b01001022', 'b01001023', 'b01001024', 'b01001025') +
+                                                                     sum(data, 'b01001044', 'b01001045', 'b01001046', 'b01001047', 'b01001048', 'b01001049')),
+                                                                     data['b01001001']),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
@@ -275,7 +282,7 @@ def geo_profile(acs, state, logrecno):
     gender_dict['percent_male'] = dict(table_id='b01001',
                                         universe='Total population',
                                         name='Male',
-                                        values=dict(this=maybe_float(data['b01001002'] / data['b01001001'] * 100),
+                                        values=dict(this=maybe_percent(data['b01001002'], data['b01001001']),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
@@ -283,7 +290,7 @@ def geo_profile(acs, state, logrecno):
     gender_dict['percent_female'] = dict(table_id='b01001',
                                         universe='Total population',
                                         name='Female',
-                                        values=dict(this=maybe_float(data['b01001026'] / data['b01001001']* 100),
+                                        values=dict(this=maybe_percent(data['b01001026'], data['b01001001']),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
@@ -323,7 +330,7 @@ def geo_profile(acs, state, logrecno):
     race_dict['percent_white'] = dict(table_id='b02001',
                                         universe='Total population',
                                         name='White',
-                                        values=dict(this=maybe_float(data['b02001002'] / data['b02001001']* 100),
+                                        values=dict(this=maybe_percent(data['b02001002'], data['b02001001']),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
@@ -331,7 +338,7 @@ def geo_profile(acs, state, logrecno):
     race_dict['percent_black'] = dict(table_id='b02001',
                                         universe='Total population',
                                         name='Black',
-                                        values=dict(this=maybe_float(data['b02001003'] / data['b02001001'] * 100),
+                                        values=dict(this=maybe_percent(data['b02001003'], data['b02001001']),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
@@ -339,7 +346,7 @@ def geo_profile(acs, state, logrecno):
     race_dict['percent_native_american'] = dict(table_id='b02001',
                                         universe='Total population',
                                         name='Native',
-                                        values=dict(this=maybe_float(data['b02001004'] / data['b02001001'] * 100),
+                                        values=dict(this=maybe_percent(data['b02001004'], data['b02001001']),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
@@ -347,7 +354,7 @@ def geo_profile(acs, state, logrecno):
     race_dict['percent_asian'] = dict(table_id='b02001',
                                         universe='Total population',
                                         name='Asian',
-                                        values=dict(this=maybe_float(data['b02001005'] / data['b02001001'] * 100),
+                                        values=dict(this=maybe_percent(data['b02001005'], data['b02001001']),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
@@ -355,7 +362,7 @@ def geo_profile(acs, state, logrecno):
     race_dict['percent_other'] = dict(table_id='b02001',
                                         universe='Total population',
                                         name='Islander',
-                                        values=dict(this=maybe_float(data['b02001006'] / data['b02001001'] * 100),
+                                        values=dict(this=maybe_percent(data['b02001006'], data['b02001001']),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
@@ -363,7 +370,7 @@ def geo_profile(acs, state, logrecno):
     race_dict['percent_native_islander'] = dict(table_id='b02001',
                                         universe='Total population',
                                         name='Other race',
-                                        values=dict(this=maybe_float(data['b02001007'] / data['b02001001'] * 100),
+                                        values=dict(this=maybe_percent(data['b02001007'], data['b02001001']),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
@@ -371,7 +378,7 @@ def geo_profile(acs, state, logrecno):
     race_dict['percent_two_or_more'] = dict(table_id='b02001',
                                         universe='Total population',
                                         name='Two+ races',
-                                        values=dict(this=maybe_float(data['b02001008'] / data['b02001001'] * 100),
+                                        values=dict(this=maybe_percent(data['b02001008'], data['b02001001']),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
@@ -385,7 +392,7 @@ def geo_profile(acs, state, logrecno):
     ethnicity_dict['percent_hispanic'] = dict(table_id='b03003',
                                         universe='Total population',
                                         name='Hispanic/Latino',
-                                        values=dict(this=maybe_float(data['b03003003'] / data['b03003001'] * 100),
+                                        values=dict(this=maybe_percent(data['b03003003'], data['b03003001']),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
@@ -424,7 +431,7 @@ def geo_profile(acs, state, logrecno):
     poverty_dict['percent_below_poverty_line'] = dict(table_id='b17001',
                                         universe='Population for whom poverty status is determined',
                                         name='Persons below poverty line',
-                                        values=dict(this=maybe_float(data['b17001002'] / data['b17001001'] * 100),
+                                        values=dict(this=maybe_percent(data['b17001002'], data['b17001001']),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
@@ -438,9 +445,9 @@ def geo_profile(acs, state, logrecno):
     attainment_dict['percent_high_school_or_higher'] = dict(table_id='b15002',
                                         universe='Population 25 years and over',
                                         name='High school grad or higher',
-                                        values=dict(this=maybe_float((sum(data, 'b15002011', 'b15002012', 'b15002013', 'b15002014', 'b15002015', 'b15002016', 'b15002017', 'b15002018') +
-                                                                     sum(data, 'b15002028', 'b15002029', 'b15002030', 'b15002031', 'b15002032', 'b15002033', 'b15002034', 'b15002035')) /
-                                                                     data['b15002001'] * 100),
+                                        values=dict(this=maybe_percent((sum(data, 'b15002011', 'b15002012', 'b15002013', 'b15002014', 'b15002015', 'b15002016', 'b15002017', 'b15002018') +
+                                                                     sum(data, 'b15002028', 'b15002029', 'b15002030', 'b15002031', 'b15002032', 'b15002033', 'b15002034', 'b15002035')),
+                                                                     data['b15002001']),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
@@ -448,9 +455,9 @@ def geo_profile(acs, state, logrecno):
     attainment_dict['percent_bachelor_degree_or_higher'] = dict(table_id='b15002',
                                         universe='Population 25 years and over',
                                         name='Bachelor\'s degree or higher',
-                                        values=dict(this=maybe_float((sum(data, 'b15002015', 'b15002016', 'b15002017', 'b15002018') +
-                                                                     sum(data, 'b15002032', 'b15002033', 'b15002034', 'b15002035')) /
-                                                                     data['b15002001'] * 100),
+                                        values=dict(this=maybe_percent((sum(data, 'b15002015', 'b15002016', 'b15002017', 'b15002018') +
+                                                                     sum(data, 'b15002032', 'b15002033', 'b15002034', 'b15002035')),
+                                                                     data['b15002001']),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
@@ -482,7 +489,7 @@ def geo_profile(acs, state, logrecno):
     migration_dict['percent_living_in_same_house_1_year'] = dict(table_id='b07001',
                                         universe='Population 1 year and over in the United States',
                                         name='People living in same house for 1 year or more',
-                                        values=dict(this=maybe_float(data['b07001017'] / data['b07001001'] * 100),
+                                        values=dict(this=maybe_percent(data['b07001017'], data['b07001001']),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
@@ -507,8 +514,8 @@ def geo_profile(acs, state, logrecno):
     units_dict['percent_units_in_multi_unit_structure'] = dict(table_id='b25024',
                                         universe='Housing units',
                                         name='Housing units in multi-unit structures',
-                                        values=dict(this=maybe_float(sum(data, 'b25024004', 'b25024005', 'b25024006', 'b25024007', 'b25024008', 'b25024009') /
-                                                                    data['b25024001'] * 100),
+                                        values=dict(this=maybe_percent(sum(data, 'b25024004', 'b25024005', 'b25024006', 'b25024007', 'b25024008', 'b25024009'),
+                                                                    data['b25024001']),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
@@ -522,7 +529,7 @@ def geo_profile(acs, state, logrecno):
     ownership_dict['percent_homeownership'] = dict(table_id='b25003',
                                         universe='Occupied housing units',
                                         name='Rate of homeownership',
-                                        values=dict(this=maybe_float(data['b25003002'] / data['b25003001'] * 100),
+                                        values=dict(this=maybe_percent(data['b25003002'], data['b25003001']),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
@@ -547,7 +554,7 @@ def geo_profile(acs, state, logrecno):
     foreign_dict['percent_foreign_born'] = dict(table_id='b05002',
                                         universe='Total population',
                                         name='Foreign-born persons',
-                                        values=dict(this=maybe_float(data['b05002013'] / data['b05002001'] * 100),
+                                        values=dict(this=maybe_percent(data['b05002013'], data['b05002001']),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
@@ -561,10 +568,10 @@ def geo_profile(acs, state, logrecno):
     language_dict['percent_non_english_at_home'] = dict(table_id='b16001',
                                         universe='Population 5 years and over',
                                         name='Persons with language other than English spoken at home',
-                                        values=dict(this=maybe_float((data['b16001001']-data['b16001002']) / data['b16001001'] * 100),
+                                        values=dict(this=maybe_float(maybe_percent(data['b16001001']-data['b16001002']), data['b16001001'])),
                                                     county=None,
                                                     state=None,
-                                                    nation=None))
+                                                    nation=None)
 
     g.cur.execute("SELECT * FROM B21002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
