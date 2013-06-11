@@ -11,7 +11,7 @@ app = Flask(__name__)
 
 if not app.debug:
     import logging
-    file_handler = logging.FileHandler('/var/log/apache2/api.censusreporter.org.wsgi_error.log')
+    file_handler = logging.FileHandler('/tmp/api.censusreporter.org.wsgi_error.log')
     file_handler.setLevel(logging.WARNING)
     app.logger.addHandler(file_handler)
 
