@@ -23,6 +23,21 @@ allowed_acs = [
     'acs2007_3yr'
 ]
 
+ACS_NAMES = {
+    'acs2011_1yr': 'ACS 2011 1-year',
+    'acs2011_3yr': 'ACS 2011 3-year',
+    'acs2011_5yr': 'ACS 2011 5-year',
+    'acs2010_1yr': 'ACS 2010 1-year',
+    'acs2010_3yr': 'ACS 2010 3-year',
+    'acs2010_5yr': 'ACS 2010 5-year',
+    'acs2009_1yr': 'ACS 2009 1-year',
+    'acs2009_3yr': 'ACS 2009 3-year',
+    'acs2008_1yr': 'ACS 2008 1-year',
+    'acs2008_3yr': 'ACS 2008 3-year',
+    'acs2007_1yr': 'ACS 2007 1-year',
+    'acs2007_3yr': 'ACS 2007 3-year'
+}
+
 
 def sum(data, *columns):
     def reduce_fn(x, y):
@@ -139,7 +154,8 @@ def geo_comparison(acs, parent_geoid, comparison_sumlev):
         one_geom['geography'] = dict(name=geo['name'],
                                 geoid=geo['geoid'],
                                 stusab=geo['stusab'],
-                                sumlevel=geo['sumlevel'])
+                                sumlevel=geo['sumlevel'],
+                                census_release=ACS_NAMES.get(acs))
 
         cur.execute("SELECT * FROM %s.B01003 WHERE stusab=%s AND logrecno=%s;", [acs, state, logrecno])
         data = cur.fetchone()
@@ -206,7 +222,7 @@ def geo_profile(acs, state, logrecno):
                        ('sociocultural', dict()),
                        ('veterans', dict())])
 
-    doc['geography']['release'] = acs
+    doc['geography']['census_release'] = ACS_NAMES.get(acs)
 
     g.cur.execute("SELECT * FROM geoheader WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
