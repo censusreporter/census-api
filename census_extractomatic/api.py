@@ -600,7 +600,7 @@ def geo_profile(acs, state, logrecno):
                                         values=dict(this=maybe_float(maybe_percent(data['b16001001']-data['b16001002'], data['b16001001'])),
                                                     county=None,
                                                     state=None,
-                                                    nation=None)
+                                                    nation=None))
 
     g.cur.execute("SELECT * FROM B21002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
