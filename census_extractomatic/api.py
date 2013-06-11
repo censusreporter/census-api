@@ -490,7 +490,28 @@ def geo_profile(acs, state, logrecno):
                                                     state=None,
                                                     nation=None))
 
-    #TODO: employment.travel_time
+    g.cur.execute("SELECT * FROM B08006 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    _total_workers_16_and_over = maybe_int(data['b08006001'])
+    _workers_who_worked_at_home = maybe_int(data['b08006017'])
+
+    g.cur.execute("SELECT * FROM B08013 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    _aggregate_minutes = maybe_int(data['b08013001'])
+
+    travel_time_dict = dict()
+    doc['employment']['travel_time'] = travel_time_dict
+
+    travel_time_dict['mean_travel_time'] = dict(table_id='b08006, b08013',
+                                        universe='Workers 16 years and over',
+                                        name='Mean travel time to work',
+                                        data_years=default_data_years,
+                                        values=dict(this=maybe_float((_total_workers_16_and_over - _workers_who_worked_at_home) / _aggregate_minutes),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
 
     g.cur.execute("SELECT * FROM B11001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
