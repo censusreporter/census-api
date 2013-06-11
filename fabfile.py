@@ -28,6 +28,7 @@ def deploy(branch='master'):
     upload_template('./server/apache2/site', '/etc/apache2/sites-available/%s' % host, use_sudo=True, context={
         'domainname': host,
         'project_path': code_dir,
+        'wsgi_path': '%s/census_extractomatic/api.wsgi' % (code_dir),
         'venv_path': '%s/lib/python2.7/site-packages' % (virtualenv_dir),
     })
     sudo('a2ensite %s' % host)

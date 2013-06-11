@@ -5,7 +5,7 @@ WSGIPythonPath %(project_path)s:%(venv_path)s
     ServerAdmin admin@%(domainname)s
 
     WSGIDaemonProcess %(domainname)s user=www-data group=www-data threads=5
-    WSGIScriptAlias / %(project_path)s/api.wsgi
+    WSGIScriptAlias / %(wsgi_path)s
 
     <Directory %(project_path)s>
         WSGIProcessGroup %(domainname)s
