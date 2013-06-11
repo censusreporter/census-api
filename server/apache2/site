@@ -1,10 +1,8 @@
-WSGIPythonPath %(project_path)s:%(venv_path)s
-
 <VirtualHost *:80>
     ServerName %(domainname)s
     ServerAdmin admin@%(domainname)s
 
-    WSGIDaemonProcess %(domainname)s user=www-data group=www-data threads=5
+    WSGIDaemonProcess %(domainname)s user=www-data group=www-data threads=5 python-path=%(project_path)s:%(venv_path)s
     WSGIScriptAlias / %(wsgi_path)s
 
     <Directory %(project_path)s>
