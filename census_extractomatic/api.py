@@ -369,16 +369,16 @@ def geo_profile(acs, state, logrecno):
                                                     state=None,
                                                     nation=None))
 
-    g.cur.execute("SELECT * FROM B03001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B03003 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
 
     ethnicity_dict = dict()
     doc['demographics']['ethnicity'] = ethnicity_dict
 
-    ethnicity_dict['percent_hispanic'] = dict(table_id='b03001',
+    ethnicity_dict['percent_hispanic'] = dict(table_id='b03003',
                                         universe='Total population',
                                         name='Hispanic/Latino',
-                                        values=dict(this=maybe_float(data['b03001003'] / data['b03001001'] * 100),
+                                        values=dict(this=maybe_float(data['b03003003'] / data['b03003001'] * 100),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
