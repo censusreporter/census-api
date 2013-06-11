@@ -490,17 +490,32 @@ def geo_profile(acs, state, logrecno):
 
     households_dict = dict()
     doc['families']['households'] = households_dict
+    # store so we can use this for the next calculation too
+    _number_of_households = maybe_int(data['b11001001'])
 
     households_dict['number_of_households'] = dict(table_id='b11001',
                                         universe='Households',
                                         name='Number of households',
                                         data_years=default_data_years,
-                                        values=dict(this=maybe_int(data['b11001001']),
+                                        values=dict(this=_number_of_households,
                                                     county=None,
                                                     state=None,
                                                     nation=None))
 
-    #TODO: families.persons_per_household
+
+    g.cur.execute("SELECT * FROM B11002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    _total_persons_in_households = maybe_int(data['b11002001'])
+
+    households_dict['persons_per_household'] = dict(table_id='b11001,b11002',
+                                        universe='Households',
+                                        name='Persons per household',
+                                        data_years=default_data_years,
+                                        values=dict(this=maybe_float(_total_persons_in_households / _number_of_households),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
 
     g.cur.execute("SELECT * FROM B07001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
