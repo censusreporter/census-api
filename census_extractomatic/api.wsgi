@@ -1,1 +1,1 @@
-from census_extractomatic import api as application
+from census_extractomatic.api import app as application
