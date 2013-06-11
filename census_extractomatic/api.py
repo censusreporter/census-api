@@ -74,7 +74,7 @@ def maybe_percent(numerator, denominator, decimals=1):
     if not numerator or not denominator:
         return None
 
-    return round(numerator / denominator, decimals) * 100
+    return round(float(numerator) / float(denominator), decimals) * 100
 
 
 def find_geoid(geoid, acs=None):
