@@ -48,6 +48,7 @@ def deploy(branch='master'):
             sudo('git clone git://github.com/censusreporter/census-extractomatic.git %s' % code_dir)
 
     with cd(code_dir):
+        sudo('find . -name \'*.pyc\' -delete')
         sudo('git pull origin %s' % branch)
 
         # Install pip requirements
