@@ -64,7 +64,7 @@ def find_geoid(geoid, acs=None):
 
 @app.before_request
 def before_request():
-    conn = psycopg2.connect(database='postgres')
+    conn = psycopg2.connect(database='postgres', user='census', password='censuspassword', host='localhost')
     g.cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
 
@@ -125,7 +125,7 @@ def geo_comparison(acs, parent_geoid, comparison_sumlev):
 
     # Builds something like: '05000US17%'
     geoid_prefix = '%s00US%s%' % (comparison_sumlev, parent_geoid)
-    
+
     cur.execute("SELECT * FROM %s.geoheader WHERE geoid LIKE %s;", [acs, geoid_prefix])
     geoheaders = cur.fetchall()
 
@@ -221,7 +221,7 @@ def geo_profile(acs, state, logrecno):
 
     pop_dict = dict()
     doc['geography']['total_population'] = maybe_int(data['b01001001'])
-    
+
 
     age_dict = dict()
     doc['demographics']['age'] = age_dict
@@ -418,7 +418,7 @@ def geo_profile(acs, state, logrecno):
                                                     county=None,
                                                     state=None,
                                                     nation=None))
-                                                    
+
     #TODO: families.persons_per_household
 
     g.cur.execute("SELECT * FROM B07001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
