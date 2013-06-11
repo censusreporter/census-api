@@ -263,6 +263,33 @@ def geo_profile(acs, state, logrecno):
                                                     state=None,
                                                     nation=None))
 
+    g.cur.execute("SELECT * FROM B01002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    age_dict['median_age'] = dict(table_id='b01002',
+                                    universe='Total population',
+                                    name='Median age',
+                                    values=dict(this=maybe_int(data['b01002001']),
+                                                county=None,
+                                                state=None,
+                                                nation=None))
+
+    age_dict['median_age_male'] = dict(table_id='b01002',
+                                        universe='Total population',
+                                        name='Median age male',
+                                        values=dict(this=maybe_int(data['b01002002']),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
+    age_dict['median_age_female'] = dict(table_id='b01002',
+                                        universe='Total population',
+                                        name='Median age female',
+                                        values=dict(this=maybe_int(data['b01002003']),
+                                                    county=None,
+                                                    state=None,
+                                                    nation=None))
+
     g.cur.execute("SELECT * FROM B02001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
 
@@ -456,7 +483,7 @@ def geo_profile(acs, state, logrecno):
                                         universe='Housing units',
                                         name='Housing units in multi-unit structures',
                                         values=dict(this=maybe_float(sum(data, 'b25024004', 'b25024005', 'b25024006', 'b25024007', 'b25024008', 'b25024009') /
-                                                                    data['b25024001'], 3),
+                                                                    data['b25024001'] * 100),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
@@ -470,7 +497,7 @@ def geo_profile(acs, state, logrecno):
     ownership_dict['percent_homeownership'] = dict(table_id='b25003',
                                         universe='Occupied housing units',
                                         name='Rate of homeownership',
-                                        values=dict(this=maybe_float(data['b25003002'] / data['b25003001'], 3),
+                                        values=dict(this=maybe_float(data['b25003002'] / data['b25003001'] * 100),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
@@ -495,7 +522,7 @@ def geo_profile(acs, state, logrecno):
     foreign_dict['percent_foreign_born'] = dict(table_id='b05002',
                                         universe='Total population',
                                         name='Foreign-born persons',
-                                        values=dict(this=maybe_float(data['b05002013'] / data['b05002001'], 3),
+                                        values=dict(this=maybe_float(data['b05002013'] / data['b05002001'] * 100),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
@@ -509,7 +536,7 @@ def geo_profile(acs, state, logrecno):
     language_dict['percent_non_english_at_home'] = dict(table_id='b16001',
                                         universe='Population 5 years and over',
                                         name='Persons with language other than English spoken at home',
-                                        values=dict(this=maybe_float((data['b16001001']-data['b16001002']) / data['b16001001'], 3),
+                                        values=dict(this=maybe_float((data['b16001001']-data['b16001002']) / data['b16001001'] * 100),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
