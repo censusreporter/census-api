@@ -84,6 +84,19 @@ def maybe_percent(numerator, denominator, decimals=1):
     return round(numerator / denominator * 100, decimals)
 
 
+def build_item(table_id, universe, name, data_years, data, transform):
+    val = dict(table_id=table_id,
+        universe=universe,
+        name=name,
+        data_years=data_years,
+        values=dict(this=transform(data),
+                    county=transform(data),
+                    state=transform(data),
+                    nation=transform(data)))
+
+    return val
+
+
 def find_geoid(geoid, acs=None):
     "Find the best acs to use for a given geoid or None if the geoid is not found."
 
@@ -265,27 +278,15 @@ def geo_profile(acs, state, logrecno):
 
     age_dict = dict()
     doc['demographics']['age'] = age_dict
-    age_dict['percent_under_18'] = dict(table_id='b01001',
-                                        universe='Total population',
-                                        name='Under 18',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_percent((sum(data, 'b01001003', 'b01001004', 'b01001005', 'b01001006') +
-                                                                     sum(data, 'b01001027', 'b01001028', 'b01001029', 'b01001030')),
-                                                                     data['b01001001']),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    age_dict['percent_under_18'] = build_item('b01001', 'Total population', 'Under 18', default_data_years, data,
+                                              lambda data: maybe_percent((sum(data, 'b01001003', 'b01001004', 'b01001005', 'b01001006') +
+                                                                          sum(data, 'b01001027', 'b01001028', 'b01001029', 'b01001030')),
+                                                                          data['b01001001']))
 
-    age_dict['percent_over_65'] = dict(table_id='b01001',
-                                        universe='Total population',
-                                        name='65 and over',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_percent((sum(data, 'b01001020', 'b01001021', 'b01001022', 'b01001023', 'b01001024', 'b01001025') +
+    age_dict['percent_over_65'] = build_item('b01001', 'Total population', '65 and over', default_data_years, data,
+                                        lambda data: maybe_percent((sum(data, 'b01001020', 'b01001021', 'b01001022', 'b01001023', 'b01001024', 'b01001025') +
                                                                      sum(data, 'b01001044', 'b01001045', 'b01001046', 'b01001047', 'b01001048', 'b01001049')),
-                                                                     data['b01001001']),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+                                                                     data['b01001001']))
 
     gender_dict = dict()
     doc['demographics']['gender'] = gender_dict
