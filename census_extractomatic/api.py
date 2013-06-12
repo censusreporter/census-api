@@ -286,132 +286,60 @@ def geo_profile(acs, state, logrecno):
     age_dict = dict()
     doc['demographics']['age'] = age_dict
     age_dict['percent_under_18'] = build_item('b01001', 'Total population', 'Under 18', default_data_years, data,
-                                              lambda data: maybe_percent((sum(data, 'b01001003', 'b01001004', 'b01001005', 'b01001006') +
-                                                                          sum(data, 'b01001027', 'b01001028', 'b01001029', 'b01001030')),
-                                                                          data['b01001001']))
+                                        lambda data: maybe_percent((sum(data, 'b01001003', 'b01001004', 'b01001005', 'b01001006') +
+                                                                    sum(data, 'b01001027', 'b01001028', 'b01001029', 'b01001030')),
+                                                                    data['b01001001']))
 
     age_dict['percent_over_65'] = build_item('b01001', 'Total population', '65 and over', default_data_years, data,
                                         lambda data: maybe_percent((sum(data, 'b01001020', 'b01001021', 'b01001022', 'b01001023', 'b01001024', 'b01001025') +
-                                                                     sum(data, 'b01001044', 'b01001045', 'b01001046', 'b01001047', 'b01001048', 'b01001049')),
-                                                                     data['b01001001']))
+                                                                    sum(data, 'b01001044', 'b01001045', 'b01001046', 'b01001047', 'b01001048', 'b01001049')),
+                                                                    data['b01001001']))
 
     gender_dict = dict()
     doc['demographics']['gender'] = gender_dict
-    gender_dict['percent_male'] = dict(table_id='b01001',
-                                        universe='Total population',
-                                        name='Male',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_percent(data['b01001002'], data['b01001001']),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    gender_dict['percent_male'] = build_item('b01001', 'Total population', 'Male', default_data_years, data,
+                                        lambda data: maybe_percent(data['b01001002'], data['b01001001']))
 
-    gender_dict['percent_female'] = dict(table_id='b01001',
-                                        universe='Total population',
-                                        name='Female',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_percent(data['b01001026'], data['b01001001']),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    gender_dict['percent_female'] = build_item('b01001', 'Total population', 'Female', default_data_years, data,
+                                        lambda data: maybe_percent(data['b01001026'], data['b01001001']))
 
     g.cur.execute("SELECT * FROM B01002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
 
-    age_dict['median_age'] = dict(table_id='b01002',
-                                    universe='Total population',
-                                    name='Median age',
-                                    data_years=default_data_years,
-                                    values=dict(this=maybe_float(data['b01002001']),
-                                                county=None,
-                                                state=None,
-                                                nation=None))
+    age_dict['median_age'] = build_item('b01002', 'Total population', 'Median age', default_data_years, data,
+                                        lambda data: maybe_float(data['b01002001']))
 
-    age_dict['median_age_male'] = dict(table_id='b01002',
-                                        universe='Total population',
-                                        name='Median age male',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_float(data['b01002002']),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    age_dict['median_age_male'] = build_item('b01002', 'Total population', 'Median age male', default_data_years, data,
+                                        lambda data: maybe_float(data['b01002002']))
 
-    age_dict['median_age_female'] = dict(table_id='b01002',
-                                        universe='Total population',
-                                        name='Median age female',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_float(data['b01002003']),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    age_dict['median_age_female'] = build_item('b01002', 'Total population', 'Median age female', default_data_years, data,
+                                        lambda data: maybe_float(data['b01002003']))
 
     g.cur.execute("SELECT * FROM B02001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
 
     race_dict = dict()
     doc['demographics']['race'] = race_dict
-    race_dict['percent_white'] = dict(table_id='b02001',
-                                        universe='Total population',
-                                        name='White',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_percent(data['b02001002'], data['b02001001']),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    race_dict['percent_white'] = build_item('b02001', 'Total population', 'White', default_data_years, data,
+                                        lambda data: maybe_percent(data['b02001002'], data['b02001001']))
 
-    race_dict['percent_black'] = dict(table_id='b02001',
-                                        universe='Total population',
-                                        name='Black',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_percent(data['b02001003'], data['b02001001']),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    race_dict['percent_black'] = build_item('b02001', 'Total population', 'Black', default_data_years, data,
+                                        lambda data: maybe_percent(data['b02001003'], data['b02001001']))
 
-    race_dict['percent_native_american'] = dict(table_id='b02001',
-                                        universe='Total population',
-                                        name='Native',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_percent(data['b02001004'], data['b02001001']),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    race_dict['percent_native_american'] = build_item('b02001', 'Total population', 'Native', default_data_years, data,
+                                        lambda data: maybe_percent(data['b02001004'], data['b02001001']))
 
-    race_dict['percent_asian'] = dict(table_id='b02001',
-                                        universe='Total population',
-                                        name='Asian',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_percent(data['b02001005'], data['b02001001']),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    race_dict['percent_asian'] = build_item('b02001', 'Total population', 'Asian', default_data_years, data,
+                                        lambda data: maybe_percent(data['b02001005'], data['b02001001']))
 
-    race_dict['percent_other'] = dict(table_id='b02001',
-                                        universe='Total population',
-                                        name='Islander',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_percent(data['b02001006'], data['b02001001']),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    race_dict['percent_other'] = build_item('b02001', 'Total population', 'Islander', default_data_years, data,
+                                        lambda data: maybe_percent(data['b02001006'], data['b02001001']))
 
-    race_dict['percent_native_islander'] = dict(table_id='b02001',
-                                        universe='Total population',
-                                        name='Other race',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_percent(data['b02001007'], data['b02001001']),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    race_dict['percent_native_islander'] = build_item('b02001', 'Total population', 'Other race', default_data_years, data,
+                                        lambda data: maybe_percent(data['b02001007'], data['b02001001']))
 
-    race_dict['percent_two_or_more'] = dict(table_id='b02001',
-                                        universe='Total population',
-                                        name='Two+ races',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_percent(data['b02001008'], data['b02001001']),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    race_dict['percent_two_or_more'] = build_item('b02001', 'Total population', 'Two+ races', default_data_years, data,
+                                        lambda data: maybe_percent(data['b02001008'], data['b02001001']))
 
     g.cur.execute("SELECT * FROM B03003 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
@@ -419,14 +347,8 @@ def geo_profile(acs, state, logrecno):
     ethnicity_dict = dict()
     doc['demographics']['ethnicity'] = ethnicity_dict
 
-    ethnicity_dict['percent_hispanic'] = dict(table_id='b03003',
-                                        universe='Total population',
-                                        name='Hispanic/Latino',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_percent(data['b03003003'], data['b03003001']),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    ethnicity_dict['percent_hispanic'] = build_item('b03003', 'Total population', 'Hispanic/Latino', default_data_years, data,
+                                        lambda data: maybe_percent(data['b03003003'], data['b03003001']))
 
     g.cur.execute("SELECT * FROM B19301 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
@@ -434,26 +356,14 @@ def geo_profile(acs, state, logrecno):
     income_dict = dict()
     doc['economics']['income'] = income_dict
 
-    income_dict['per_capita_income_in_the_last_12_months'] = dict(table_id='b19301',
-                                        universe='Total population',
-                                        name='Per capita income in past year',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_int(data['b19301001']),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    income_dict['per_capita_income_in_the_last_12_months'] = build_item('b19301', 'Total population', 'Per capita income in past year', default_data_years, data,
+                                        lambda data: maybe_int(data['b19301001']))
 
     g.cur.execute("SELECT * FROM B19013 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
 
-    income_dict['median_household_income'] = dict(table_id='b19013',
-                                        universe='Households',
-                                        name='Median household income',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_int(data['b19013001']),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    income_dict['median_household_income'] = build_item('b19013', 'Households', 'Median household income', default_data_years, data,
+                                        lambda data: maybe_int(data['b19013001']))
 
     g.cur.execute("SELECT * FROM B17001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
@@ -461,14 +371,8 @@ def geo_profile(acs, state, logrecno):
     poverty_dict = dict()
     doc['economics']['poverty'] = poverty_dict
 
-    poverty_dict['percent_below_poverty_line'] = dict(table_id='b17001',
-                                        universe='Population for whom poverty status is determined',
-                                        name='Persons below poverty line',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_percent(data['b17001002'], data['b17001001']),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    poverty_dict['percent_below_poverty_line'] = build_item('b17001', 'Population for whom poverty status is determined', 'Persons below poverty line', default_data_years, data,
+                                        lambda data: maybe_percent(data['b17001002'], data['b17001001']))
 
     g.cur.execute("SELECT * FROM B15002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
@@ -476,27 +380,15 @@ def geo_profile(acs, state, logrecno):
     attainment_dict = dict()
     doc['education']['attainment'] = attainment_dict
 
-    attainment_dict['percent_high_school_or_higher'] = dict(table_id='b15002',
-                                        universe='Population 25 years and over',
-                                        name='High school grad or higher',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_percent((sum(data, 'b15002011', 'b15002012', 'b15002013', 'b15002014', 'b15002015', 'b15002016', 'b15002017', 'b15002018') +
+    attainment_dict['percent_high_school_or_higher'] = build_item('b15002', 'Population 25 years and over', 'High school grad or higher', default_data_years, data,
+                                        lambda data: maybe_percent((sum(data, 'b15002011', 'b15002012', 'b15002013', 'b15002014', 'b15002015', 'b15002016', 'b15002017', 'b15002018') +
                                                                      sum(data, 'b15002028', 'b15002029', 'b15002030', 'b15002031', 'b15002032', 'b15002033', 'b15002034', 'b15002035')),
-                                                                     data['b15002001']),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+                                                                     data['b15002001']))
 
-    attainment_dict['percent_bachelor_degree_or_higher'] = dict(table_id='b15002',
-                                        universe='Population 25 years and over',
-                                        name='Bachelor\'s degree or higher',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_percent((sum(data, 'b15002015', 'b15002016', 'b15002017', 'b15002018') +
+    attainment_dict['percent_bachelor_degree_or_higher'] = build_item('b15002', 'Population 25 years and over', 'Bachelor\'s degree or higher', default_data_years, data,
+                                        lambda data: maybe_percent((sum(data, 'b15002015', 'b15002016', 'b15002017', 'b15002018') +
                                                                      sum(data, 'b15002032', 'b15002033', 'b15002034', 'b15002035')),
-                                                                     data['b15002001']),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+                                                                     data['b15002001']))
 
     g.cur.execute("SELECT * FROM B08006 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
@@ -512,14 +404,8 @@ def geo_profile(acs, state, logrecno):
     travel_time_dict = dict()
     doc['employment']['travel_time'] = travel_time_dict
 
-    travel_time_dict['mean_travel_time'] = dict(table_id='b08006, b08013',
-                                        universe='Workers 16 years and over',
-                                        name='Mean travel time to work',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_float(div(_aggregate_minutes, dif(_total_workers_16_and_over, _workers_who_worked_at_home))),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    travel_time_dict['mean_travel_time'] = build_item('b08006, b08013', 'Workers 16 years and over', 'Mean travel time to work', default_data_years, data,
+                                        lambda data: maybe_float(div(_aggregate_minutes, dif(_total_workers_16_and_over, _workers_who_worked_at_home))))
 
     g.cur.execute("SELECT * FROM B11001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
@@ -529,14 +415,8 @@ def geo_profile(acs, state, logrecno):
     # store so we can use this for the next calculation too
     _number_of_households = maybe_int(data['b11001001'])
 
-    households_dict['number_of_households'] = dict(table_id='b11001',
-                                        universe='Households',
-                                        name='Number of households',
-                                        data_years=default_data_years,
-                                        values=dict(this=_number_of_households,
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    households_dict['number_of_households'] = build_item('b11001', 'Households', 'Number of households', default_data_years, data,
+                                        lambda data: _number_of_households)
 
 
     g.cur.execute("SELECT * FROM B11002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
@@ -544,14 +424,8 @@ def geo_profile(acs, state, logrecno):
 
     _total_persons_in_households = maybe_int(data['b11002001'])
 
-    households_dict['persons_per_household'] = dict(table_id='b11001,b11002',
-                                        universe='Households',
-                                        name='Persons per household',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_float(div(_total_persons_in_households, _number_of_households)),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    households_dict['persons_per_household'] = build_item('b11001,b11002', 'Households', 'Persons per household', default_data_years, data,
+                                        lambda data: maybe_float(div(_total_persons_in_households, _number_of_households)))
 
     g.cur.execute("SELECT * FROM B07001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
@@ -559,14 +433,8 @@ def geo_profile(acs, state, logrecno):
     migration_dict = dict()
     doc['housing']['mobility'] = migration_dict
 
-    migration_dict['percent_living_in_same_house_1_year'] = dict(table_id='b07001',
-                                        universe='Population 1 year and over in the United States',
-                                        name='People living in same house for 1 year or more',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_percent(data['b07001017'], data['b07001001']),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    migration_dict['percent_living_in_same_house_1_year'] = build_item('b07001', 'Population 1 year and over in the United States', 'People living in same house for 1 year or more', default_data_years, data,
+                                        lambda data: maybe_percent(data['b07001017'], data['b07001001']))
 
     g.cur.execute("SELECT * FROM B25001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
@@ -574,27 +442,15 @@ def geo_profile(acs, state, logrecno):
     units_dict = dict()
     doc['housing']['units'] = units_dict
 
-    units_dict['number_of_housing_units'] = dict(table_id='b25001',
-                                        universe='Housing units',
-                                        name='Number of housing units',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_int(data['b25001001']),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    units_dict['number_of_housing_units'] = build_item('b25001', 'Housing units', 'Number of housing units', default_data_years, data,
+                                        lambda data: maybe_int(data['b25001001']))
 
     g.cur.execute("SELECT * FROM B25024 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
 
-    units_dict['percent_units_in_multi_unit_structure'] = dict(table_id='b25024',
-                                        universe='Housing units',
-                                        name='Housing units in multi-unit structures',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_percent(sum(data, 'b25024004', 'b25024005', 'b25024006', 'b25024007', 'b25024008', 'b25024009'),
-                                                                    data['b25024001']),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    units_dict['percent_units_in_multi_unit_structure'] = build_item('b25024', 'Housing units', 'Housing units in multi-unit structures', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b25024004', 'b25024005', 'b25024006', 'b25024007', 'b25024008', 'b25024009'),
+                                                                    data['b25024001']))
 
     g.cur.execute("SELECT * FROM B25003 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
@@ -602,26 +458,14 @@ def geo_profile(acs, state, logrecno):
     ownership_dict = dict()
     doc['housing']['ownership'] = ownership_dict
 
-    ownership_dict['percent_homeownership'] = dict(table_id='b25003',
-                                        universe='Occupied housing units',
-                                        name='Rate of homeownership',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_percent(data['b25003002'], data['b25003001']),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    ownership_dict['percent_homeownership'] = build_item('b25003', 'Occupied housing units', 'Rate of homeownership', default_data_years, data,
+                                        lambda data: maybe_percent(data['b25003002'], data['b25003001']))
 
     g.cur.execute("SELECT * FROM B25077 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
 
-    ownership_dict['median_value_of_owner_occupied_housing_unit'] = dict(table_id='b25077',
-                                        universe='Owner-occupied housing units',
-                                        name='Median value of owner-occupied housing units',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_int(data['b25077001']),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    ownership_dict['median_value_of_owner_occupied_housing_unit'] = build_item('b25077', 'Owner-occupied housing units', 'Median value of owner-occupied housing units', default_data_years, data,
+                                        lambda data: maybe_int(data['b25077001']))
 
     g.cur.execute("SELECT * FROM B05002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
@@ -629,14 +473,8 @@ def geo_profile(acs, state, logrecno):
     foreign_dict = dict()
     doc['sociocultural']['place_of_birth'] = foreign_dict
 
-    foreign_dict['percent_foreign_born'] = dict(table_id='b05002',
-                                        universe='Total population',
-                                        name='Foreign-born persons',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_percent(data['b05002013'], data['b05002001']),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    foreign_dict['percent_foreign_born'] = build_item('b05002', 'Total population', 'Foreign-born persons', default_data_years, data,
+                                        lambda data: maybe_percent(data['b05002013'], data['b05002001']))
 
     g.cur.execute("SELECT * FROM B16001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
@@ -644,14 +482,8 @@ def geo_profile(acs, state, logrecno):
     language_dict = dict()
     doc['sociocultural']['language'] = language_dict
 
-    language_dict['percent_non_english_at_home'] = dict(table_id='b16001',
-                                        universe='Population 5 years and over',
-                                        name='Persons with language other than English spoken at home',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_float(maybe_percent(dif(data['b16001001'], data['b16001002']), data['b16001001'])),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    language_dict['percent_non_english_at_home'] = build_item('b16001', 'Population 5 years and over', 'Persons with language other than English spoken at home', default_data_years, data,
+                                        lambda data: maybe_float(maybe_percent(dif(data['b16001001'], data['b16001002']), data['b16001001'])))
 
     g.cur.execute("SELECT * FROM B21002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
@@ -659,14 +491,8 @@ def geo_profile(acs, state, logrecno):
     veterans_dict = dict()
     doc['veterans']['veteran_status'] = veterans_dict
 
-    veterans_dict['number_of_veterans'] = dict(table_id='b21002',
-                                        universe='Civilian veterans 18 years and over',
-                                        name='Number of veterans',
-                                        data_years=default_data_years,
-                                        values=dict(this=maybe_int(data['b21002001']),
-                                                    county=None,
-                                                    state=None,
-                                                    nation=None))
+    veterans_dict['number_of_veterans'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Number of veterans', default_data_years, data,
+                                        lambda data: maybe_int(data['b21002001']))
 
     return json.dumps(doc)
 
