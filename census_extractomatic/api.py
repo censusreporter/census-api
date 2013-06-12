@@ -77,6 +77,13 @@ def maybe_float(i, decimals=1):
     return round(float(i), decimals) if i else i
 
 
+def div(numerator, denominator):
+    if numerator and denominator:
+        return numerator / denominator
+    else:
+        return None
+
+
 def maybe_percent(numerator, denominator, decimals=1):
     if not numerator or not denominator:
         return None
@@ -509,7 +516,7 @@ def geo_profile(acs, state, logrecno):
                                         universe='Workers 16 years and over',
                                         name='Mean travel time to work',
                                         data_years=default_data_years,
-                                        values=dict(this=maybe_float(_aggregate_minutes / dif(_total_workers_16_and_over, _workers_who_worked_at_home)),
+                                        values=dict(this=maybe_float(div(_aggregate_minutes, dif(_total_workers_16_and_over, _workers_who_worked_at_home))),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
@@ -541,7 +548,7 @@ def geo_profile(acs, state, logrecno):
                                         universe='Households',
                                         name='Persons per household',
                                         data_years=default_data_years,
-                                        values=dict(this=maybe_float(_total_persons_in_households / _number_of_households),
+                                        values=dict(this=maybe_float(div(_total_persons_in_households, _number_of_households)),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
