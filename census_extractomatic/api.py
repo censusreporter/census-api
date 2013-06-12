@@ -508,7 +508,7 @@ def geo_profile(acs, state, logrecno):
                                         universe='Workers 16 years and over',
                                         name='Mean travel time to work',
                                         data_years=default_data_years,
-                                        values=dict(this=maybe_float(dif(_total_workers_16_and_over, _workers_who_worked_at_home) / _aggregate_minutes),
+                                        values=dict(this=maybe_float(_aggregate_minutes / dif(_total_workers_16_and_over, _workers_who_worked_at_home)),
                                                     county=None,
                                                     state=None,
                                                     nation=None))
