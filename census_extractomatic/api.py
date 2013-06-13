@@ -182,7 +182,7 @@ def acs_geoid_search(acs):
 def geo_comparison(acs, parent_geoid, comparison_sumlev):
 
     # Builds something like: '05000US17%'
-    geoid_prefix = '%s00US%s%' % (comparison_sumlev, parent_geoid)
+    geoid_prefix = '%s00US%s%%' % (comparison_sumlev, parent_geoid)
 
     cur.execute("SELECT * FROM %s.geoheader WHERE geoid LIKE %s;", [acs, geoid_prefix])
     geoheaders = cur.fetchall()
