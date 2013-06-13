@@ -188,7 +188,7 @@ def geo_comparison(acs, parent_geoid, comparison_sumlev):
     geoheaders = g.cur.fetchall()
 
     doc = OrderedDict([('comparison', dict()),
-                       ('geographies', dict())])
+                       ('geographies', list())])
 
     doc['comparison']['census_release'] = ACS_NAMES.get(acs).get('name')
 
