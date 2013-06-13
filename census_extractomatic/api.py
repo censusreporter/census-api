@@ -584,7 +584,7 @@ def geo_search():
 
     if not lat or not lon:
         abort(400, 'Must provide a lat and lon parameter.')
-    if lon > 180.0 or lon < -180.0 or lat > 90.0 or lat < -90.0:
+    if not (-180.0 <= lon <= 180.0) or not (-90.0 <= lat <= 90.0):
         abort(400, 'Lat must be between [-90,90], Lon must be between [-180,180].')
 
     g.cur.execute("SELECT geoid,name FROM county WHERE ST_SetSRID(ST_Point(%s,%s),4326) && the_geom", [lon, lat])
