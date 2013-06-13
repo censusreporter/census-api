@@ -584,6 +584,11 @@ def geo_search():
 
     if not lat or not lon:
         abort(400, 'Must provide a lat and lon parameter.')
+    try:
+        lat = float(lat)
+        lon = float(lon)
+    except ValueError:
+        abort(400, 'Lat and Lon must be numbers.')
     if not (-180.0 <= lon <= 180.0) or not (-90.0 <= lat <= 90.0):
         abort(400, 'Lat must be between [-90,90], Lon must be between [-180,180].')
 
