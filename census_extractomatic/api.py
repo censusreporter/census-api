@@ -577,5 +577,25 @@ def table_details(acs, table):
 
     return json.dumps(data)
 
+@app.route("/1.0/geo/search")
+def geo_search():
+    lat = request.args.get('lat')
+    lon = request.args.get('lon')
+
+    if not lat or not lon:
+        abort(400, 'Must provide a lat and lon parameter.')
+    if lon > 180.0 or lon < -180.0 or lat > 90.0 or lat < -90.0:
+        abort(400, 'Lat must be between [-90,90], Lon must be between [-180,180].')
+
+    g.cur.execute("SELECT * FROM county WHERE ST_MakePoint(%s,%s) && the_geom", [lon, lat])
+
+    data = []
+
+    for row in g.cur:
+        data.append(row)
+
+    return json.dumps(data)
+
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', debug=True)
