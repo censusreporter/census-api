@@ -183,11 +183,14 @@ def geo_comparison(acs, parent_geoid, comparison_sumlev):
     g.cur.execute("SET search_path=%s", [acs])
 
     # Builds something like: '05000US17%'
-    geoid_prefix = '%s00US%s%%' % (comparison_sumlev, parent_geoid)
+    geoid_prefix = '%s00US%s%%' % (comparison_sumlev, parent_geoid.split('US')[1])
     g.cur.execute("SELECT * FROM geoheader WHERE geoid LIKE %s;", [geoid_prefix])
     geoheaders = g.cur.fetchall()
 
-    doc = []
+    doc = OrderedDict([('comparison', dict()),
+                       ('geographies', dict())])
+
+    doc['comparison']['census_release'] = ACS_NAMES.get(acs).get('name')
 
     for geo in geoheaders:
         state = geo['stusab']
@@ -243,7 +246,7 @@ def geo_comparison(acs, parent_geoid, comparison_sumlev):
                           total=maybe_int(sum(data, 'b01001024', 'b01001025', 'b01001048', 'b01001049'))))
         ])
 
-        doc.append(one_geom)
+        doc['geographies'].append(one_geom)
 
     return json.dumps(doc)
 
