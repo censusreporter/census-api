@@ -206,41 +206,41 @@ def geo_comparison(acs, parent_geoid, comparison_sumlev):
         one_geom['population']['total'] = maybe_int(data['b01001001'])
 
         one_geom['population']['gender'] = OrderedDict([
-            ('0-9',   dict(male=maybe_int(sum(data, 'b010010003', 'b010010004')),
-                         female=maybe_int(sum(data, 'b010010027', 'b010010028')),
-                          total=maybe_int(sum(data, 'b010010003', 'b010010004', 'b010010027', 'b010010028')))),
+            ('0-9',   dict(male=maybe_int(sum(data, 'b01001003', 'b01001004')),
+                         female=maybe_int(sum(data, 'b01001027', 'b01001028')),
+                          total=maybe_int(sum(data, 'b01001003', 'b01001004', 'b01001027', 'b01001028')))),
 
-            ('10-19', dict(male=maybe_int(sum(data, 'b010010005', 'b010010006', 'b010010007')),
-                         female=maybe_int(sum(data, 'b010010029', 'b010010030', 'b010010031')),
-                          total=maybe_int(sum(data, 'b010010005', 'b010010006', 'b010010007', 'b010010029', 'b010010030', 'b010010031')))),
+            ('10-19', dict(male=maybe_int(sum(data, 'b01001005', 'b01001006', 'b01001007')),
+                         female=maybe_int(sum(data, 'b01001029', 'b01001030', 'b01001031')),
+                          total=maybe_int(sum(data, 'b01001005', 'b01001006', 'b01001007', 'b01001029', 'b01001030', 'b01001031')))),
 
-            ('20-29', dict(male=maybe_int(sum(data, 'b010010008', 'b010010009', 'b010010010', 'b010010011')),
-                         female=maybe_int(sum(data, 'b010010032', 'b010010033', 'b010010034', 'b010010035')),
-                          total=maybe_int(sum(data, 'b010010008', 'b010010009', 'b010010010', 'b010010011', 'b010010032', 'b010010033', 'b010010034', 'b010010035')))),
+            ('20-29', dict(male=maybe_int(sum(data, 'b01001008', 'b01001009', 'b01001010', 'b01001011')),
+                         female=maybe_int(sum(data, 'b01001032', 'b01001033', 'b01001034', 'b01001035')),
+                          total=maybe_int(sum(data, 'b01001008', 'b01001009', 'b01001010', 'b01001011', 'b01001032', 'b01001033', 'b01001034', 'b01001035')))),
 
-            ('30-39', dict(male=maybe_int(sum(data, 'b010010012', 'b010010013')),
-                         female=maybe_int(sum(data, 'b010010036', 'b010010037')),
-                          total=maybe_int(sum(data, 'b010010012', 'b010010013', 'b010010036', 'b010010037')))),
+            ('30-39', dict(male=maybe_int(sum(data, 'b01001012', 'b01001013')),
+                         female=maybe_int(sum(data, 'b01001036', 'b01001037')),
+                          total=maybe_int(sum(data, 'b01001012', 'b01001013', 'b01001036', 'b01001037')))),
 
-            ('40-49', dict(male=maybe_int(sum(data, 'b010010014', 'b010010015')),
-                         female=maybe_int(sum(data, 'b010010038', 'b010010039')),
-                          total=maybe_int(sum(data, 'b010010014', 'b010010015', 'b010010038', 'b010010039')))),
+            ('40-49', dict(male=maybe_int(sum(data, 'b01001014', 'b01001015')),
+                         female=maybe_int(sum(data, 'b01001038', 'b01001039')),
+                          total=maybe_int(sum(data, 'b01001014', 'b01001015', 'b01001038', 'b01001039')))),
 
-            ('50-59', dict(male=maybe_int(sum(data, 'b010010016', 'b010010017')),
-                         female=maybe_int(sum(data, 'b010010040', 'b010010041')),
-                          total=maybe_int(sum(data, 'b010010016', 'b010010017', 'b010010040', 'b010010041')))),
+            ('50-59', dict(male=maybe_int(sum(data, 'b01001016', 'b01001017')),
+                         female=maybe_int(sum(data, 'b01001040', 'b01001041')),
+                          total=maybe_int(sum(data, 'b01001016', 'b01001017', 'b01001040', 'b01001041')))),
 
-            ('60-69', dict(male=maybe_int(sum(data, 'b010010018', 'b010010019', 'b010010020', 'b010010021')),
-                         female=maybe_int(sum(data, 'b010010042', 'b010010043', 'b010010044', 'b010010045')),
-                          total=maybe_int(sum(data, 'b010010018', 'b010010019', 'b010010020', 'b010010021', 'b010010042', 'b010010043', 'b010010044', 'b010010045')))),
+            ('60-69', dict(male=maybe_int(sum(data, 'b01001018', 'b01001019', 'b01001020', 'b01001021')),
+                         female=maybe_int(sum(data, 'b01001042', 'b01001043', 'b01001044', 'b01001045')),
+                          total=maybe_int(sum(data, 'b01001018', 'b01001019', 'b01001020', 'b01001021', 'b01001042', 'b01001043', 'b01001044', 'b01001045')))),
 
-            ('70-79', dict(male=maybe_int(sum(data, 'b010010022', 'b010010023')),
-                         female=maybe_int(sum(data, 'b010010046', 'b010010047')),
-                          total=maybe_int(sum(data, 'b010010022', 'b010010023', 'b010010046', 'b010010047')))),
+            ('70-79', dict(male=maybe_int(sum(data, 'b01001022', 'b01001023')),
+                         female=maybe_int(sum(data, 'b01001046', 'b01001047')),
+                          total=maybe_int(sum(data, 'b01001022', 'b01001023', 'b01001046', 'b01001047')))),
 
-            ('80+',   dict(male=maybe_int(sum(data, 'b010010024', 'b010010025')),
-                         female=maybe_int(sum(data, 'b010010048', 'b010010049')),
-                          total=maybe_int(sum(data, 'b010010024', 'b010010025', 'b010010048', 'b010010049'))))
+            ('80+',   dict(male=maybe_int(sum(data, 'b01001024', 'b01001025')),
+                         female=maybe_int(sum(data, 'b01001048', 'b01001049')),
+                          total=maybe_int(sum(data, 'b01001024', 'b01001025', 'b01001048', 'b01001049'))))
         ])
 
         doc.append(one_geom)
