@@ -180,11 +180,11 @@ def acs_geoid_search(acs):
 
 
 def geo_comparison(acs, parent_geoid, comparison_sumlev):
+    g.cur.execute("SET search_path=%s", [acs])
 
     # Builds something like: '05000US17%'
     geoid_prefix = '%s00US%s%%' % (comparison_sumlev, parent_geoid)
-
-    g.cur.execute("SELECT * FROM %s.geoheader WHERE geoid LIKE %s;", [acs, geoid_prefix])
+    g.cur.execute("SELECT * FROM geoheader WHERE geoid LIKE %s;", [geoid_prefix])
     geoheaders = g.cur.fetchall()
 
     doc = []
@@ -200,12 +200,12 @@ def geo_comparison(acs, parent_geoid, comparison_sumlev):
                                 sumlevel=geo['sumlevel'],
                                 census_release=ACS_NAMES.get(acs).get('name'))
 
-        g.cur.execute("SELECT * FROM %s.B01003 WHERE stusab=%s AND logrecno=%s;", [acs, state, logrecno])
+        g.cur.execute("SELECT * FROM B01003 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
         data = g.cur.fetchone()
 
         one_geom['population']['total'] = maybe_int(data['b010030001'])
 
-        g.cur.execute("SELECT * FROM %s.B01001 WHERE stusab=%s AND logrecno=%s;", [acs, state, logrecno])
+        g.cur.execute("SELECT * FROM B01001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
         data = g.cur.fetchone()
 
         one_geom['population']['gender'] = OrderedDict([
