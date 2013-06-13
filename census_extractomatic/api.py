@@ -193,20 +193,17 @@ def geo_comparison(acs, parent_geoid, comparison_sumlev):
         state = geo['stusab']
         logrecno = geo['logrecno']
 
-        one_geom = dict(population=dict(), geography=dict(), education=dict())
+        one_geom = dict(population=dict(), geography=dict())
         one_geom['geography'] = dict(name=geo['name'],
                                 geoid=geo['geoid'],
                                 stusab=geo['stusab'],
                                 sumlevel=geo['sumlevel'],
                                 census_release=ACS_NAMES.get(acs).get('name'))
 
-        g.cur.execute("SELECT * FROM B01003 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
-        data = g.cur.fetchone()
-
-        one_geom['population']['total'] = maybe_int(data['b010030001'])
-
         g.cur.execute("SELECT * FROM B01001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
         data = g.cur.fetchone()
+
+        one_geom['population']['total'] = maybe_int(data['b01001001'])
 
         one_geom['population']['gender'] = OrderedDict([
             ('0-9',   dict(male=maybe_int(sum(data, 'b010010003', 'b010010004')),
