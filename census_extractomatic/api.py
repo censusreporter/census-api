@@ -592,7 +592,7 @@ def geo_search():
     if not (-180.0 <= lon <= 180.0) or not (-90.0 <= lat <= 90.0):
         abort(400, 'Lat must be between [-90,90], Lon must be between [-180,180].')
 
-    g.cur.execute("SELECT geoid,name FROM county WHERE ST_SetSRID(ST_Point(%s,%s),4326) && the_geom", [lon, lat])
+    g.cur.execute("SELECT geoid,name FROM tiger2012.county WHERE ST_SetSRID(ST_Point(%s,%s),4326) && the_geom", [lon, lat])
 
     data = []
 
