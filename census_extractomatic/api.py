@@ -641,6 +641,7 @@ def geo_search():
 
         g.cur.execute("SELECT sumlevel,geoid,name,aland,awater FROM census_names WHERE ST_Intersects(the_geom, ST_SetSRID(ST_Point(%s, %s),4326)) ORDER BY sumlevel, aland DESC LIMIT 10;", [lon, lat])
     elif prefix:
+        prefix += "%"
         g.cur.execute("SELECT sumlevel,geoid,name,aland,awater FROM census_names WHERE lower(name) LIKE lower(%s) ORDER BY sumlevel, aland DESC LIMIT 10;", [prefix])
     else:
         abort(400, "Must provide either a lat/lon OR a prefix.")
