@@ -639,16 +639,17 @@ def geo_search():
         if not (-180.0 <= lon <= 180.0) or not (-90.0 <= lat <= 90.0):
             abort(400, 'Lat must be between [-90,90], Lon must be between [-180,180].')
 
-        g.cur.execute("SELECT sumlevel,geoid,name,aland,awater FROM census_names WHERE ST_Intersects(the_geom, ST_SetSRID(ST_Point(%s, %s),4326)) ORDER BY sumlevel, aland DESC LIMIT 10;", [lon, lat])
+        g.cur.execute("SELECT sumlevel,geoid,name FROM census_names WHERE ST_Intersects(the_geom, ST_SetSRID(ST_Point(%s, %s),4326)) ORDER BY sumlevel, aland DESC LIMIT 10;", [lon, lat])
     elif prefix:
         prefix += "%"
-        g.cur.execute("SELECT sumlevel,geoid,name,aland,awater FROM census_names WHERE lower(name) LIKE lower(%s) ORDER BY sumlevel, aland DESC LIMIT 10;", [prefix])
+        g.cur.execute("SELECT sumlevel,geoid,name FROM census_names WHERE lower(name) LIKE lower(%s) ORDER BY sumlevel, aland DESC LIMIT 10;", [prefix])
     else:
         abort(400, "Must provide either a lat/lon OR a prefix.")
 
     data = []
 
     for row in g.cur:
+        row['full_geoid'] = "%sUS%s" % (row['sumlevel'], row['geoid'])
         data.append(row)
 
     return json.dumps(data)
