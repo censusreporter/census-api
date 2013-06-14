@@ -629,6 +629,10 @@ def geo_search():
     lat = request.args.get('lat')
     lon = request.args.get('lon')
     prefix = request.args.get('prefix')
+    try:
+        with_geom = bool(request.args.get('geom', False))
+    except ValueError:
+        with_geom = False
 
     if lat and lon:
         try:
@@ -639,12 +643,19 @@ def geo_search():
         if not (-180.0 <= lon <= 180.0) or not (-90.0 <= lat <= 90.0):
             abort(400, 'Lat must be between [-90,90], Lon must be between [-180,180].')
 
-        g.cur.execute("SELECT sumlevel,geoid,name FROM census_names WHERE ST_Intersects(the_geom, ST_SetSRID(ST_Point(%s, %s),4326)) ORDER BY sumlevel, aland DESC LIMIT 10;", [lon, lat])
+        where = "ST_Intersects(the_geom, ST_SetSRID(ST_Point(%s, %s),4326))"
+        where_args = [lon, lat]
     elif prefix:
         prefix += "%"
-        g.cur.execute("SELECT sumlevel,geoid,name FROM census_names WHERE lower(name) LIKE lower(%s) ORDER BY sumlevel, aland DESC LIMIT 10;", [prefix])
+        where = "lower(name) LIKE lower(%s)"
+        where_args = [prefix]
     else:
         abort(400, "Must provide either a lat/lon OR a prefix.")
+
+    if with_geom:
+        g.cur.execute("SELECT sumlevel,geoid,name,ST_AsGeoJSON(ST_Simplify(the_geom,0.1)) as geom FROM census_names WHERE %s ORDER BY sumlevel, aland DESC LIMIT 10;" % where, where_args)
+    else:
+        g.cur.execute("SELECT sumlevel,geoid,name FROM census_names WHERE %s ORDER BY sumlevel, aland DESC LIMIT 10;" % where, where_args)
 
     data = []
 
