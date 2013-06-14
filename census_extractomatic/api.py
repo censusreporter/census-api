@@ -581,42 +581,22 @@ def table_details(acs, table):
 def geo_search():
     lat = request.args.get('lat')
     lon = request.args.get('lon')
+    prefix = request.args.get('prefix')
 
-    if not lat or not lon:
-        abort(400, 'Must provide a lat and lon parameter.')
-    try:
-        lat = float(lat)
-        lon = float(lon)
-    except ValueError:
-        abort(400, 'Lat and Lon must be numbers.')
-    if not (-180.0 <= lon <= 180.0) or not (-90.0 <= lat <= 90.0):
-        abort(400, 'Lat must be between [-90,90], Lon must be between [-180,180].')
+    if lat and lon:
+        try:
+            lat = float(lat)
+            lon = float(lon)
+        except ValueError:
+            abort(400, 'Lat and Lon must be numbers.')
+        if not (-180.0 <= lon <= 180.0) or not (-90.0 <= lat <= 90.0):
+            abort(400, 'Lat must be between [-90,90], Lon must be between [-180,180].')
 
-    g.cur.execute("""SELECT '050' as sumlevel,geoid,name,aland,awater FROM tiger2012.county WHERE ST_Intersects(the_geom, ST_SetSRID(ST_Point(-93.449589, 45.0686562),4326))
-    UNION ALL
-    SELECT '040' as sumlevel,geoid,name,aland,awater FROM tiger2012.state WHERE ST_Intersects(the_geom, ST_SetSRID(ST_Point(-93.449589, 45.0686562),4326))
-    UNION ALL
-    SELECT '310' as sumlevel,geoid,name,aland,awater FROM tiger2012.cbsa WHERE ST_Intersects(the_geom, ST_SetSRID(ST_Point(-93.449589, 45.0686562),4326))
-    UNION ALL
-    SELECT '500' as sumlevel,geoid,namelsad,aland,awater FROM tiger2012.cd WHERE ST_Intersects(the_geom, ST_SetSRID(ST_Point(-93.449589, 45.0686562),4326))
-    UNION ALL
-    SELECT '330' as sumlevel,geoid,name,aland,awater FROM tiger2012.csa WHERE ST_Intersects(the_geom, ST_SetSRID(ST_Point(-93.449589, 45.0686562),4326))
-    UNION ALL
-    SELECT '160' as sumlevel,geoid,name,aland,awater FROM tiger2012.place WHERE ST_Intersects(the_geom, ST_SetSRID(ST_Point(-93.449589, 45.0686562),4326))
-    UNION ALL
-    SELECT '950' as sumlevel,geoid,name,aland,awater FROM tiger2012.elsd WHERE ST_Intersects(the_geom, ST_SetSRID(ST_Point(-93.449589, 45.0686562),4326))
-    UNION ALL
-    SELECT '960' as sumlevel,geoid,name,aland,awater FROM tiger2012.scsd WHERE ST_Intersects(the_geom, ST_SetSRID(ST_Point(-93.449589, 45.0686562),4326))
-    UNION ALL
-    SELECT '060' as sumlevel,geoid,name,aland,awater FROM tiger2012.cousub WHERE ST_Intersects(the_geom, ST_SetSRID(ST_Point(-93.449589, 45.0686562),4326))
-    UNION ALL
-    SELECT '795' as sumlevel,geoid10,namelsad10,aland10,awater10 FROM tiger2012.puma WHERE ST_Intersects(the_geom, ST_SetSRID(ST_Point(-93.449589, 45.0686562),4326))
-    UNION ALL
-    SELECT '620' as sumlevel,geoid,namelsad,aland,awater FROM tiger2012.sldl WHERE ST_Intersects(the_geom, ST_SetSRID(ST_Point(-93.449589, 45.0686562),4326))
-    UNION ALL
-    SELECT '610' as sumlevel,geoid,namelsad,aland,awater FROM tiger2012.sldu WHERE ST_Intersects(the_geom, ST_SetSRID(ST_Point(-93.449589, 45.0686562),4326))
-    UNION ALL
-    SELECT '150' as sumlevel,geoid,namelsad,aland,awater FROM tiger2012.bg WHERE ST_Intersects(the_geom, ST_SetSRID(ST_Point(-93.449589, 45.0686562),4326));""")
+        g.cur.execute("SELECT sumlevel,geoid,name,aland,awater FROM census_names WHERE ST_Intersects(the_geom, ST_SetSRID(ST_Point(%s, %s),4326)) ORDER BY sumlevel, aland DESC LIMIT 10;", [lon, lat])
+    elif prefix:
+        g.cur.execute("SELECT sumlevel,geoid,name,aland,awater FROM census_names WHERE lower(name) LIKE lower(%s) ORDER BY sumlevel, aland DESC LIMIT 10;", [prefix])
+    else:
+        abort(400, "Must provide either a lat/lon OR a prefix.")
 
     data = []
 
