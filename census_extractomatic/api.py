@@ -649,7 +649,7 @@ def geo_search():
     data = []
 
     for row in g.cur:
-        row['full_geoid'] = "%sUS%s" % (row['sumlevel'], row['geoid'])
+        row['full_geoid'] = "%s00US%s" % (row['sumlevel'], row['geoid'])
         data.append(row)
 
     return json.dumps(data)
