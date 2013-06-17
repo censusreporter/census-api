@@ -653,9 +653,9 @@ def geo_search():
         abort(400, "Must provide either a lat/lon OR a prefix.")
 
     if with_geom:
-        g.cur.execute("SELECT sumlevel,geoid,name,ST_AsGeoJSON(ST_Simplify(the_geom,0.7)) as geom FROM census_names WHERE %s ORDER BY sumlevel, aland DESC LIMIT 10;" % where, where_args)
+        g.cur.execute("SELECT sumlevel,geoid,name,ST_AsGeoJSON(ST_Simplify(the_geom,0.7)) as geom FROM census_names_simple WHERE %s ORDER BY sumlevel, aland DESC LIMIT 5;" % where, where_args)
     else:
-        g.cur.execute("SELECT sumlevel,geoid,name FROM census_names WHERE %s ORDER BY sumlevel, aland DESC LIMIT 10;" % where, where_args)
+        g.cur.execute("SELECT sumlevel,geoid,name FROM census_names_simple WHERE %s ORDER BY sumlevel, aland DESC LIMIT 5;" % where, where_args)
 
     data = []
 
