@@ -726,9 +726,9 @@ def geo_lookup(geoid):
         abort(404, 'Unknown geoid')
 
     intptlon = result.pop('intptlon')
-    result['intptlat'] = round(float(intptlat), 7)
-    intptlat = result.pop('intptlat')
     result['intptlon'] = round(float(intptlon), 7)
+    intptlat = result.pop('intptlat')
+    result['intptlat'] = round(float(intptlat), 7)
 
     return json.dumps(result)
 
