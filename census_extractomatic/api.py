@@ -718,12 +718,17 @@ def geo_lookup(geoid):
     if not tiger_table:
         abort(404, 'Unknown sumlevel')
 
-    g.cur.execute("SELECT * FROM tiger2012.%s WHERE geoid=%%s LIMIT 1" % tiger_table, [id_part])
+    g.cur.execute("SELECT awater,aland,name,intptlat,intptlon FROM tiger2012.%s WHERE geoid=%%s LIMIT 1" % tiger_table, [id_part])
 
     result = g.cur.fetchone()
 
     if not result:
         abort(404, 'Unknown geoid')
+
+    intptlon = result.pop('intptlon')
+    result['intptlat'] = round(float(intptlat), 7)
+    intptlat = result.pop('intptlat')
+    result['intptlon'] = round(float(intptlon), 7)
 
     return json.dumps(result)
 
