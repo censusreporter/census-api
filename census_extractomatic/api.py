@@ -711,13 +711,14 @@ def geo_lookup(geoid):
     if len(geoid_parts) is not 2:
         abort(400, 'Invalid geoid')
 
-    sumlevel = geoid_parts[0][:3]
-    tiger_table = sumlevels.get(sumlevel)
+    sumlevel_part = geoid_parts[0][:3]
+    id_part = geoid_parts[1]
+    tiger_table = sumlevels.get(sumlevel_part)
 
     if not tiger_table:
         abort(404, 'Unknown sumlevel')
 
-    g.cur.execute("SELECT * FROM tiger2012.%s WHERE geoid=%%s LIMIT 1" % tiger_table, [geoid])
+    g.cur.execute("SELECT * FROM tiger2012.%s WHERE geoid=%%s LIMIT 1" % tiger_table, [id_part])
 
     result = g.cur.fetchone()
 
