@@ -50,6 +50,38 @@ ACS_NAMES = {
     'acs2007_3yr': {'name': 'ACS 2007 3-year', 'years': '2005-2007'},
 }
 
+sumlevels = {
+    '310': 'cbsa',
+    '500': 'cd',
+    '050': 'county',
+    '330': 'csa',
+    '160': 'place',
+    '040': 'state',
+    '950': 'elsd',
+    '960': 'scsd',
+    '860': 'zcta5',
+    '060': 'cousub',
+    '795': 'puma',
+    '620': 'sldl',
+    '610': 'sldu',
+    '250': 'aiannh',
+    '251': 'aits',
+    '230': 'anrc',
+    '150': 'bg',
+    '335': 'cnecta',
+    '170': 'concity',
+    '314': 'metdiv',
+    '350': 'necta',
+    '355': 'nectadiv',
+    '067': 'submcd',
+    '258': 'tbg',
+    '256': 'ttract',
+    '101': 'tabblock',
+    '140': 'tract',
+    '400': 'uac',
+    '970': 'unsd',
+    '700': 'vtd'
+}
 
 def crossdomain(origin=None, methods=None, headers=None,
                 max_age=21600, attach_to_all=True,
@@ -664,6 +696,35 @@ def geo_search():
         data.append(row)
 
     return json.dumps(data)
+
+
+@app.route("/1.0/geo/tiger2012/<geoid>")
+@crossdomain(origin='*')
+def geo_lookup(geoid):
+
+    try:
+        with_geom = bool(request.args.get('geom', False))
+    except ValueError:
+        with_geom = False
+
+    geoid_parts = geoid.split('US')
+    if len(geoid_parts) is not 2:
+        abort(400, 'Invalid geoid')
+
+    sumlevel = geoid_parts[0][:3]
+    tiger_table = sumlevels.get(sumlevel)
+
+    if not tiger_table:
+        abort(404, 'Unknown sumlevel')
+
+    g.cur.execute("SELECT * FROM tiger2012.%s WHERE geoid=%%s LIMIT 1" % tiger_table, [geoid])
+
+    result = g.cur.fetchone()
+
+    if not result:
+        abort(404, 'Unknown geoid')
+
+    return json.dumps(result)
 
 
 if __name__ == "__main__":
