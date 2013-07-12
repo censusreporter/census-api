@@ -622,6 +622,58 @@ def table_details(acs, table):
 
     return json.dumps(data)
 
+@app.route("/1.0/table/<acs>/<table>")
+def table_details_v2(acs, table):
+    if acs not in allowed_acs:
+        abort(404, 'ACS %s is not supported.' % acs)
+
+    g.cur.execute("SET search_path=%s", [acs])
+
+    geoids = tuple(request.args.get('geoids', '').split(','))
+    if not geoids:
+        abort(400, 'Must include at least one geoid separated by commas.')
+
+    # If they specify a sumlevel, then we look for the geographies "underneath"
+    # the specified geoids that sit at the specified sumlevel
+    child_summary_level = request.args.get('sumlevel')
+    if child_summary_level:
+        if len(geoids) > 1:
+            abort(400, 'Only support one parent geoid for now.')
+
+        child_summary_level = int(child_summary_level)
+
+        desired_geoid_prefix = '%03d00US%s%%' % (child_summary_level, geoids[0][7:])
+
+        g.cur.execute("SELECT geoid,stusab,logrecno FROM geoheader WHERE geoid LIKE %s ORDER BY geoid", [desired_geoid_prefix])
+        geoids = g.cur.fetchall()
+    else:
+        # Find the logrecno for the geoids they asked for
+        g.cur.execute("SELECT geoid,stusab,logrecno FROM geoheader WHERE geoid IN %s", [geoids, ])
+        geoids = g.cur.fetchall()
+
+    geoid_mapping = dict()
+    for r in geoids:
+        geoid_mapping[(r['stusab'], r['logrecno'])] = r['geoid']
+
+    where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (r['stusab'], r['logrecno']) for r in geoids])
+
+    # Query the table they asked for using the geometries they asked for
+    data = dict()
+    # If request specifies a column, get it. Otherwise get the whole table
+    column = request.args.get('column', '*')
+    g.cur.execute("SELECT %s FROM %s WHERE %s" % (column, table, where))
+    for r in g.cur:
+        stusab = r.pop('stusab')
+        logrecno = r.pop('logrecno')
+
+        geoid = geoid_mapping[(stusab, logrecno)]
+
+        column_data = []
+        for (k, v) in sorted(r.items(), key=lambda tup: tup[0]):
+            column_data.append((k, v))
+        data[geoid] = OrderedDict(column_data)
+
+    return json.dumps(data)
 
 @app.route("/1.0/geo/search")
 @crossdomain(origin='*')
