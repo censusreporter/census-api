@@ -623,6 +623,7 @@ def table_details(acs, table):
     return json.dumps(data)
 
 @app.route("/1.0/table/<acs>/<table>")
+@crossdomain(origin='*')
 def table_details_v2(acs, table):
     if acs not in allowed_acs:
         abort(404, 'ACS %s is not supported.' % acs)
