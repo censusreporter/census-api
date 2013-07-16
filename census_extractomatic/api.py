@@ -678,8 +678,11 @@ def table_geo_comparison(acs, table_id):
     # start compiling child data for our response
     child_geoid_map = dict()
     for geoheader in child_geoheaders:
+        # store some mapping to make our next query easier
+        child_geoid_map[(geoheader['stusab'], geoheader['logrecno'])] = geoheader['geoid']
+
         # build the child item
-        child = {
+        child_item = {
             'geography': {
                 'name': geoheader['name']
             },
@@ -687,14 +690,11 @@ def table_geo_comparison(acs, table_id):
         }
         
         # add it to our dict
-        data['child_geographies'][geoheader['geoid']] = child
+        data['child_geographies'][geoheader['geoid']] = child_item
         
-        # store some mapping to make our next query easier
-        child_geoid_map[(geoheader['stusab'], geoheader['logrecno'])] = geoheader['geoid']
-
     # make the where clause and query the requested table
     # if request specifies a column, get it, otherwise get the whole table
-    where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoid_map])
+    where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (r['stusab'], r['logrecno']) for r in child_geoid_map])
     column = request.args.get('column', '*')
     g.cur.execute("SELECT %s FROM %s WHERE %s" % (column, table, where))
 
