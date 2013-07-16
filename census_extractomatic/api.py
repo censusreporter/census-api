@@ -625,7 +625,7 @@ def table_details(acs, table):
 
 @app.route("/1.0/compare/<acs>/<table_id>")
 @crossdomain(origin='*')
-def table_geo_comparison(acs, table):
+def table_geo_comparison(acs, table_id):
     # make sure we support the requested ACS release
     if acs not in allowed_acs:
         abort(404, 'ACS %s is not supported.' % acs)
