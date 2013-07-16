@@ -696,18 +696,18 @@ def table_geo_comparison(acs, table_id):
     # if request specifies a column, get it, otherwise get the whole table
     where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoheaders])
     column = request.args.get('column', '*')
-    g.cur.execute("SELECT %s FROM %s WHERE %s" % (column, table, where))
+    g.cur.execute("SELECT %s FROM %s WHERE %s" % (column, table_id, where))
 
     # grab one row at a time
     for record in g.cur:
         stusab = record.pop('stusab')
         logrecno = record.pop('logrecno')
-        child_geoid = geoid_mapping[(stusab, logrecno)]
+        child_geoid = child_geoid_map[(stusab, logrecno)]
 
         column_data = []
         for (k, v) in sorted(r.items(), key=lambda tup: tup[0]):
             column_data.append((k, v))
-        data['child_geographies'][geoheader['geoid']]['data'] = OrderedDict(column_data)
+        data['child_geographies'][child_geoid]['data'] = OrderedDict(column_data)
 
     return json.dumps(data)
 
