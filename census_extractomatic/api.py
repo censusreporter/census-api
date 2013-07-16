@@ -705,7 +705,7 @@ def table_geo_comparison(acs, table_id):
         child_geoid = child_geoid_map[(stusab, logrecno)]
 
         column_data = []
-        for (k, v) in sorted(r.items(), key=lambda tup: tup[0]):
+        for (k, v) in sorted(record.items(), key=lambda tup: tup[0]):
             column_data.append((k, v))
         data['child_geographies'][child_geoid]['data'] = OrderedDict(column_data)
 
