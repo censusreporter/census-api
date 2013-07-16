@@ -694,7 +694,7 @@ def table_geo_comparison(acs, table_id):
         
     # make the where clause and query the requested table
     # if request specifies a column, get it, otherwise get the whole table
-    where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (r['stusab'], r['logrecno']) for r in child_geoid_map])
+    where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoheaders])
     column = request.args.get('column', '*')
     g.cur.execute("SELECT %s FROM %s WHERE %s" % (column, table, where))
 
