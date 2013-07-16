@@ -649,16 +649,25 @@ def table_geo_comparison(acs, table_id):
 
     # add some basic metadata about the data table requested.
     g.cur.execute("SELECT * FROM census_table_metadata WHERE table_id=%s;", [table_id])
-    table_metadata = g.cur.fetchone()
+    table_metadata = g.cur.fetchall()
 
     # census_table_metadata has fields table_id, sequence_number,
     # line_number, column_id, subject_area, table_title,
     # universe, column_title, indent, parent_column_id
+
+    # get the basic table record, and add a map of columnID -> column name
+    table_record = table_metadata[0]
+    column_map = OrderedDict()
+    for record in table_metadata:
+        if record['column_id']:
+            column_map[record['column_id']] = record['column_title']
+
     data['table'].update({
         'census_release': ACS_NAMES.get(acs).get('name'),
         'table_id': table_id,
-        'table_name': table_metadata['table_title'],
-        'table_universe': table_metadata['universe'],
+        'table_name': table_record['table_title'],
+        'table_universe': table_record['universe'],
+        'column_names': column_map,
     })
     
     # add some data about the parent geography
