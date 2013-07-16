@@ -622,6 +622,95 @@ def table_details(acs, table):
 
     return json.dumps(data)
 
+
+@app.route("/1.0/compare/<acs>/<table_id>")
+@crossdomain(origin='*')
+def table_geo_comparison(acs, table):
+    # make sure we support the requested ACS release
+    if acs not in allowed_acs:
+        abort(404, 'ACS %s is not supported.' % acs)
+    g.cur.execute("SET search_path=%s", [acs])
+
+    # make sure we've been given parent and child vars
+    parent_geoid = request.args.get('within', '')
+    if not parent_geoid:
+        abort(400, 'Must include the geoID for a parent geography.')
+
+    child_summary_level = request.args.get('sumlevel', '')
+    if not child_summary_level:
+        abort(400, 'Must include a summary level to compare.')
+
+    # create the containers we need for our response
+    data = OrderedDict([
+        ('table', dict()),
+        ('parent_geography', dict()),
+        ('child_geographies', dict())
+    ])
+
+    # add some basic metadata about the data table requested.
+    g.cur.execute("SELECT * FROM census_table_metadata WHERE table_id=%s;", [table_id])
+    table_metadata = g.cur.fetchone()
+
+    # census_table_metadata has fields table_id, sequence_number,
+    # line_number, column_id, subject_area, table_title,
+    # universe, column_title, indent, parent_column_id
+    data['table'].update({
+        'census_release': ACS_NAMES.get(acs).get('name'),
+        'table_id': table_id,
+        'table_name': table_metadata['table_title'],
+        'table_universe': table_metadata['universe'],
+    })
+    
+    # add some data about the parent geography
+    g.cur.execute("SELECT * FROM geoheader WHERE geoid=%s;", [parent_geoid])
+    parent_geography = g.cur.fetchone()
+    
+    data['parent_geography'].update({
+        'name': parent_geography['name'],
+        'summary_level': parent_geography['sumlevel'],
+    })
+
+    # get geoheader data for children at the requested summary level
+    geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid.split('US')[1])
+    g.cur.execute("SELECT geoid,stusab,logrecno,name FROM geoheader WHERE geoid LIKE %s ORDER BY geoid", [geoid_prefix])
+    child_geoheaders = g.cur.fetchall()
+
+    # start compiling child data for our response
+    child_geoid_map = dict()
+    for geoheader in child_geoheaders:
+        # build the child item
+        child = {
+            'geography': {
+                'name': geoheader['name']
+            },
+            'data': {}
+        }
+        
+        # add it to our dict
+        data['child_geographies'][geoheader['geoid']] = child
+        
+        # store some mapping to make our next query easier
+        child_geoid_map[(geoheader['stusab'], geoheader['logrecno'])] = geoheader['geoid']
+
+    # make the where clause and query the requested table
+    # if request specifies a column, get it, otherwise get the whole table
+    where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoid_map])
+    column = request.args.get('column', '*')
+    g.cur.execute("SELECT %s FROM %s WHERE %s" % (column, table, where))
+
+    # grab one row at a time
+    for record in g.cur:
+        stusab = record.pop('stusab')
+        logrecno = record.pop('logrecno')
+        child_geoid = geoid_mapping[(stusab, logrecno)]
+
+        column_data = []
+        for (k, v) in sorted(r.items(), key=lambda tup: tup[0]):
+            column_data.append((k, v))
+        data['child_geographies'][geoheader['geoid']]['data'] = OrderedDict(column_data)
+
+    return json.dumps(data)
+
 @app.route("/1.0/table/<acs>/<table>")
 @crossdomain(origin='*')
 def table_details_v2(acs, table):
