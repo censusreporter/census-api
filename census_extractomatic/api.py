@@ -629,7 +629,7 @@ def table_geo_comparison(acs, table_id):
     # make sure we support the requested ACS release
     if acs not in allowed_acs:
         abort(404, 'ACS %s is not supported.' % acs)
-    g.cur.execute("SET search_path=%s", [acs])
+    g.cur.execute("SET search_path=%s,public;", [acs])
 
     # make sure we've been given parent and child vars
     parent_geoid = request.args.get('within', '')
