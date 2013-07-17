@@ -673,10 +673,11 @@ def table_geo_comparison(acs, table_id):
     # add some data about the parent geography
     g.cur.execute("SELECT * FROM geoheader WHERE geoid=%s;", [parent_geoid])
     parent_geography = g.cur.fetchone()
-    
+    parent_sumlevel = parent_geography['sumlevel']
+
     data['parent_geography'].update({
         'name': parent_geography['name'],
-        'summary_level': parent_geography['sumlevel'],
+        'summary_level': parent_sumlevel,
     })
 
     # get geoheader data for children at the requested summary level
@@ -708,14 +709,14 @@ def table_geo_comparison(acs, table_id):
     child_geodata = {}
     if geometries:
         # get the parent geometry and add to API response
-        g.cur.execute("SELECT ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geometry FROM tiger2012.census_names_simple WHERE geoid=%s;", [parent_geoid.split('US')[1]])
+        g.cur.execute("SELECT ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geometry FROM tiger2012.census_names_simple WHERE sumlevel=%s AND geoid=%s;", [parent_sumlevel, parent_geoid.split('US')[1]])
         parent_geometry = g.cur.fetchone()
         data['parent_geography'].update({
             'geometry': parent_geometry['geometry']
         })
 
         # get the child geometries and store for later
-        g.cur.execute("SELECT geoid, ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geometry FROM tiger2012.census_names_simple WHERE geoid IN %s ORDER BY geoid;", [tuple(child_geoid_list)])
+        g.cur.execute("SELECT geoid, ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geometry FROM tiger2012.census_names_simple WHERE sumlevel=%s AND geoid IN %s ORDER BY geoid;", [child_summary_level, tuple(child_geoid_list)])
         child_geodata = g.cur.fetchall()
         child_geodata_map = {record['geoid']: record['geometry'] for record in child_geodata}
     
@@ -738,7 +739,7 @@ def table_geo_comparison(acs, table_id):
         
         if child_geodata_map:
             data['child_geographies'][child_geoid]['geography'].update({
-                'geometry': child_geodata_map[child_geoid]['geometry']
+                'geometry': child_geodata_map[child_geoid.split('US')[1]]['geometry']
             })
 
     return json.dumps(data)
