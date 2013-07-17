@@ -739,7 +739,7 @@ def table_geo_comparison(acs, table_id):
         
         if child_geodata_map:
             data['child_geographies'][child_geoid]['geography'].update({
-                'geometry': child_geodata_map[child_geoid.split('US')[1]]['geometry']
+                'geometry': child_geodata_map[child_geoid.split('US')[1]]
             })
 
     return json.dumps(data)
