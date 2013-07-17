@@ -673,7 +673,7 @@ def table_geo_comparison(acs, table_id):
     # add some data about the parent geography
     g.cur.execute("SELECT * FROM geoheader WHERE geoid=%s;", [parent_geoid])
     parent_geography = g.cur.fetchone()
-    parent_sumlevel = parent_geography['sumlevel']
+    parent_sumlevel = '%03d' % parent_geography['sumlevel']
 
     data['parent_geography'].update({
         'name': parent_geography['name'],
