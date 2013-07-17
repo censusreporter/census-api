@@ -715,8 +715,9 @@ def table_geo_comparison(acs, table_id):
         })
 
         # get the child geometries and store for later
-        g.cur.execute("SELECT ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geometry FROM tiger2012.census_names_simple WHERE geoid IN %s ORDER BY geoid;", [tuple(child_geoid_list)])
+        g.cur.execute("SELECT geoid, ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geometry FROM tiger2012.census_names_simple WHERE geoid IN %s ORDER BY geoid;", [tuple(child_geoid_list)])
         child_geodata = g.cur.fetchall()
+        child_geodata_map = {record['geoid']: record['geometry'] for record in child_geodata}
     
     # make the where clause and query the requested census data table
     # if request specifies a column, get it, otherwise get the whole table
@@ -735,9 +736,9 @@ def table_geo_comparison(acs, table_id):
             column_data.append((k, v))
         data['child_geographies'][child_geoid]['data'] = OrderedDict(column_data)
         
-        if child_geodata:
+        if child_geodata_map:
             data['child_geographies'][child_geoid]['geography'].update({
-                'geometry': child_geodata[child_geoid]['geometry']
+                'geometry': child_geodata_map[child_geoid]['geometry']
             })
 
     return json.dumps(data)
