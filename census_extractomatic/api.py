@@ -642,9 +642,9 @@ def table_geo_comparison(acs, table_id):
 
     # create the containers we need for our response
     data = OrderedDict([
-        ('table', dict()),
-        ('parent_geography', dict()),
-        ('child_geographies', dict())
+        ('table', OrderedDict()),
+        ('parent_geography', OrderedDict()),
+        ('child_geographies', OrderedDict())
     ])
 
     # add some basic metadata about the data table requested.
