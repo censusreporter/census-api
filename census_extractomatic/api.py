@@ -681,14 +681,16 @@ def table_geo_comparison(acs, table_id):
 
     # get geoheader data for children at the requested summary level
     geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid.split('US')[1])
-    g.cur.execute("SELECT geoid,stusab,logrecno,name FROM geoheader WHERE geoid LIKE %s ORDER BY geoid", [geoid_prefix])
+    g.cur.execute("SELECT geoid,stusab,logrecno,name FROM geoheader WHERE geoid LIKE %s ORDER BY geoid;", [geoid_prefix])
     child_geoheaders = g.cur.fetchall()
 
     # start compiling child data for our response
     child_geoid_map = dict()
+    child_geoid_list = list()
     for geoheader in child_geoheaders:
         # store some mapping to make our next query easier
         child_geoid_map[(geoheader['stusab'], geoheader['logrecno'])] = geoheader['geoid']
+        child_geoid_list.append(geoheader['geoid'])
 
         # build the child item
         child_item = {
@@ -700,13 +702,28 @@ def table_geo_comparison(acs, table_id):
         
         # add it to our dict
         data['child_geographies'][geoheader['geoid']] = child_item
-        
-    # make the where clause and query the requested table
+    
+    # get geographical data if requested
+    geometries = request.args.get('geometries', '')
+    child_geodata = {}
+    if geometries:
+        # get the parent geometry and add to API response
+        g.cur.execute("SELECT ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geometry FROM tiger2012.census_names_simple WHERE geoid=%s;", [parent_geoid])
+        parent_geometry = g.cur.fetchone()
+        data['parent_geography'].update({
+            'geometry': parent_geometry['geometry']
+        })
+
+        # get the child geometries and store for later
+        g.cur.execute("SELECT ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geometry FROM tiger2012.census_names_simple WHERE geoid IN %s ORDER BY geoid;", [child_geoid_list])
+        child_geodata = g.cur.fetchall()
+    
+    # make the where clause and query the requested census data table
     # if request specifies a column, get it, otherwise get the whole table
     where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoheaders])
     column = request.args.get('column', '*')
     g.cur.execute("SELECT %s FROM %s WHERE %s" % (column, table_id, where))
-
+    
     # grab one row at a time
     for record in g.cur:
         stusab = record.pop('stusab')
@@ -717,6 +734,11 @@ def table_geo_comparison(acs, table_id):
         for (k, v) in sorted(record.items(), key=lambda tup: tup[0]):
             column_data.append((k, v))
         data['child_geographies'][child_geoid]['data'] = OrderedDict(column_data)
+        
+        if child_geodata:
+            data['child_geographies'][child_geoid]['geography'].update({
+                'geometry': child_geodata[child_geoid]['geometry']
+            })
 
     return json.dumps(data)
 
@@ -750,6 +772,7 @@ def table_details_v2(acs, table):
         g.cur.execute("SELECT geoid,stusab,logrecno FROM geoheader WHERE geoid IN %s", [geoids, ])
         geoids = g.cur.fetchall()
 
+    # make a where clause for retrieving the table data for our child geographies
     geoid_mapping = dict()
     for r in geoids:
         geoid_mapping[(r['stusab'], r['logrecno'])] = r['geoid']
