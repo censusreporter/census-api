@@ -696,7 +696,8 @@ def table_geo_comparison(acs, table_id):
         # build the child item
         child_item = {
             'geography': {
-                'name': geoheader['name']
+                'name': geoheader['name'],
+                'summary_level': child_summary_level,
             },
             'data': {}
         }
