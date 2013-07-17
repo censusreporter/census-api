@@ -715,7 +715,7 @@ def table_geo_comparison(acs, table_id):
         })
 
         # get the child geometries and store for later
-        g.cur.execute("SELECT ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geometry FROM tiger2012.census_names_simple WHERE geoid IN %s ORDER BY geoid;", [child_geoid_list])
+        g.cur.execute("SELECT ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geometry FROM tiger2012.census_names_simple WHERE geoid IN %s ORDER BY geoid;", [set(child_geoid_list)])
         child_geodata = g.cur.fetchall()
     
     # make the where clause and query the requested census data table
