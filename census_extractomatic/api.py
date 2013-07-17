@@ -742,7 +742,7 @@ def table_geo_comparison(acs, table_id):
                 'geometry': child_geodata_map[child_geoid.split('US')[1]]
             })
 
-    return json.dumps(data)
+    return json.dumps(data, sort_keys=True, indent=4, separators=(',', ': '))
 
 @app.route("/1.0/table/<acs>/<table>")
 @crossdomain(origin='*')
