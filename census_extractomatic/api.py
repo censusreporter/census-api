@@ -690,7 +690,7 @@ def table_geo_comparison(acs, table_id):
     for geoheader in child_geoheaders:
         # store some mapping to make our next query easier
         child_geoid_map[(geoheader['stusab'], geoheader['logrecno'])] = geoheader['geoid']
-        child_geoid_list.append(geoheader['geoid'])
+        child_geoid_list.append(geoheader['geoid'].split('US')[1])
 
         # build the child item
         child_item = {
@@ -708,7 +708,7 @@ def table_geo_comparison(acs, table_id):
     child_geodata = {}
     if geometries:
         # get the parent geometry and add to API response
-        g.cur.execute("SELECT ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geometry FROM tiger2012.census_names_simple WHERE geoid=%s;", [parent_geoid])
+        g.cur.execute("SELECT ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geometry FROM tiger2012.census_names_simple WHERE geoid=%s;", [parent_geoid.split('US')[1]])
         parent_geometry = g.cur.fetchone()
         data['parent_geography'].update({
             'geometry': parent_geometry['geometry']
