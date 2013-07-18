@@ -704,7 +704,7 @@ def table_geo_comparison(acs, table_id):
     
     # get geographical data if requested
     geometries = request.args.get('geom', '')
-    child_geodata = {}
+    child_geodata_map = {}
     if geometries:
         # get the parent geometry and add to API response
         g.cur.execute("SELECT ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geometry FROM tiger2012.census_names_simple WHERE sumlevel=%s AND geoid=%s;", [parent_sumlevel, parent_geoid.split('US')[1]])
