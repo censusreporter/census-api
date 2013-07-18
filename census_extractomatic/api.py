@@ -673,8 +673,8 @@ def table_geo_comparison(acs, table_id):
     parent_geography = g.cur.fetchone()
     parent_sumlevel = '%03d' % parent_geography['sumlevel']
 
-    data['parent_geography']['name'] = parent_geography['name']
-    data['parent_geography']['summary_level'] = parent_sumlevel
+    data['parent_geography']['geography']['name'] = parent_geography['name']
+    data['parent_geography']['geography']['summary_level'] = parent_sumlevel
 
     # get geoheader data for children at the requested summary level
     geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid.split('US')[1])
@@ -690,16 +690,9 @@ def table_geo_comparison(acs, table_id):
         child_geoid_list.append(geoheader['geoid'].split('US')[1])
 
         # build the child item
-        child_item = {
-            'geography': {
-                'name': geoheader['name'],
-                'summary_level': child_summary_level,
-            },
-            'data': {}
-        }
-        
-        # add it to our dict
-        data['child_geographies'][geoheader['geoid']] = child_item
+        data['child_geographies'][geoheader['geoid']]['geography']['name'] = geoheader['name']
+        data['child_geographies'][geoheader['geoid']]['geography']['summary_level'] = child_summary_level
+        data['child_geographies'][geoheader['geoid']]['data'] = {}
     
     # get geographical data if requested
     geometries = request.args.get('geometries', '')
@@ -708,7 +701,7 @@ def table_geo_comparison(acs, table_id):
         # get the parent geometry and add to API response
         g.cur.execute("SELECT ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geometry FROM tiger2012.census_names_simple WHERE sumlevel=%s AND geoid=%s;", [parent_sumlevel, parent_geoid.split('US')[1]])
         parent_geometry = g.cur.fetchone()
-        data['parent_geography']['geometry'] = parent_geometry['geometry']
+        data['parent_geography']['geography']['geometry'] = parent_geometry['geometry']
 
         # get the child geometries and store for later
         g.cur.execute("SELECT geoid, ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geometry FROM tiger2012.census_names_simple WHERE sumlevel=%s AND geoid IN %s ORDER BY geoid;", [child_summary_level, tuple(child_geoid_list)])
