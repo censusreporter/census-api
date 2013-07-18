@@ -50,6 +50,31 @@ ACS_NAMES = {
     'acs2007_3yr': {'name': 'ACS 2007 3-year', 'years': '2005-2007'},
 }
 
+SUMLEV_NAMES = {
+    "010": {"name": "nation", "plural": ""},
+    "020": {"name": "region", "plural": "regions"},
+    "030": {"name": "division", "plural": "divisions"},
+    "040": {"name": "state", "plural": "states"},
+    "050": {"name": "county", "plural": "counties"},
+    "101": {"name": "block", "plural": "blocks"},
+    "140": {"name": "census tract", "plural": "census tracts"},
+    "150": {"name": "block group", "plural": "block groups"},
+    "160": {"name": "place", "plural": "places"}, 
+    "300": {"name": "MSA", "plural": "MSAs"},
+    "310": {"name": "CBSA", "plural": "CBSAs"},
+    "350": {"name": "NECTA", "plural": "NECTAs"},
+    "400": {"name": "urban area", "plural": "urban areas"},
+    "500": {"name": "congressional district", "plural": "congressional districts"}, 
+    "610": {"name": "state senate district", "plural": "state senate districts"}, 
+    "620": {"name": "state house district", "plural": "state house districts"}, 
+    "700": {"name": "VTD", "plural": "VTDs"}, 
+    "795": {"name": "PUMA", "plural": "PUMAs"},
+    "850": {"name": "ZCTA3", "plural": "ZCTA3s"}, 
+    "860": {"name": "ZCTA5", "plural": "ZCTA5s"},
+    "950": {"name": "elementary school district", "plural": "elementary school districts"},
+    "960": {"name": "secondary school district", "plural": "secondary school districts"},
+    "970": {"name": "unified school district", "plural": "unified school districts"},
+}
 
 def crossdomain(origin=None, methods=None, headers=None,
                 max_age=21600, attach_to_all=True,
@@ -642,12 +667,17 @@ def table_geo_comparison(acs, table_id):
 
     # create the containers we need for our response
     data = OrderedDict([
+        ('comparison', OrderedDict()),
         ('table', OrderedDict()),
         ('parent_geography', OrderedDict()),
         ('child_geographies', OrderedDict())
     ])
 
-    # add some basic metadata about the data table requested.
+    # add some basic metadata about the comparison and data table requested.
+    data['comparison']['child_summary_level'] = child_summary_level
+    data['comparison']['child_geography_name'] = SUMLEV_NAMES.get(child_summary_level, {}).get('name','')
+    data['comparison']['child_geography_name_plural'] = SUMLEV_NAMES.get(child_summary_level, {}).get('plural','')
+    
     g.cur.execute("SELECT * FROM census_table_metadata WHERE table_id=%s;", [table_id])
     table_metadata = g.cur.fetchall()
 
@@ -668,7 +698,7 @@ def table_geo_comparison(acs, table_id):
     data['table']['table_id'] = table_id
     data['table']['table_name'] = table_record['table_title']
     data['table']['table_universe'] = table_record['universe']
-    data['table']['column_names'] = column_map
+    data['table']['columns'] = column_map
     
     # add some data about the parent geography
     g.cur.execute("SELECT * FROM geoheader WHERE geoid=%s;", [parent_geoid])
@@ -678,6 +708,11 @@ def table_geo_comparison(acs, table_id):
     data['parent_geography']['geography'] = OrderedDict()
     data['parent_geography']['geography']['name'] = parent_geography['name']
     data['parent_geography']['geography']['summary_level'] = parent_sumlevel
+
+    data['comparison']['parent_summary_level'] = parent_sumlevel
+    data['comparison']['parent_geography_name'] = SUMLEV_NAMES.get(parent_sumlevel, {}).get('name','')
+    data['comparison']['parent_name'] = parent_geography['name']
+    data['comparison']['parent_geoid'] = parent_geoid
 
     # get geoheader data for children at the requested summary level
     geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid.split('US')[1])
