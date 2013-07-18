@@ -673,6 +673,7 @@ def table_geo_comparison(acs, table_id):
     parent_geography = g.cur.fetchone()
     parent_sumlevel = '%03d' % parent_geography['sumlevel']
 
+    data['parent_geography']['geography'] = OrderedDict()
     data['parent_geography']['geography']['name'] = parent_geography['name']
     data['parent_geography']['geography']['summary_level'] = parent_sumlevel
 
@@ -690,6 +691,7 @@ def table_geo_comparison(acs, table_id):
         child_geoid_list.append(geoheader['geoid'].split('US')[1])
 
         # build the child item
+        data['child_geographies'][geoheader['geoid']]['geography'] = OrderedDict()
         data['child_geographies'][geoheader['geoid']]['geography']['name'] = geoheader['name']
         data['child_geographies'][geoheader['geoid']]['geography']['summary_level'] = child_summary_level
         data['child_geographies'][geoheader['geoid']]['data'] = {}
