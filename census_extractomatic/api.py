@@ -720,6 +720,8 @@ def table_geo_comparison(acs, table_id):
     column = request.args.get('column', '*')
     g.cur.execute("SELECT %s FROM %s WHERE (stusab='%s' AND logrecno='%s')" % (column, table_id, parent_geoheader['stusab'], parent_geoheader['logrecno']))
     parent_data = g.cur.fetchone()
+    stusab = parent_data.pop('stusab')
+    logrecno = parent_data.pop('logrecno')
     column_data = []
     for (k, v) in sorted(parent_data.items(), key=lambda tup: tup[0]):
         column_data.append((k, v))
