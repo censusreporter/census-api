@@ -707,7 +707,11 @@ def table_geo_comparison(acs, table_id):
         # get the parent geometry and add to API response
         g.cur.execute("SELECT ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geometry FROM tiger2012.census_names_simple WHERE sumlevel=%s AND geoid=%s;", [parent_sumlevel, parent_geoid.split('US')[1]])
         parent_geometry = g.cur.fetchone()
-        data['parent_geography']['geography']['geometry'] = parent_geometry['geometry']
+        try:
+            data['parent_geography']['geography']['geometry'] = parent_geometry['geometry']
+        except:
+            # we may not have geometries for all sumlevs
+            pass
 
         # get the child geometries and store for later
         g.cur.execute("SELECT geoid, ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geometry FROM tiger2012.census_names_simple WHERE sumlevel=%s AND geoid IN %s ORDER BY geoid;", [child_summary_level, tuple(child_geoid_list)])
@@ -743,8 +747,12 @@ def table_geo_comparison(acs, table_id):
         data['child_geographies'][child_geoid]['data'] = OrderedDict(column_data)
         
         if child_geodata_map:
-            data['child_geographies'][child_geoid]['geography']['geometry'] = child_geodata_map[child_geoid.split('US')[1]]
-
+            try:
+                data['child_geographies'][child_geoid]['geography']['geometry'] = child_geodata_map[child_geoid.split('US')[1]]
+            except:
+                # we may not have geometries for all sumlevs
+                pass
+                
     return json.dumps(data, indent=4, separators=(',', ': '))
 
 @app.route("/1.0/table/<acs>/<table>")
