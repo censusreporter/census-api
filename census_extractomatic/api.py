@@ -654,7 +654,7 @@ def table_geo_comparison(acs, table_id):
     # make sure we support the requested ACS release
     if acs not in allowed_acs:
         abort(404, 'ACS %s is not supported.' % acs)
-    g.cur.execute("SET search_path=%s,public;", [acs])
+    g.cur.execute("SET search_path=public;")
 
     # make sure we've been given parent and child vars
     parent_geoid = request.args.get('within', '')
@@ -678,7 +678,7 @@ def table_geo_comparison(acs, table_id):
     data['comparison']['child_geography_name'] = SUMLEV_NAMES.get(child_summary_level, {}).get('name','')
     data['comparison']['child_geography_name_plural'] = SUMLEV_NAMES.get(child_summary_level, {}).get('plural','')
     
-    g.cur.execute("SELECT * FROM census_table_metadata WHERE table_id=%s;", [table_id])
+    g.cur.execute("SELECT * FROM %s.census_table_metadata WHERE table_id=%s;", [acs,table_id])
     table_metadata = g.cur.fetchall()
 
     # census_table_metadata has fields table_id, sequence_number,
@@ -701,7 +701,7 @@ def table_geo_comparison(acs, table_id):
     data['table']['columns'] = column_map
     
     # add some data about the parent geography
-    g.cur.execute("SELECT * FROM geoheader WHERE geoid=%s;", [parent_geoid])
+    g.cur.execute("SELECT * FROM %s.geoheader WHERE geoid=%s;", [acs,parent_geoid])
     parent_geography = g.cur.fetchone()
     parent_sumlevel = '%03d' % parent_geography['sumlevel']
 
@@ -716,10 +716,10 @@ def table_geo_comparison(acs, table_id):
 
     # get geoheader data for children at the requested summary level
     geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid.split('US')[1])
-    g.cur.execute("SELECT geoid,stusab,logrecno,name FROM geoheader WHERE geoid LIKE %s ORDER BY geoid;", [geoid_prefix])
+    g.cur.execute("SELECT geoid,stusab,logrecno,name FROM %s.geoheader WHERE geoid LIKE %s ORDER BY geoid;", [acs,geoid_prefix])
     child_geoheaders = g.cur.fetchall()
     # and get geoheader for parent, so we can get its data too
-    g.cur.execute("SELECT geoid,stusab,logrecno,name FROM geoheader WHERE geoid=%s;", [parent_geoid])
+    g.cur.execute("SELECT geoid,stusab,logrecno,name FROM %s.geoheader WHERE geoid=%s;", [acs,parent_geoid])
     parent_geoheader = g.cur.fetchone()
 
     # start compiling child data for our response
@@ -759,7 +759,7 @@ def table_geo_comparison(acs, table_id):
     # if request specifies a column, get it, otherwise get the whole table
     # get parent data first...
     column = request.args.get('column', '*')
-    g.cur.execute("SELECT %s FROM %s WHERE (stusab='%s' AND logrecno='%s')" % (column, table_id, parent_geoheader['stusab'], parent_geoheader['logrecno']))
+    g.cur.execute("SELECT %s FROM %s.%s WHERE (stusab='%s' AND logrecno='%s')" % (column, acs, table_id, parent_geoheader['stusab'], parent_geoheader['logrecno']))
     parent_data = g.cur.fetchone()
     stusab = parent_data.pop('stusab')
     logrecno = parent_data.pop('logrecno')
@@ -770,7 +770,7 @@ def table_geo_comparison(acs, table_id):
     
     # ... and then children so we can loop through with cursor
     where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoheaders])
-    g.cur.execute("SELECT %s FROM %s WHERE %s" % (column, table_id, where))
+    g.cur.execute("SELECT %s FROM %s.%s WHERE %s" % (column, acs, table_id, where))
     
     # grab one row at a time
     for record in g.cur:
