@@ -660,7 +660,9 @@ def table_geo_comparison(acs, table_id):
     column_map = OrderedDict()
     for record in table_metadata:
         if record['column_id']:
-            column_map[record['column_id']] = record['column_title']
+            column_map[record['column_id']] = OrderedDict()
+            column_map[record['column_id']]['name'] = record['column_title']
+            column_map[record['column_id']]['indent'] = record['indent']
 
     data['table']['census_release'] = ACS_NAMES.get(acs).get('name')
     data['table']['table_id'] = table_id
@@ -701,7 +703,7 @@ def table_geo_comparison(acs, table_id):
         data['child_geographies'][geoheader['geoid']]['data'] = {}
     
     # get geographical data if requested
-    geometries = request.args.get('geometries', '')
+    geometries = request.args.get('geom', '')
     child_geodata = {}
     if geometries:
         # get the parent geometry and add to API response
