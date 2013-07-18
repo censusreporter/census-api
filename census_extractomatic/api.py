@@ -691,6 +691,7 @@ def table_geo_comparison(acs, table_id):
         child_geoid_list.append(geoheader['geoid'].split('US')[1])
 
         # build the child item
+        data['child_geographies'][geoheader['geoid']] = OrderedDict()
         data['child_geographies'][geoheader['geoid']]['geography'] = OrderedDict()
         data['child_geographies'][geoheader['geoid']]['geography']['name'] = geoheader['name']
         data['child_geographies'][geoheader['geoid']]['geography']['summary_level'] = child_summary_level
