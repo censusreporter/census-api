@@ -718,7 +718,7 @@ def table_geo_comparison(acs, table_id):
     # if request specifies a column, get it, otherwise get the whole table
     # get parent data first...
     column = request.args.get('column', '*')
-    g.cur.execute("SELECT %s FROM %s WHERE (stusab='%s' AND logrecno='%s')" % (column, parent_geoheader['stusab'], parent_geoheader['logrecno']))
+    g.cur.execute("SELECT %s FROM %s WHERE (stusab='%s' AND logrecno='%s')" % (column, table_id, parent_geoheader['stusab'], parent_geoheader['logrecno']))
     parent_data = g.cur.fetchone()
     column_data = []
     for (k, v) in sorted(parent_data.items(), key=lambda tup: tup[0]):
