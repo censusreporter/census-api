@@ -681,6 +681,9 @@ def table_geo_comparison(acs, table_id):
     geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid.split('US')[1])
     g.cur.execute("SELECT geoid,stusab,logrecno,name FROM geoheader WHERE geoid LIKE %s ORDER BY geoid;", [geoid_prefix])
     child_geoheaders = g.cur.fetchall()
+    # and get geoheader for parent, so we can get its data too
+    g.cur.execute("SELECT geoid,stusab,logrecno,name FROM geoheader WHERE geoid=%s;", [parent_geoid])
+    parent_geoheader = g.cur.fetchone()
 
     # start compiling child data for our response
     child_geoid_map = dict()
@@ -713,8 +716,17 @@ def table_geo_comparison(acs, table_id):
     
     # make the where clause and query the requested census data table
     # if request specifies a column, get it, otherwise get the whole table
-    where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoheaders])
+    # get parent data first...
     column = request.args.get('column', '*')
+    g.cur.execute("SELECT %s FROM %s WHERE (stusab='%s' AND logrecno='%s')" % (column, parent_geoheader['stusab'], parent_geoheader['logrecno']))
+    parent_data = g.cur.fetchone()
+    column_data = []
+    for (k, v) in sorted(parent_data.items(), key=lambda tup: tup[0]):
+        column_data.append((k, v))
+    data['parent_geography']['data'] = OrderedDict(column_data)
+    
+    # ... and then children so we can loop through with cursor
+    where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoheaders])
     g.cur.execute("SELECT %s FROM %s WHERE %s" % (column, table_id, where))
     
     # grab one row at a time
