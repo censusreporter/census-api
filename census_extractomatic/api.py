@@ -662,23 +662,19 @@ def table_geo_comparison(acs, table_id):
         if record['column_id']:
             column_map[record['column_id']] = record['column_title']
 
-    data['table'].update({
-        'census_release': ACS_NAMES.get(acs).get('name'),
-        'table_id': table_id,
-        'table_name': table_record['table_title'],
-        'table_universe': table_record['universe'],
-        'column_names': column_map,
-    })
+    data['table']['census_release'] = ACS_NAMES.get(acs).get('name')
+    data['table']['table_id'] = table_id
+    data['table']['table_name'] = table_record['table_title']
+    data['table']['table_universe'] = table_record['universe']
+    data['table']['column_names'] = column_map
     
     # add some data about the parent geography
     g.cur.execute("SELECT * FROM geoheader WHERE geoid=%s;", [parent_geoid])
     parent_geography = g.cur.fetchone()
     parent_sumlevel = '%03d' % parent_geography['sumlevel']
 
-    data['parent_geography'].update({
-        'name': parent_geography['name'],
-        'summary_level': parent_sumlevel,
-    })
+    data['parent_geography']['name'] = parent_geography['name']
+    data['parent_geography']['summary_level'] = parent_sumlevel
 
     # get geoheader data for children at the requested summary level
     geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid.split('US')[1])
@@ -712,9 +708,7 @@ def table_geo_comparison(acs, table_id):
         # get the parent geometry and add to API response
         g.cur.execute("SELECT ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geometry FROM tiger2012.census_names_simple WHERE sumlevel=%s AND geoid=%s;", [parent_sumlevel, parent_geoid.split('US')[1]])
         parent_geometry = g.cur.fetchone()
-        data['parent_geography'].update({
-            'geometry': parent_geometry['geometry']
-        })
+        data['parent_geography']['geometry'] = parent_geometry['geometry']
 
         # get the child geometries and store for later
         g.cur.execute("SELECT geoid, ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geometry FROM tiger2012.census_names_simple WHERE sumlevel=%s AND geoid IN %s ORDER BY geoid;", [child_summary_level, tuple(child_geoid_list)])
@@ -739,9 +733,7 @@ def table_geo_comparison(acs, table_id):
         data['child_geographies'][child_geoid]['data'] = OrderedDict(column_data)
         
         if child_geodata_map:
-            data['child_geographies'][child_geoid]['geography'].update({
-                'geometry': child_geodata_map[child_geoid.split('US')[1]]
-            })
+            data['child_geographies'][child_geoid]['geography']['geometry'] = child_geodata_map[child_geoid.split('US')[1]]
 
     return json.dumps(data, indent=4, separators=(',', ': '))
 
