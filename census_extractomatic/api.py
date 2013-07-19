@@ -769,7 +769,7 @@ def table_geo_comparison(acs, table_id):
     
     # ... and then children so we can loop through with cursor
     where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoheaders])
-    g.cur.execute("SELECT * FROM %s WHERE %%s" % validated_table_id, [where])
+    g.cur.execute("SELECT * FROM %s WHERE %%s" % (validated_table_id, where))
     
     # grab one row at a time
     for record in g.cur:
