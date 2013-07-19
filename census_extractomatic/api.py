@@ -655,7 +655,7 @@ def table_geo_comparison(acs, table_id):
     if acs not in allowed_acs:
         abort(404, 'ACS %s is not supported.' % acs)
     g.cur.execute("SET search_path=%s,public;", [acs])
-
+    
     # make sure we've been given parent and child vars
     parent_geoid = request.args.get('within', '')
     if not parent_geoid:
@@ -680,6 +680,7 @@ def table_geo_comparison(acs, table_id):
     
     g.cur.execute("SELECT * FROM census_table_metadata WHERE table_id=%s;", [table_id])
     table_metadata = g.cur.fetchall()
+    validated_table_id = table_metadata[0]['table_id']
 
     # census_table_metadata has fields table_id, sequence_number,
     # line_number, column_id, subject_area, table_title,
@@ -695,7 +696,7 @@ def table_geo_comparison(acs, table_id):
             column_map[record['column_id']]['indent'] = record['indent']
 
     data['table']['census_release'] = ACS_NAMES.get(acs).get('name')
-    data['table']['table_id'] = table_id
+    data['table']['table_id'] = validated_table_id
     data['table']['table_name'] = table_record['table_title']
     data['table']['table_universe'] = table_record['universe']
     data['table']['columns'] = column_map
@@ -756,10 +757,8 @@ def table_geo_comparison(acs, table_id):
         child_geodata_map = {record['geoid']: record['geometry'] for record in child_geodata}
     
     # make the where clause and query the requested census data table
-    # if request specifies a column, get it, otherwise get the whole table
     # get parent data first...
-    column = request.args.get('column', '*')
-    g.cur.execute("SELECT %s FROM %s WHERE (stusab='%s' AND logrecno='%s')", [column, table_id, parent_geoheader['stusab'], parent_geoheader['logrecno']])
+    g.cur.execute("SELECT * FROM %s WHERE (stusab='%s' AND logrecno='%s')" % validated_table_id, [parent_geoheader['stusab'], parent_geoheader['logrecno']])
     parent_data = g.cur.fetchone()
     stusab = parent_data.pop('stusab')
     logrecno = parent_data.pop('logrecno')
@@ -770,7 +769,7 @@ def table_geo_comparison(acs, table_id):
     
     # ... and then children so we can loop through with cursor
     where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoheaders])
-    g.cur.execute("SELECT %s FROM %s WHERE %s", [column, table_id, where])
+    g.cur.execute("SELECT * FROM %s WHERE %s" % validated_table_id, [where])
     
     # grab one row at a time
     for record in g.cur:
