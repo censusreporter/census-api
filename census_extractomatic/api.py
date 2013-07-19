@@ -758,7 +758,7 @@ def table_geo_comparison(acs, table_id):
     
     # make the where clause and query the requested census data table
     # get parent data first...
-    g.cur.execute("SELECT * FROM %s WHERE (stusab=%s AND logrecno=%s)" % (validated_table_id, [parent_geoheader['stusab'], parent_geoheader['logrecno']]))
+    g.cur.execute("SELECT * FROM %s WHERE (stusab=%%s AND logrecno=%%s)" % (validated_table_id), [parent_geoheader['stusab'], parent_geoheader['logrecno']])
     parent_data = g.cur.fetchone()
     stusab = parent_data.pop('stusab')
     logrecno = parent_data.pop('logrecno')
