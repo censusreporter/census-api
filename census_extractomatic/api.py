@@ -759,7 +759,7 @@ def table_geo_comparison(acs, table_id):
     # if request specifies a column, get it, otherwise get the whole table
     # get parent data first...
     column = request.args.get('column', '*')
-    g.cur.execute("SELECT %s FROM %s WHERE (stusab='%s' AND logrecno='%s')" % (column, table_id, parent_geoheader['stusab'], parent_geoheader['logrecno']))
+    g.cur.execute("SELECT %s FROM %s WHERE (stusab='%s' AND logrecno='%s')", [column, table_id, parent_geoheader['stusab'], parent_geoheader['logrecno']])
     parent_data = g.cur.fetchone()
     stusab = parent_data.pop('stusab')
     logrecno = parent_data.pop('logrecno')
@@ -770,7 +770,7 @@ def table_geo_comparison(acs, table_id):
     
     # ... and then children so we can loop through with cursor
     where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoheaders])
-    g.cur.execute("SELECT %s FROM %s WHERE %s" % (column, table_id, where))
+    g.cur.execute("SELECT %s FROM %s WHERE %s", [column, table_id, where])
     
     # grab one row at a time
     for record in g.cur:
