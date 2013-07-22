@@ -661,14 +661,14 @@ def table_geo_comparison_count(year, table_id, child_summary_level, parent_geoid
         data[acs] = OrderedDict()
         data[acs]['release_name'] = ACS_NAMES[acs]['name']
         
-        g.cur.execute("SELECT * FROM %s.census_table_metadata WHERE table_id=%s;" % acs, [table_id])
+        g.cur.execute("SELECT * FROM %s.census_table_metadata WHERE table_id=%%s;" % acs, [table_id])
         table_record = g.cur.fetchone()
         validated_table_id = table_record['table_id']
         data[acs]['table_name'] = table_record['table_title']
         data[acs]['table_universe'] = table_record['universe']
 
         geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid.split('US')[1])
-        g.cur.execute("SELECT geoid,stusab,logrecno,name FROM %s.geoheader WHERE geoid LIKE %s ORDER BY geoid;" % acs, [geoid_prefix])
+        g.cur.execute("SELECT geoid,stusab,logrecno,name FROM %s.geoheader WHERE geoid LIKE %%s ORDER BY geoid;" % acs, [geoid_prefix])
         child_geoheaders = g.cur.fetchall()
     
         where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoheaders])
