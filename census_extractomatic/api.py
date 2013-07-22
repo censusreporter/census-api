@@ -648,6 +648,38 @@ def table_details(acs, table):
     return json.dumps(data)
 
 
+@app.route("/1.0/count/<year>/<table_id>/<child_summary_level>/<parent_geoid>/")
+@crossdomain(origin='*')
+def table_geo_comparison_count(year, table_id, child_summary_level, parent_geoid):
+    if year not in ['2011','2010','2009','2008','2007']:
+        abort(404, 'Year not allowed.')
+        
+    data = OrderedDict()
+
+    releases = sorted([name for name in ACS_NAMES if year in name])
+    for acs in releases:
+        data[acs] = OrderedDict()
+        data[acs]['release_name'] = ACS_NAMES[acs]['name']
+        
+        g.cur.execute("SELECT * FROM %s.census_table_metadata WHERE table_id=%s;" % acs, [table_id])
+        table_record = g.cur.fetchone()
+        validated_table_id = table_record['table_id']
+        data[acs]['table_name'] = table_record['table_title']
+        data[acs]['table_universe'] = table_record['universe']
+
+        geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid.split('US')[1])
+        g.cur.execute("SELECT geoid,stusab,logrecno,name FROM %s.geoheader WHERE geoid LIKE %s ORDER BY geoid;" % acs, [geoid_prefix])
+        child_geoheaders = g.cur.fetchall()
+    
+        where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoheaders])
+        g.cur.execute("SELECT COUNT(*) FROM %s.%s WHERE %s" % (acs, validated_table_id, where))
+        acs_rowcount = g.cur.fetchone()
+        
+        data[acs]['results'] = acs_rowcount
+
+    return json.dumps(data)
+
+
 @app.route("/1.0/compare/<acs>/<table_id>")
 @crossdomain(origin='*')
 def table_geo_comparison(acs, table_id):
