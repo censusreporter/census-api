@@ -675,7 +675,7 @@ def table_geo_comparison_count(year, table_id, child_summary_level, parent_geoid
         g.cur.execute("SELECT COUNT(*) FROM %s.%s WHERE %s" % (acs, validated_table_id, where))
         acs_rowcount = g.cur.fetchone()
         
-        data[acs]['results'] = acs_rowcount
+        data[acs]['results'] = acs_rowcount['count']
 
     return json.dumps(data)
 
