@@ -10,6 +10,8 @@ import psycopg2
 import psycopg2.extras
 from collections import OrderedDict
 from datetime import timedelta
+from urllib2 import unquote
+
 
 app = Flask(__name__)
 
@@ -732,6 +734,85 @@ def geo_lookup(geoid):
 
 ## TABLE LOOKUPS ##
 
+# Example: /1.0/table/search?q=norweg
+# Example: /1.0/table/search?q=norweg&topics=age,sex
+# Example: /1.0/table/search?topics=housing,poverty
+@app.route("/1.0/table/search")
+@crossdomain(origin='*')
+def table_search():
+    def format_result(self, obj, obj_type):
+        '''internal util for formatting each object in API response'''
+        result = {
+            'type': obj_type,
+            'table_id': obj['table_id'],
+            'table_name': obj['table_title'],
+            #TODO: 'topics': obj['topics'],
+        }
+        
+        if obj_type == 'table':
+            result.update({
+                'id': obj['table_id'],
+                'text': 'Table: %s' % obj['table_title'],
+            })
+        elif obj_type == 'column':
+            result.update({
+                'id': '|'.join([obj['table_id'], obj['column_id']]),
+                'text': 'Table with Column: %s in %s' % (obj['column_title'], obj['table_title']),
+                'column_id': obj['column_id'],
+                'column_name': obj['column_title'],
+            })
+            
+        return result
+
+    # allow choice of release, default to 2011 1-year
+    acs = request.args.get('acs', 'acs2011_1yr')
+    if acs not in allowed_acs:
+        abort(404, 'ACS %s is not supported.' % acs)
+        
+    if not q and not topics:
+        abort(400, "Must provide a query term or topics to filter on.")
+
+    # prepare search term where clauses
+    q = request.args.get('q')
+    if q:
+        q += "%"
+        table_where = "lower(table_title) LIKE lower(%s)"
+        column_where = "lower(column_title) LIKE lower(%s)"
+        where_args = [q]
+    
+    # TODO: allow filtering by comma-separated list of topic areas
+    topics = request.args.get('topics', None)
+    if topics:
+        topic_list = unquote(topics).split(',')
+        topic_table_where = "" #TODO - depends on where we put topic data
+        topic_column_where = "" #TODO - depends on where we put topic data
+        if q:
+            table_where = "AND " + topic_table_where
+            column_where = "AND " + topic_column_where
+            where_args = [q, topic_list]
+        else:
+            table_where = topic_table_where
+            column_where = topic_column_where
+            where_args = [topic_list]
+
+    data = []
+    # retrieve matching tables. TODO: add topics field to query
+    g.cur.execute("SELECT table_id, table_title FROM %s.census_table_metadata WHERE %s;" % acs, table_where, where_args)
+    tables = g.cur.fetchall()
+    tables_list = [self.format_result(table, 'table') for table in list(tables)]
+
+    # retrieve matching columns. TODO: add topics field to query
+    g.cur.execute("SELECT table_id, table_title, column_id, column_title FROM %s.census_table_metadata WHERE %s;" % acs, column_where, where_args)
+    columns = g.cur.fetchall()
+    columns_list = [self.format_result(column, 'column') for column in list(columns)]
+    
+    data.extend(tables_list)
+    data.extend(columns_list)
+
+    return json.dumps(data)
+    
+    
+    
 # Example: /1.0/table/compare/rowcounts/B01001?year=2011&sumlevel=050&within=04000US53
 @app.route("/1.0/table/compare/rowcounts/<table_id>")
 @crossdomain(origin='*')
