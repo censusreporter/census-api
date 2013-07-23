@@ -648,19 +648,116 @@ def table_details(acs, table):
     return json.dumps(data)
 
 
-@app.route("/1.0/count/<year>/<table_id>/<child_summary_level>/<parent_geoid>/")
+
+## GEO LOOKUPS ##
+
+# Example: /1.0/geo/search?q=spok
+@app.route("/1.0/geo/search")
+@crossdomain(origin='*')
+def geo_search():
+    lat = request.args.get('lat')
+    lon = request.args.get('lon')
+    q = request.args.get('q')
+    try:
+        with_geom = bool(request.args.get('geom', False))
+    except ValueError:
+        with_geom = False
+
+    if lat and lon:
+        try:
+            lat = float(lat)
+            lon = float(lon)
+        except ValueError:
+            abort(400, 'Lat and Lon must be numbers.')
+        if not (-180.0 <= lon <= 180.0) or not (-90.0 <= lat <= 90.0):
+            abort(400, 'Lat must be between [-90,90], Lon must be between [-180,180].')
+
+        where = "ST_Intersects(the_geom, ST_SetSRID(ST_Point(%s, %s),4326))"
+        where_args = [lon, lat]
+    elif q:
+        q += "%"
+        where = "lower(name) LIKE lower(%s)"
+        where_args = [q]
+    else:
+        abort(400, "Must provide either a lat/lon OR a query term.")
+
+    if with_geom:
+        g.cur.execute("SELECT awater,aland,sumlevel,geoid,name,ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geom FROM tiger2012.census_names_simple WHERE %s ORDER BY sumlevel, aland DESC LIMIT 5;" % where, where_args)
+    else:
+        g.cur.execute("SELECT awater,aland,sumlevel,geoid,name FROM tiger2012.census_names_simple WHERE %s ORDER BY sumlevel, aland DESC LIMIT 5;" % where, where_args)
+
+    data = []
+
+    for row in g.cur:
+        row['full_geoid'] = "%s00US%s" % (row['sumlevel'], row['geoid'])
+        data.append(row)
+
+    return json.dumps(data)
+
+
+# Example: /1.0/geo/tiger2012/04000US53
+@app.route("/1.0/geo/tiger2012/<geoid>")
+@crossdomain(origin='*')
+def geo_lookup(geoid):
+    try:
+        with_geom = bool(request.args.get('geom', False))
+    except ValueError:
+        with_geom = False
+
+    geoid_parts = geoid.split('US')
+    if len(geoid_parts) is not 2:
+        abort(400, 'Invalid geoid')
+
+    sumlevel_part = geoid_parts[0][:3]
+    id_part = geoid_parts[1]
+
+    if with_geom:
+        g.cur.execute("SELECT awater,aland,name,intptlat,intptlon,ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geom FROM tiger2012.census_names WHERE sumlevel=%s AND geoid=%s LIMIT 1", [sumlevel_part, id_part])
+    else:
+        g.cur.execute("SELECT awater,aland,name,intptlat,intptlon FROM tiger2012.census_names WHERE sumlevel=%s AND geoid=%s LIMIT 1", [sumlevel_part, id_part])
+
+    result = g.cur.fetchone()
+
+    if not result:
+        abort(404, 'Unknown geoid')
+
+    intptlon = result.pop('intptlon')
+    result['intptlon'] = round(float(intptlon), 7)
+    intptlat = result.pop('intptlat')
+    result['intptlat'] = round(float(intptlat), 7)
+
+    return json.dumps(result)
+
+
+
+## TABLE LOOKUPS ##
+
+# Example: /1.0/table/compare/rowcounts/B01001?year=2011&sumlevel=050&within=04000US53
+@app.route("/1.0/table/compare/rowcounts/<table_id>")
 @crossdomain(origin='*')
 def table_geo_comparison_count(year, table_id, child_summary_level, parent_geoid):
+    # make sure we've been given year, child and parent vars
+    year = request.args.get('year', '')
+    if not year:
+        abort(400, 'Must include year to compare ACS releases.')
     if year not in ['2011','2010','2009','2008','2007']:
         abort(404, 'Year not allowed.')
-        
+
+    child_summary_level = request.args.get('sumlevel', '')
+    if not child_summary_level:
+        abort(400, 'Must include a summary level to compare.')
+
+    parent_geoid = request.args.get('within', '')
+    if not parent_geoid:
+        abort(400, 'Must include the geoID for a parent geography.')
+
     data = OrderedDict()
 
     releases = sorted([name for name in ACS_NAMES if year in name])
     for acs in releases:
         data[acs] = OrderedDict()
         data[acs]['release_name'] = ACS_NAMES[acs]['name']
-        
+
         g.cur.execute("SELECT * FROM %s.census_table_metadata WHERE table_id=%%s;" % acs, [table_id])
         table_record = g.cur.fetchone()
         if table_record:
@@ -671,24 +768,28 @@ def table_geo_comparison_count(year, table_id, child_summary_level, parent_geoid
             geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid.split('US')[1])
             g.cur.execute("SELECT geoid,stusab,logrecno,name FROM %s.geoheader WHERE geoid LIKE %%s ORDER BY geoid;" % acs, [geoid_prefix])
             child_geoheaders = g.cur.fetchall()
-    
+
             where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoheaders])
             g.cur.execute("SELECT COUNT(*) FROM %s.%s WHERE %s" % (acs, validated_table_id, where))
             acs_rowcount = g.cur.fetchone()
-        
+
             data[acs]['results'] = acs_rowcount['count']
 
     return json.dumps(data)
 
 
-@app.route("/1.0/compare/<acs>/<table_id>")
+
+## DATA RETRIEVAL ##
+
+# Example: /1.0/data/compare/acs2011_5yr/B01001?sumlevel=050&within=04000US53
+@app.route("/1.0/data/compare/<acs>/<table_id>")
 @crossdomain(origin='*')
-def table_geo_comparison(acs, table_id):
+def compare_geographies_within_parent(acs, table_id):
     # make sure we support the requested ACS release
     if acs not in allowed_acs:
         abort(404, 'ACS %s is not supported.' % acs)
     g.cur.execute("SET search_path=%s,public;", [acs])
-    
+
     # make sure we've been given parent and child vars
     parent_geoid = request.args.get('within', '')
     if not parent_geoid:
@@ -710,7 +811,7 @@ def table_geo_comparison(acs, table_id):
     data['comparison']['child_summary_level'] = child_summary_level
     data['comparison']['child_geography_name'] = SUMLEV_NAMES.get(child_summary_level, {}).get('name','')
     data['comparison']['child_geography_name_plural'] = SUMLEV_NAMES.get(child_summary_level, {}).get('plural','')
-    
+
     g.cur.execute("SELECT * FROM census_table_metadata WHERE table_id=%s;", [table_id])
     table_metadata = g.cur.fetchall()
     validated_table_id = table_metadata[0]['table_id']
@@ -733,7 +834,7 @@ def table_geo_comparison(acs, table_id):
     data['table']['table_name'] = table_record['table_title']
     data['table']['table_universe'] = table_record['universe']
     data['table']['columns'] = column_map
-    
+
     # add some data about the parent geography
     g.cur.execute("SELECT * FROM geoheader WHERE geoid=%s;", [parent_geoid])
     parent_geography = g.cur.fetchone()
@@ -770,7 +871,7 @@ def table_geo_comparison(acs, table_id):
         data['child_geographies'][geoheader['geoid']]['geography']['name'] = geoheader['name']
         data['child_geographies'][geoheader['geoid']]['geography']['summary_level'] = child_summary_level
         data['child_geographies'][geoheader['geoid']]['data'] = {}
-    
+
     # get geographical data if requested
     geometries = request.args.get('geom', '')
     child_geodata_map = {}
@@ -788,7 +889,7 @@ def table_geo_comparison(acs, table_id):
         g.cur.execute("SELECT geoid, ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geometry FROM tiger2012.census_names_simple WHERE sumlevel=%s AND geoid IN %s ORDER BY geoid;", [child_summary_level, tuple(child_geoid_list)])
         child_geodata = g.cur.fetchall()
         child_geodata_map = {record['geoid']: record['geometry'] for record in child_geodata}
-    
+
     # make the where clause and query the requested census data table
     # get parent data first...
     g.cur.execute("SELECT * FROM %s WHERE (stusab=%%s AND logrecno=%%s)" % (validated_table_id), [parent_geoheader['stusab'], parent_geoheader['logrecno']])
@@ -799,13 +900,13 @@ def table_geo_comparison(acs, table_id):
     for (k, v) in sorted(parent_data.items(), key=lambda tup: tup[0]):
         column_data.append((k, v))
     data['parent_geography']['data'] = OrderedDict(column_data)
-    
+
     # ... and then children so we can loop through with cursor
     where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoheaders])
     g.cur.execute("SELECT * FROM %s WHERE %s" % (validated_table_id, where))
     # store the number of rows returned in comparison object
     data['comparison']['results'] = g.cur.rowcount
-    
+
     # grab one row at a time
     for record in g.cur:
         stusab = record.pop('stusab')
@@ -816,146 +917,15 @@ def table_geo_comparison(acs, table_id):
         for (k, v) in sorted(record.items(), key=lambda tup: tup[0]):
             column_data.append((k, v))
         data['child_geographies'][child_geoid]['data'] = OrderedDict(column_data)
-        
+
         if child_geodata_map:
             try:
                 data['child_geographies'][child_geoid]['geography']['geometry'] = child_geodata_map[child_geoid.split('US')[1]]
             except:
                 # we may not have geometries for all sumlevs
                 pass
-                
+
     return json.dumps(data, indent=4, separators=(',', ': '))
-
-@app.route("/1.0/table/<acs>/<table>")
-@crossdomain(origin='*')
-def table_details_v2(acs, table):
-    if acs not in allowed_acs:
-        abort(404, 'ACS %s is not supported.' % acs)
-
-    g.cur.execute("SET search_path=%s", [acs])
-
-    geoids = tuple(request.args.get('geoids', '').split(','))
-    if not geoids:
-        abort(400, 'Must include at least one geoid separated by commas.')
-
-    # If they specify a sumlevel, then we look for the geographies "underneath"
-    # the specified geoids that sit at the specified sumlevel
-    child_summary_level = request.args.get('sumlevel')
-    if child_summary_level:
-        if len(geoids) > 1:
-            abort(400, 'Only support one parent geoid for now.')
-
-        child_summary_level = int(child_summary_level)
-
-        desired_geoid_prefix = '%03d00US%s%%' % (child_summary_level, geoids[0][7:])
-
-        g.cur.execute("SELECT geoid,stusab,logrecno FROM geoheader WHERE geoid LIKE %s ORDER BY geoid", [desired_geoid_prefix])
-        geoids = g.cur.fetchall()
-    else:
-        # Find the logrecno for the geoids they asked for
-        g.cur.execute("SELECT geoid,stusab,logrecno FROM geoheader WHERE geoid IN %s", [geoids, ])
-        geoids = g.cur.fetchall()
-
-    # make a where clause for retrieving the table data for our child geographies
-    geoid_mapping = dict()
-    for r in geoids:
-        geoid_mapping[(r['stusab'], r['logrecno'])] = r['geoid']
-
-    where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (r['stusab'], r['logrecno']) for r in geoids])
-
-    # Query the table they asked for using the geometries they asked for
-    data = dict()
-    # If request specifies a column, get it. Otherwise get the whole table
-    column = request.args.get('column', '*')
-    g.cur.execute("SELECT %s FROM %s WHERE %s" % (column, table, where))
-    for r in g.cur:
-        stusab = r.pop('stusab')
-        logrecno = r.pop('logrecno')
-
-        geoid = geoid_mapping[(stusab, logrecno)]
-
-        column_data = []
-        for (k, v) in sorted(r.items(), key=lambda tup: tup[0]):
-            column_data.append((k, v))
-        data[geoid] = OrderedDict(column_data)
-
-    return json.dumps(data)
-
-@app.route("/1.0/geo/search")
-@crossdomain(origin='*')
-def geo_search():
-    lat = request.args.get('lat')
-    lon = request.args.get('lon')
-    prefix = request.args.get('prefix')
-    try:
-        with_geom = bool(request.args.get('geom', False))
-    except ValueError:
-        with_geom = False
-
-    if lat and lon:
-        try:
-            lat = float(lat)
-            lon = float(lon)
-        except ValueError:
-            abort(400, 'Lat and Lon must be numbers.')
-        if not (-180.0 <= lon <= 180.0) or not (-90.0 <= lat <= 90.0):
-            abort(400, 'Lat must be between [-90,90], Lon must be between [-180,180].')
-
-        where = "ST_Intersects(the_geom, ST_SetSRID(ST_Point(%s, %s),4326))"
-        where_args = [lon, lat]
-    elif prefix:
-        prefix += "%"
-        where = "lower(name) LIKE lower(%s)"
-        where_args = [prefix]
-    else:
-        abort(400, "Must provide either a lat/lon OR a prefix.")
-
-    if with_geom:
-        g.cur.execute("SELECT awater,aland,sumlevel,geoid,name,ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geom FROM tiger2012.census_names_simple WHERE %s ORDER BY sumlevel, aland DESC LIMIT 5;" % where, where_args)
-    else:
-        g.cur.execute("SELECT awater,aland,sumlevel,geoid,name FROM tiger2012.census_names_simple WHERE %s ORDER BY sumlevel, aland DESC LIMIT 5;" % where, where_args)
-
-    data = []
-
-    for row in g.cur:
-        row['full_geoid'] = "%s00US%s" % (row['sumlevel'], row['geoid'])
-        data.append(row)
-
-    return json.dumps(data)
-
-
-@app.route("/1.0/geo/tiger2012/<geoid>")
-@crossdomain(origin='*')
-def geo_lookup(geoid):
-
-    try:
-        with_geom = bool(request.args.get('geom', False))
-    except ValueError:
-        with_geom = False
-
-    geoid_parts = geoid.split('US')
-    if len(geoid_parts) is not 2:
-        abort(400, 'Invalid geoid')
-
-    sumlevel_part = geoid_parts[0][:3]
-    id_part = geoid_parts[1]
-
-    if with_geom:
-        g.cur.execute("SELECT awater,aland,name,intptlat,intptlon,ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geom FROM tiger2012.census_names WHERE sumlevel=%s AND geoid=%s LIMIT 1", [sumlevel_part, id_part])
-    else:
-        g.cur.execute("SELECT awater,aland,name,intptlat,intptlon FROM tiger2012.census_names WHERE sumlevel=%s AND geoid=%s LIMIT 1", [sumlevel_part, id_part])
-
-    result = g.cur.fetchone()
-
-    if not result:
-        abort(404, 'Unknown geoid')
-
-    intptlon = result.pop('intptlon')
-    result['intptlon'] = round(float(intptlon), 7)
-    intptlat = result.pop('intptlat')
-    result['intptlat'] = round(float(intptlat), 7)
-
-    return json.dumps(result)
 
 
 if __name__ == "__main__":
