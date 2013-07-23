@@ -660,6 +660,7 @@ def geo_search():
     lat = request.args.get('lat')
     lon = request.args.get('lon')
     q = request.args.get('q')
+    sumlevs = request.args.get('sumlevs')
     try:
         with_geom = bool(request.args.get('geom', False))
     except ValueError:
@@ -682,7 +683,12 @@ def geo_search():
         where_args = [q]
     else:
         abort(400, "Must provide either a lat/lon OR a query term.")
-
+        
+    if sumlevs:
+        allowed_sumlevs = tuple([sumlev.strip() for sumlev in sumlevs.split(',')])
+        where += " AND sumlevel IN %s"
+        where_args.append(allowed_sumlevs)
+        
     if with_geom:
         g.cur.execute("SELECT awater,aland,sumlevel,geoid,name,ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geom FROM tiger2012.census_names_simple WHERE %s ORDER BY sumlevel, aland DESC LIMIT 5;" % where, where_args)
     else:
