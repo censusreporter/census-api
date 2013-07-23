@@ -690,9 +690,9 @@ def geo_search():
         where_args.append(allowed_sumlevs)
         
     if with_geom:
-        g.cur.execute("SELECT awater,aland,sumlevel,geoid,name,ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geom FROM tiger2012.census_names_simple WHERE %s ORDER BY sumlevel, aland DESC LIMIT 5;" % where, where_args)
+        g.cur.execute("SELECT awater,aland,sumlevel,geoid,name,ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geom FROM tiger2012.census_names_simple WHERE %s ORDER BY sumlevel, aland DESC LIMIT 25;" % where, where_args)
     else:
-        g.cur.execute("SELECT awater,aland,sumlevel,geoid,name FROM tiger2012.census_names_simple WHERE %s ORDER BY sumlevel, aland DESC LIMIT 5;" % where, where_args)
+        g.cur.execute("SELECT awater,aland,sumlevel,geoid,name FROM tiger2012.census_names_simple WHERE %s ORDER BY sumlevel, aland DESC LIMIT 25;" % where, where_args)
 
     data = []
 
