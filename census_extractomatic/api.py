@@ -61,17 +61,17 @@ SUMLEV_NAMES = {
     "101": {"name": "block", "plural": "blocks"},
     "140": {"name": "census tract", "plural": "census tracts"},
     "150": {"name": "block group", "plural": "block groups"},
-    "160": {"name": "place", "plural": "places"}, 
+    "160": {"name": "place", "plural": "places"},
     "300": {"name": "MSA", "plural": "MSAs"},
     "310": {"name": "CBSA", "plural": "CBSAs"},
     "350": {"name": "NECTA", "plural": "NECTAs"},
     "400": {"name": "urban area", "plural": "urban areas"},
-    "500": {"name": "congressional district", "plural": "congressional districts"}, 
-    "610": {"name": "state senate district", "plural": "state senate districts"}, 
-    "620": {"name": "state house district", "plural": "state house districts"}, 
-    "700": {"name": "VTD", "plural": "VTDs"}, 
+    "500": {"name": "congressional district", "plural": "congressional districts"},
+    "610": {"name": "state senate district", "plural": "state senate districts"},
+    "620": {"name": "state house district", "plural": "state house districts"},
+    "700": {"name": "VTD", "plural": "VTDs"},
     "795": {"name": "PUMA", "plural": "PUMAs"},
-    "850": {"name": "ZCTA3", "plural": "ZCTA3s"}, 
+    "850": {"name": "ZCTA3", "plural": "ZCTA3s"},
     "860": {"name": "ZCTA5", "plural": "ZCTA5s"},
     "950": {"name": "elementary school district", "plural": "elementary school districts"},
     "960": {"name": "secondary school district", "plural": "secondary school districts"},
@@ -683,12 +683,12 @@ def geo_search():
         where_args = [q]
     else:
         abort(400, "Must provide either a lat/lon OR a query term.")
-        
+
     if sumlevs:
         allowed_sumlevs = tuple([sumlev.strip() for sumlev in sumlevs.split(',')])
         where += " AND sumlevel IN %s"
         where_args.append(allowed_sumlevs)
-        
+
     if with_geom:
         g.cur.execute("SELECT awater,aland,sumlevel,geoid,name,ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geom FROM tiger2012.census_names_simple WHERE %s ORDER BY sumlevel, aland DESC LIMIT 25;" % where, where_args)
     else:
@@ -748,7 +748,7 @@ def format_table_search_result(obj, obj_type):
         'table_name': obj['table_title'],
         #TODO: 'topics': obj['topics'],
     }
-    
+
     if obj_type == 'table':
         result.update({
             'id': obj['table_id'],
@@ -761,7 +761,7 @@ def format_table_search_result(obj, obj_type):
             'column_id': obj['column_id'],
             'column_name': obj['column_title'],
         })
-        
+
     return result
 
 # Example: /1.0/table/search?q=norweg
@@ -774,7 +774,7 @@ def table_search():
     acs = request.args.get('acs', 'acs2011_1yr')
     if acs not in allowed_acs:
         abort(404, 'ACS %s is not supported.' % acs)
-        
+
     q = request.args.get('q', None)
     topics = request.args.get('topics', None)
     if not q and not topics:
@@ -786,7 +786,7 @@ def table_search():
         table_where = "lower(table_title) LIKE lower(%s)"
         column_where = "lower(column_title) LIKE lower(%s)"
         where_args = [q]
-    
+
     # TODO: allow filtering by comma-separated list of topic areas
     if topics:
         topic_list = unquote(topics).split(',')
@@ -811,14 +811,14 @@ def table_search():
     g.cur.execute("SELECT table_id, table_title, column_id, column_title FROM %s.census_table_metadata WHERE %s;" % (acs, column_where), where_args)
     columns = g.cur.fetchall()
     columns_list = [format_table_search_result(column, 'column') for column in list(columns)]
-    
+
     data.extend(tables_list)
     data.extend(columns_list)
 
     return json.dumps(data)
-    
-    
-    
+
+
+
 # Example: /1.0/table/compare/rowcounts/B01001?year=2011&sumlevel=050&within=04000US53
 @app.route("/1.0/table/compare/rowcounts/<table_id>")
 @crossdomain(origin='*')
