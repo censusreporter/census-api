@@ -769,11 +769,12 @@ def table_search():
     if acs not in allowed_acs:
         abort(404, 'ACS %s is not supported.' % acs)
         
+    q = request.args.get('q', None)
+    topics = request.args.get('topics', None)
     if not q and not topics:
-        abort(400, "Must provide a query term or topics to filter on.")
+        abort(400, "Must provide a query term or topics for filtering.")
 
     # prepare search term where clauses
-    q = request.args.get('q')
     if q:
         q += "%"
         table_where = "lower(table_title) LIKE lower(%s)"
@@ -781,7 +782,6 @@ def table_search():
         where_args = [q]
     
     # TODO: allow filtering by comma-separated list of topic areas
-    topics = request.args.get('topics', None)
     if topics:
         topic_list = unquote(topics).split(',')
         topic_table_where = "" #TODO - depends on where we put topic data
