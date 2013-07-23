@@ -735,7 +735,7 @@ def geo_lookup(geoid):
 # Example: /1.0/table/compare/rowcounts/B01001?year=2011&sumlevel=050&within=04000US53
 @app.route("/1.0/table/compare/rowcounts/<table_id>")
 @crossdomain(origin='*')
-def table_geo_comparison_count(year, table_id, child_summary_level, parent_geoid):
+def table_geo_comparison_rowcount(table_id):
     # make sure we've been given year, child and parent vars
     year = request.args.get('year', '')
     if not year:
@@ -784,7 +784,7 @@ def table_geo_comparison_count(year, table_id, child_summary_level, parent_geoid
 # Example: /1.0/data/compare/acs2011_5yr/B01001?sumlevel=050&within=04000US53
 @app.route("/1.0/data/compare/<acs>/<table_id>")
 @crossdomain(origin='*')
-def compare_geographies_within_parent(acs, table_id):
+def data_compare_geographies_within_parent(acs, table_id):
     # make sure we support the requested ACS release
     if acs not in allowed_acs:
         abort(404, 'ACS %s is not supported.' % acs)
