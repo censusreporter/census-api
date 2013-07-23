@@ -797,12 +797,12 @@ def table_search():
 
     data = []
     # retrieve matching tables. TODO: add topics field to query
-    g.cur.execute("SELECT table_id, table_title FROM %s.census_table_metadata WHERE %s;" % acs, table_where, where_args)
+    g.cur.execute("SELECT table_id, table_title FROM %s.census_table_metadata WHERE %s;" % (acs, table_where, where_args))
     tables = g.cur.fetchall()
     tables_list = [self.format_result(table, 'table') for table in list(tables)]
 
     # retrieve matching columns. TODO: add topics field to query
-    g.cur.execute("SELECT table_id, table_title, column_id, column_title FROM %s.census_table_metadata WHERE %s;" % acs, column_where, where_args)
+    g.cur.execute("SELECT table_id, table_title, column_id, column_title FROM %s.census_table_metadata WHERE %s;" % (acs, column_where, where_args))
     columns = g.cur.fetchall()
     columns_list = [self.format_result(column, 'column') for column in list(columns)]
     
