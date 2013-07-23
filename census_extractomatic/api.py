@@ -734,36 +734,36 @@ def geo_lookup(geoid):
 
 ## TABLE LOOKUPS ##
 
+def format_table_search_result(obj, obj_type):
+    '''internal util for formatting each object in `table_search` API response'''
+    result = {
+        'type': obj_type,
+        'table_id': obj['table_id'],
+        'table_name': obj['table_title'],
+        #TODO: 'topics': obj['topics'],
+    }
+    
+    if obj_type == 'table':
+        result.update({
+            'id': obj['table_id'],
+            'text': 'Table: %s' % obj['table_title'],
+        })
+    elif obj_type == 'column':
+        result.update({
+            'id': '|'.join([obj['table_id'], obj['column_id']]),
+            'text': 'Table with Column: %s in %s' % (obj['column_title'], obj['table_title']),
+            'column_id': obj['column_id'],
+            'column_name': obj['column_title'],
+        })
+        
+    return result
+
 # Example: /1.0/table/search?q=norweg
 # Example: /1.0/table/search?q=norweg&topics=age,sex
 # Example: /1.0/table/search?topics=housing,poverty
 @app.route("/1.0/table/search")
 @crossdomain(origin='*')
 def table_search():
-    def format_result(self, obj, obj_type):
-        '''internal util for formatting each object in API response'''
-        result = {
-            'type': obj_type,
-            'table_id': obj['table_id'],
-            'table_name': obj['table_title'],
-            #TODO: 'topics': obj['topics'],
-        }
-        
-        if obj_type == 'table':
-            result.update({
-                'id': obj['table_id'],
-                'text': 'Table: %s' % obj['table_title'],
-            })
-        elif obj_type == 'column':
-            result.update({
-                'id': '|'.join([obj['table_id'], obj['column_id']]),
-                'text': 'Table with Column: %s in %s' % (obj['column_title'], obj['table_title']),
-                'column_id': obj['column_id'],
-                'column_name': obj['column_title'],
-            })
-            
-        return result
-
     # allow choice of release, default to 2011 1-year
     acs = request.args.get('acs', 'acs2011_1yr')
     if acs not in allowed_acs:
@@ -799,12 +799,12 @@ def table_search():
     # retrieve matching tables. TODO: add topics field to query
     g.cur.execute("SELECT table_id, table_title FROM %s.census_table_metadata WHERE %s;" % (acs, table_where), where_args)
     tables = g.cur.fetchall()
-    tables_list = [self.format_result(table, 'table') for table in list(tables)]
+    tables_list = [format_table_search_result(table, 'table') for table in list(tables)]
 
     # retrieve matching columns. TODO: add topics field to query
     g.cur.execute("SELECT table_id, table_title, column_id, column_title FROM %s.census_table_metadata WHERE %s;" % (acs, column_where), where_args)
     columns = g.cur.fetchall()
-    columns_list = [self.format_result(column, 'column') for column in list(columns)]
+    columns_list = [format_table_search_result(column, 'column') for column in list(columns)]
     
     data.extend(tables_list)
     data.extend(columns_list)
