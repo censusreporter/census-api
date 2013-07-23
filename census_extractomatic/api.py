@@ -251,78 +251,6 @@ def acs_geoid_search(acs):
     return json.dumps(result)
 
 
-def geo_comparison(acs, parent_geoid, comparison_sumlev):
-    g.cur.execute("SET search_path=%s", [acs])
-
-    # Builds something like: '05000US17%'
-    geoid_prefix = '%s00US%s%%' % (comparison_sumlev, parent_geoid.split('US')[1])
-    g.cur.execute("SELECT * FROM geoheader WHERE geoid LIKE %s;", [geoid_prefix])
-    geoheaders = g.cur.fetchall()
-
-    doc = OrderedDict([('comparison', dict()),
-                       ('geographies', list())])
-
-    doc['comparison']['census_release'] = ACS_NAMES.get(acs).get('name')
-
-    for geo in geoheaders:
-        state = geo['stusab']
-        logrecno = geo['logrecno']
-
-        one_geom = dict(population=dict(), geography=dict())
-        one_geom['geography'] = dict(name=geo['name'],
-                                geoid=geo['geoid'],
-                                stusab=geo['stusab'],
-                                sumlevel=geo['sumlevel'],
-                                census_release=ACS_NAMES.get(acs).get('name'))
-
-        g.cur.execute("SELECT * FROM B01001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
-        data = g.cur.fetchone()
-
-        one_geom['population']['total'] = maybe_int(data['b01001001'])
-
-        one_geom['population']['gender'] = OrderedDict([
-            ('0-9',   dict(male=maybe_int(sum(data, 'b01001003', 'b01001004')),
-                         female=maybe_int(sum(data, 'b01001027', 'b01001028')),
-                          total=maybe_int(sum(data, 'b01001003', 'b01001004', 'b01001027', 'b01001028')))),
-
-            ('10-19', dict(male=maybe_int(sum(data, 'b01001005', 'b01001006', 'b01001007')),
-                         female=maybe_int(sum(data, 'b01001029', 'b01001030', 'b01001031')),
-                          total=maybe_int(sum(data, 'b01001005', 'b01001006', 'b01001007', 'b01001029', 'b01001030', 'b01001031')))),
-
-            ('20-29', dict(male=maybe_int(sum(data, 'b01001008', 'b01001009', 'b01001010', 'b01001011')),
-                         female=maybe_int(sum(data, 'b01001032', 'b01001033', 'b01001034', 'b01001035')),
-                          total=maybe_int(sum(data, 'b01001008', 'b01001009', 'b01001010', 'b01001011', 'b01001032', 'b01001033', 'b01001034', 'b01001035')))),
-
-            ('30-39', dict(male=maybe_int(sum(data, 'b01001012', 'b01001013')),
-                         female=maybe_int(sum(data, 'b01001036', 'b01001037')),
-                          total=maybe_int(sum(data, 'b01001012', 'b01001013', 'b01001036', 'b01001037')))),
-
-            ('40-49', dict(male=maybe_int(sum(data, 'b01001014', 'b01001015')),
-                         female=maybe_int(sum(data, 'b01001038', 'b01001039')),
-                          total=maybe_int(sum(data, 'b01001014', 'b01001015', 'b01001038', 'b01001039')))),
-
-            ('50-59', dict(male=maybe_int(sum(data, 'b01001016', 'b01001017')),
-                         female=maybe_int(sum(data, 'b01001040', 'b01001041')),
-                          total=maybe_int(sum(data, 'b01001016', 'b01001017', 'b01001040', 'b01001041')))),
-
-            ('60-69', dict(male=maybe_int(sum(data, 'b01001018', 'b01001019', 'b01001020', 'b01001021')),
-                         female=maybe_int(sum(data, 'b01001042', 'b01001043', 'b01001044', 'b01001045')),
-                          total=maybe_int(sum(data, 'b01001018', 'b01001019', 'b01001020', 'b01001021', 'b01001042', 'b01001043', 'b01001044', 'b01001045')))),
-
-            ('70-79', dict(male=maybe_int(sum(data, 'b01001022', 'b01001023')),
-                         female=maybe_int(sum(data, 'b01001046', 'b01001047')),
-                          total=maybe_int(sum(data, 'b01001022', 'b01001023', 'b01001046', 'b01001047')))),
-
-            ('80+',   dict(male=maybe_int(sum(data, 'b01001024', 'b01001025')),
-                         female=maybe_int(sum(data, 'b01001048', 'b01001049')),
-                          total=maybe_int(sum(data, 'b01001024', 'b01001025', 'b01001048', 'b01001049'))))
-        ])
-
-        doc['geographies'].append(one_geom)
-
-    return json.dumps(doc)
-
-
 def geo_profile(acs, state, logrecno):
     g.cur.execute("SET search_path=%s", [acs])
 
@@ -586,13 +514,6 @@ def latest_geo_profile(geoid):
         abort(404, 'None of the ACS I know about have that geoid.')
 
     return geo_profile(acs, state, logrecno)
-
-@app.route("/1.0/<acs>/<parent_id>/<comparison_sumlev>/compare")
-def acs_geo_comparison(acs, parent_id, comparison_sumlev):
-    if acs not in allowed_acs:
-        abort(404, 'ACS %s is not supported.' % acs)
-
-    return geo_comparison(acs, parent_id, comparison_sumlev)
 
 @app.route("/1.0/<acs>/<table>")
 def table_details(acs, table):
