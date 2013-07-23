@@ -861,6 +861,9 @@ def table_geo_comparison_rowcount(table_id):
             acs_rowcount = g.cur.fetchone()
 
             data[acs]['results'] = acs_rowcount['count']
+            
+    # order API response by release with most results
+    data = OrderedDict(reversed(sorted(data.iteritems(), key=lambda d: d[1]['results'])))
 
     return json.dumps(data)
 
