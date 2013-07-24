@@ -611,6 +611,8 @@ def geo_search():
 
     for row in g.cur:
         row['full_geoid'] = "%s00US%s" % (row['sumlevel'], row['geoid'])
+        if 'geom' in row:
+            row['geom'] = json.loads(row['geom'])
         data.append(row)
 
     return json.dumps(data)
@@ -644,6 +646,9 @@ def geo_lookup(geoid):
     result['intptlon'] = round(float(intptlon), 7)
     intptlat = result.pop('intptlat')
     result['intptlat'] = round(float(intptlat), 7)
+
+    if 'geom' in result:
+        result['geom'] = json.loads(result['geom'])
 
     return json.dumps(result)
 
@@ -876,7 +881,7 @@ def data_compare_geographies_within_parent(acs, table_id):
         g.cur.execute("SELECT ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geometry FROM tiger2012.census_names_simple WHERE sumlevel=%s AND geoid=%s;", [parent_sumlevel, parent_geoid.split('US')[1]])
         parent_geometry = g.cur.fetchone()
         try:
-            data['parent_geography']['geography']['geometry'] = parent_geometry['geometry']
+            data['parent_geography']['geography']['geometry'] = json.loads(parent_geometry['geometry'])
         except:
             # we may not have geometries for all sumlevs
             pass
@@ -884,7 +889,7 @@ def data_compare_geographies_within_parent(acs, table_id):
         # get the child geometries and store for later
         g.cur.execute("SELECT geoid, ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geometry FROM tiger2012.census_names_simple WHERE sumlevel=%s AND geoid IN %s ORDER BY geoid;", [child_summary_level, tuple(child_geoid_list)])
         child_geodata = g.cur.fetchall()
-        child_geodata_map = {record['geoid']: record['geometry'] for record in child_geodata}
+        child_geodata_map = {record['geoid']: json.loads(record['geometry']) for record in child_geodata}
 
     # make the where clause and query the requested census data table
     # get parent data first...
