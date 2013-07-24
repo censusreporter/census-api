@@ -17,7 +17,7 @@ from validation import qwarg_validate, NonemptyString, FloatRange, StringList, B
 
 
 app = Flask(__name__)
-app.config.from_object(os.environ.get('EXTRACTOMATIC_CONFIG_MODULE', 'config.Development'))
+app.config.from_object(os.environ.get('EXTRACTOMATIC_CONFIG_MODULE', 'census_extractomatic.config.Development'))
 
 if not app.debug:
     import logging
