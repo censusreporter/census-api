@@ -11,10 +11,13 @@ import psycopg2.extras
 from collections import OrderedDict
 from datetime import timedelta
 from urllib2 import unquote
+import os
+import urlparse
 from validation import qwarg_validate, NonemptyString, FloatRange, StringList, Bool, OneOf
 
 
 app = Flask(__name__)
+app.config.from_object(os.environ.get('EXTRACTOMATIC_CONFIG_MODULE', 'config.Development'))
 
 if not app.debug:
     import logging
@@ -195,7 +198,14 @@ def find_geoid(geoid, acs=None):
 
 @app.before_request
 def before_request():
-    conn = psycopg2.connect(database='postgres', user='census', password='censuspassword', host='localhost')
+    db_details = urlparse.urlparse(app.config['DATABASE_URI'])
+
+    conn = psycopg2.connect(
+        host=db_details.hostname,
+        user=db_details.username,
+        password=db_details.password,
+        database=db_details.path[1:]
+    )
     g.cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
 
