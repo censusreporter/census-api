@@ -11,6 +11,7 @@ import psycopg2.extras
 from collections import OrderedDict
 from datetime import timedelta
 from urllib2 import unquote
+from validation import qwarg_validate, NonemptyString, FloatRange, StringList, Bool, OneOf
 
 
 app = Flask(__name__)
@@ -203,19 +204,12 @@ def teardown_request(exception):
     g.cur.close()
 
 
-@app.route("/")
-def hello():
-    return "Hello World!"
-
-
 @app.route("/1.0/latest/geoid/search")
+@qwarg_validate({
+    'name': {'valid': NonemptyString(), 'required': True}
+})
 def latest_geoid_search():
-    term = request.args.get('name')
-
-    if not term:
-        abort(400, "Provide a 'name' argument to search for.")
-
-    term = "%s%%" % term
+    term = "%s%%" % request.qwargs.name
 
     result = []
     for acs in allowed_acs:
@@ -230,16 +224,14 @@ def latest_geoid_search():
 
 
 @app.route("/1.0/<acs>/geoid/search")
+@qwarg_validate({
+    'name': {'valid': NonemptyString()}
+})
 def acs_geoid_search(acs):
-    term = request.args.get('name')
-
-    if not term:
-        abort(400, "Provide a 'name' argument to search for.")
-
     if acs not in allowed_acs:
         abort(404, "I don't know anything about that ACS.")
 
-    term = "%s%%" % term
+    term = "%s%%" % request.qwargs.name
 
     result = []
     g.cur.execute("SELECT geoid,stusab as state,name FROM %s.geoheader WHERE name LIKE %%s LIMIT 5" % acs, [term])
@@ -506,6 +498,7 @@ def acs_geo_profile(acs, geoid):
 
     return geo_profile(acs, state, logrecno)
 
+
 @app.route("/1.0/latest/<geoid>/profile")
 def latest_geo_profile(geoid):
     acs, state, logrecno = find_geoid(geoid)
@@ -515,23 +508,28 @@ def latest_geo_profile(geoid):
 
     return geo_profile(acs, state, logrecno)
 
+
 @app.route("/1.0/<acs>/<table>")
+@qwarg_validate({
+    'geoids': {'valid': StringList(), 'required': True},
+    'sumlevel': {'valid': OneOf(SUMLEV_NAMES), 'required': True}
+})
 def table_details(acs, table):
     if acs not in allowed_acs:
         abort(404, 'ACS %s is not supported.' % acs)
 
     g.cur.execute("SET search_path=%s", [acs])
 
-    geoids = tuple(request.args.get('geoids', '').split(','))
+    geoids = tuple(request.qwargs.geoids)
     if not geoids:
         abort(400, 'Must include at least one geoid separated by commas.')
 
     # If they specify a sumlevel, then we look for the geographies "underneath"
     # the specified geoids that sit at the specified sumlevel
-    child_summary_level = request.args.get('sumlevel')
+    child_summary_level = request.qwargs.sumlevel
     if child_summary_level:
         # A hacky way to represent the state-county-town geography relationship line
-        if child_summary_level not in ('50', '60'):
+        if child_summary_level not in ('050', '060'):
             abort(400, 'Only support child sumlevel or 50 or 60 for now.')
 
         if len(geoids) > 1:
@@ -571,31 +569,26 @@ def table_details(acs, table):
     return json.dumps(data)
 
 
-
 ## GEO LOOKUPS ##
 
 # Example: /1.0/geo/search?q=spok
 @app.route("/1.0/geo/search")
+@qwarg_validate({
+    'lat': {'valid': FloatRange(-90.0, 90.0)},
+    'lon': {'valid': FloatRange(-180.0, 180.0)},
+    'q': {'valid': NonemptyString()},
+    'sumlevels': {'valid': StringList(item_validator=OneOf(SUMLEV_NAMES))},
+    'geom': {'valid': Bool()}
+})
 @crossdomain(origin='*')
 def geo_search():
-    lat = request.args.get('lat')
-    lon = request.args.get('lon')
-    q = request.args.get('q')
-    sumlevs = request.args.get('sumlevs')
-    try:
-        with_geom = bool(request.args.get('geom', False))
-    except ValueError:
-        with_geom = False
+    lat = request.qwargs.lat
+    lon = request.qwargs.lon
+    q = request.qwargs.q
+    sumlevs = request.qwargs.sumlevs
+    with_geom = request.qwargs.geom
 
     if lat and lon:
-        try:
-            lat = float(lat)
-            lon = float(lon)
-        except ValueError:
-            abort(400, 'Lat and Lon must be numbers.')
-        if not (-180.0 <= lon <= 180.0) or not (-90.0 <= lat <= 90.0):
-            abort(400, 'Lat must be between [-90,90], Lon must be between [-180,180].')
-
         where = "ST_Intersects(the_geom, ST_SetSRID(ST_Point(%s, %s),4326))"
         where_args = [lon, lat]
     elif q:
@@ -606,9 +599,8 @@ def geo_search():
         abort(400, "Must provide either a lat/lon OR a query term.")
 
     if sumlevs:
-        allowed_sumlevs = tuple([sumlev.strip() for sumlev in sumlevs.split(',')])
         where += " AND sumlevel IN %s"
-        where_args.append(allowed_sumlevs)
+        where_args.append(tuple(sumlevs))
 
     if with_geom:
         g.cur.execute("SELECT awater,aland,sumlevel,geoid,name,ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geom FROM tiger2012.census_names_simple WHERE %s ORDER BY sumlevel, aland DESC LIMIT 25;" % where, where_args)
@@ -626,13 +618,11 @@ def geo_search():
 
 # Example: /1.0/geo/tiger2012/04000US53
 @app.route("/1.0/geo/tiger2012/<geoid>")
+@qwarg_validate({
+    'geom': {'valid': Bool()}
+})
 @crossdomain(origin='*')
 def geo_lookup(geoid):
-    try:
-        with_geom = bool(request.args.get('geom', False))
-    except ValueError:
-        with_geom = False
-
     geoid_parts = geoid.split('US')
     if len(geoid_parts) is not 2:
         abort(400, 'Invalid geoid')
@@ -640,7 +630,7 @@ def geo_lookup(geoid):
     sumlevel_part = geoid_parts[0][:3]
     id_part = geoid_parts[1]
 
-    if with_geom:
+    if request.qwargs.geom:
         g.cur.execute("SELECT awater,aland,name,intptlat,intptlon,ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geom FROM tiger2012.census_names WHERE sumlevel=%s AND geoid=%s LIMIT 1", [sumlevel_part, id_part])
     else:
         g.cur.execute("SELECT awater,aland,name,intptlat,intptlon FROM tiger2012.census_names WHERE sumlevel=%s AND geoid=%s LIMIT 1", [sumlevel_part, id_part])
@@ -656,7 +646,6 @@ def geo_lookup(geoid):
     result['intptlat'] = round(float(intptlat), 7)
 
     return json.dumps(result)
-
 
 
 ## TABLE LOOKUPS ##
@@ -685,19 +674,22 @@ def format_table_search_result(obj, obj_type):
 
     return result
 
+
 # Example: /1.0/table/search?q=norweg
 # Example: /1.0/table/search?q=norweg&topics=age,sex
 # Example: /1.0/table/search?topics=housing,poverty
 @app.route("/1.0/table/search")
+@qwarg_validate({
+    'acs': {'valid': OneOf(allowed_acs), 'default': 'acs2011_1yr'},
+    'q':   {'valid': NonemptyString()},
+    'topics': {'valid': StringList()}
+})
 @crossdomain(origin='*')
 def table_search():
     # allow choice of release, default to 2011 1-year
-    acs = request.args.get('acs', 'acs2011_1yr')
-    if acs not in allowed_acs:
-        abort(404, 'ACS %s is not supported.' % acs)
-
-    q = request.args.get('q', None)
-    topics = request.args.get('topics', None)
+    acs = request.qwargs.acs
+    q = request.qwargs.q
+    topics = request.qwargs.topics
     if not q and not topics:
         abort(400, "Must provide a query term or topics for filtering.")
 
@@ -739,25 +731,19 @@ def table_search():
     return json.dumps(data)
 
 
-
 # Example: /1.0/table/compare/rowcounts/B01001?year=2011&sumlevel=050&within=04000US53
 @app.route("/1.0/table/compare/rowcounts/<table_id>")
+@qwarg_validate({
+    'year': {'valid': NonemptyString()},
+    'sumlevel': {'valid': OneOf(SUMLEV_NAMES), 'required': True},
+    'within': {'valid': NonemptyString(), 'required': True},
+    'topics': {'valid': StringList()}
+})
 @crossdomain(origin='*')
 def table_geo_comparison_rowcount(table_id):
-    # make sure we've been given year, child and parent vars
-    year = request.args.get('year', '')
-    if not year:
-        abort(400, 'Must include year to compare ACS releases.')
-    if year not in ['2011','2010','2009','2008','2007']:
-        abort(404, 'Year not allowed.')
-
-    child_summary_level = request.args.get('sumlevel', '')
-    if not child_summary_level:
-        abort(400, 'Must include a summary level to compare.')
-
-    parent_geoid = request.args.get('within', '')
-    if not parent_geoid:
-        abort(400, 'Must include the geoID for a parent geography.')
+    year = request.qwargs.year
+    child_summary_level = request.qwargs.sumlevel
+    parent_geoid = request.qwargs.within
 
     data = OrderedDict()
 
@@ -782,7 +768,7 @@ def table_geo_comparison_rowcount(table_id):
             acs_rowcount = g.cur.fetchone()
 
             data[acs]['results'] = acs_rowcount['count']
-            
+
     # order API response by release with most results
     data = OrderedDict(reversed(sorted(data.iteritems(), key=lambda d: d[1]['results'])))
 
@@ -794,6 +780,11 @@ def table_geo_comparison_rowcount(table_id):
 
 # Example: /1.0/data/compare/acs2011_5yr/B01001?sumlevel=050&within=04000US53
 @app.route("/1.0/data/compare/<acs>/<table_id>")
+@qwarg_validate({
+    'within': {'valid': NonemptyString(), 'required': True},
+    'sumlevel': {'valid': OneOf(SUMLEV_NAMES), 'required': True},
+    'geom': {'valid': Bool(), 'default': False}
+})
 @crossdomain(origin='*')
 def data_compare_geographies_within_parent(acs, table_id):
     # make sure we support the requested ACS release
@@ -801,14 +792,8 @@ def data_compare_geographies_within_parent(acs, table_id):
         abort(404, 'ACS %s is not supported.' % acs)
     g.cur.execute("SET search_path=%s,public;", [acs])
 
-    # make sure we've been given parent and child vars
-    parent_geoid = request.args.get('within', '')
-    if not parent_geoid:
-        abort(400, 'Must include the geoID for a parent geography.')
-
-    child_summary_level = request.args.get('sumlevel', '')
-    if not child_summary_level:
-        abort(400, 'Must include a summary level to compare.')
+    parent_geoid = request.qwargs.within
+    child_summary_level = request.qwargs.sumlevel
 
     # create the containers we need for our response
     data = OrderedDict([
@@ -884,7 +869,7 @@ def data_compare_geographies_within_parent(acs, table_id):
         data['child_geographies'][geoheader['geoid']]['data'] = {}
 
     # get geographical data if requested
-    geometries = request.args.get('geom', '')
+    geometries = request.qwargs.geom
     child_geodata_map = {}
     if geometries:
         # get the parent geometry and add to API response
