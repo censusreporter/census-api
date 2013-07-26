@@ -194,7 +194,7 @@ def find_geoid(geoid, acs=None):
 
 @app.before_request
 def before_request():
-    conn = psycopg2.connect(database='postgres', user='census', password='censuspassword', host='localhost')
+    conn = psycopg2.connect(database='postgres', user='census', password='censuspassword', host='ec2-75-101-221-29.compute-1.amazonaws.com')
     g.cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
 
@@ -838,19 +838,20 @@ def table_geo_comparison_rowcount(table_id):
     if not parent_geoid:
         abort(400, 'Must include the geoID for a parent geography.')
 
-    data = OrderedDict()
+    data = []
 
     releases = sorted([name for name in ACS_NAMES if year in name])
     for acs in releases:
-        data[acs] = OrderedDict()
-        data[acs]['release_name'] = ACS_NAMES[acs]['name']
+        release = OrderedDict()
+        release['release_name'] = ACS_NAMES[acs]['name']
+        release['release_slug'] = acs
 
         g.cur.execute("SELECT * FROM %s.census_table_metadata WHERE table_id=%%s;" % acs, [table_id])
         table_record = g.cur.fetchone()
         if table_record:
             validated_table_id = table_record['table_id']
-            data[acs]['table_name'] = table_record['table_title']
-            data[acs]['table_universe'] = table_record['universe']
+            release['table_name'] = table_record['table_title']
+            release['table_universe'] = table_record['universe']
 
             geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid.split('US')[1])
             g.cur.execute("SELECT geoid,stusab,logrecno,name FROM %s.geoheader WHERE geoid LIKE %%s ORDER BY geoid;" % acs, [geoid_prefix])
@@ -860,10 +861,12 @@ def table_geo_comparison_rowcount(table_id):
             g.cur.execute("SELECT COUNT(*) FROM %s.%s WHERE %s" % (acs, validated_table_id, where))
             acs_rowcount = g.cur.fetchone()
 
-            data[acs]['results'] = acs_rowcount['count']
+            release['results'] = acs_rowcount['count']
             
+        data.append(release)
+        
     # order API response by release with most results
-    data = OrderedDict(reversed(sorted(data.iteritems(), key=lambda d: d[1]['results'])))
+    data = sorted(data, key=lambda d: d['results'], reverse=True)
 
     return json.dumps(data)
 
