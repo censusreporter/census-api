@@ -761,8 +761,8 @@ def data_compare_geographies_within_parent(acs, table_id):
 
     # add some basic metadata about the comparison and data table requested.
     data['comparison']['child_summary_level'] = child_summary_level
-    data['comparison']['child_geography_name'] = SUMLEV_NAMES.get(child_summary_level, {}).get('name','')
-    data['comparison']['child_geography_name_plural'] = SUMLEV_NAMES.get(child_summary_level, {}).get('plural','')
+    data['comparison']['child_geography_name'] = SUMLEV_NAMES.get(child_summary_level, {}).get('name')
+    data['comparison']['child_geography_name_plural'] = SUMLEV_NAMES.get(child_summary_level, {}).get('plural')
 
     g.cur.execute("SELECT * FROM census_table_metadata WHERE table_id=%s;", [table_id])
     table_metadata = g.cur.fetchall()
@@ -797,7 +797,7 @@ def data_compare_geographies_within_parent(acs, table_id):
     data['parent_geography']['geography']['summary_level'] = parent_sumlevel
 
     data['comparison']['parent_summary_level'] = parent_sumlevel
-    data['comparison']['parent_geography_name'] = SUMLEV_NAMES.get(parent_sumlevel, {}).get('name','')
+    data['comparison']['parent_geography_name'] = SUMLEV_NAMES.get(parent_sumlevel, {}).get('name')
     data['comparison']['parent_name'] = parent_geography['name']
     data['comparison']['parent_geoid'] = parent_geoid
 
