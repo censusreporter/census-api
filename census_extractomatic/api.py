@@ -60,26 +60,26 @@ SUMLEV_NAMES = {
     "010": {"name": "nation", "plural": ""},
     "020": {"name": "region", "plural": "regions"},
     "030": {"name": "division", "plural": "divisions"},
-    "040": {"name": "state", "plural": "states"},
-    "050": {"name": "county", "plural": "counties"},
-    "101": {"name": "block", "plural": "blocks"},
-    "140": {"name": "census tract", "plural": "census tracts"},
-    "150": {"name": "block group", "plural": "block groups"},
-    "160": {"name": "place", "plural": "places"},
-    "300": {"name": "MSA", "plural": "MSAs"},
-    "310": {"name": "CBSA", "plural": "CBSAs"},
-    "350": {"name": "NECTA", "plural": "NECTAs"},
-    "400": {"name": "urban area", "plural": "urban areas"},
-    "500": {"name": "congressional district", "plural": "congressional districts"},
-    "610": {"name": "state senate district", "plural": "state senate districts"},
-    "620": {"name": "state house district", "plural": "state house districts"},
-    "700": {"name": "VTD", "plural": "VTDs"},
-    "795": {"name": "PUMA", "plural": "PUMAs"},
+    "040": {"name": "state", "plural": "states", "tiger_table": "state"},
+    "050": {"name": "county", "plural": "counties", "tiger_table": "county"},
+    "101": {"name": "block", "plural": "blocks", "tiger_table": "tabblock"},
+    "140": {"name": "census tract", "plural": "census tracts", "tiger_table": "tract"},
+    "150": {"name": "block group", "plural": "block groups", "tiger_table": "bg"},
+    "160": {"name": "place", "plural": "places", "tiger_table": "place"},
+    "300": {"name": "MSA", "plural": "MSAs", "tiger_table": "metdiv"},
+    "310": {"name": "CBSA", "plural": "CBSAs", "tiger_table": "cbsa"},
+    "350": {"name": "NECTA", "plural": "NECTAs", "tiger_table": "necta"},
+    "400": {"name": "urban area", "plural": "urban areas", "tiger_table": "uac"},
+    "500": {"name": "congressional district", "plural": "congressional districts", "tiger_table": "cd"},
+    "610": {"name": "state senate district", "plural": "state senate districts", "tiger_table": "sldu"},
+    "620": {"name": "state house district", "plural": "state house districts", "tiger_table": "sldl"},
+    "700": {"name": "VTD", "plural": "VTDs", "tiger_table": "vtd"},
+    "795": {"name": "PUMA", "plural": "PUMAs", "tiger_table": "puma"},
     "850": {"name": "ZCTA3", "plural": "ZCTA3s"},
-    "860": {"name": "ZCTA5", "plural": "ZCTA5s"},
-    "950": {"name": "elementary school district", "plural": "elementary school districts"},
-    "960": {"name": "secondary school district", "plural": "secondary school districts"},
-    "970": {"name": "unified school district", "plural": "unified school districts"},
+    "860": {"name": "ZCTA5", "plural": "ZCTA5s", "tiger_table": "zcta5"},
+    "950": {"name": "elementary school district", "plural": "elementary school districts", "tiger_table": "elsd"},
+    "960": {"name": "secondary school district", "plural": "secondary school districts", "tiger_table": "scsd"},
+    "970": {"name": "unified school district", "plural": "unified school districts", "tiger_table": "unsd"},
 }
 
 def crossdomain(origin=None, methods=None, headers=None,
@@ -862,8 +862,20 @@ def data_compare_geographies_within_parent(acs, table_id):
     data['comparison']['parent_geoid'] = parent_geoid
 
     # get geoheader data for children at the requested summary level
-    geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid.split('US')[1])
-    g.cur.execute("SELECT geoid,stusab,logrecno,name FROM geoheader WHERE geoid LIKE %s ORDER BY geoid;", [geoid_prefix])
+    child_geoids = []
+    tables = {
+        'child': SUMLEV_NAMES.get(child_summary_level, {}).get('tiger_table'),
+        'parent': SUMLEV_NAMES.get(parent_sumlevel, {}).get('tiger_table')
+    }
+    parent_tiger_geoid = parent_geoid.split('US')[1]
+    g.cur.execute("""SELECT tiger2012.%(child)s.geoid
+        FROM tiger2012.%(child)s
+        JOIN tiger2012.%(parent)s ON ST_Intersects(tiger2012.%(parent)s.the_geom, tiger2012.%(child)s.the_geom)
+        WHERE tiger2012.%(parent)s.geoid=%%s;""" % tables, [parent_tiger_geoid])
+    for row in g.cur:
+        child_geoids.append('%s00US%s' % (child_summary_level, row['geoid']))
+
+    g.cur.execute("SELECT geoid,stusab,logrecno,name FROM geoheader WHERE geoid IN %s ORDER BY geoid;", [tuple(child_geoids)])
     child_geoheaders = g.cur.fetchall()
     # and get geoheader for parent, so we can get its data too
     g.cur.execute("SELECT geoid,stusab,logrecno,name FROM geoheader WHERE geoid=%s;", [parent_geoid])
