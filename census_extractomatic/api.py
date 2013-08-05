@@ -755,7 +755,7 @@ def get_child_geoids_by_gis(parent_geoid, child_summary_level):
 
 
 def get_child_geoids_by_prefix(parent_geoid, child_summary_level):
-    child_geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid)
+    child_geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid.split('US')[1])
 
     g.cur.execute("SELECT geoid,stusab,logrecno,name FROM geoheader WHERE geoid LIKE %s ORDER BY geoid;", [child_geoid_prefix])
     return g.cur.fetchall()
