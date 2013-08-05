@@ -836,9 +836,6 @@ def data_compare_geographies_within_parent(acs, table_id):
     else:
         child_geoheaders = get_child_geoids_by_gis(parent_geoid, child_summary_level)
 
-    g.cur.execute("SELECT geoid,stusab,logrecno,name FROM geoheader WHERE geoid=%s;", [parent_geoid])
-    parent_geoheader = g.cur.fetchone()
-
     # start compiling child data for our response
     child_geoid_map = dict()
     child_geoid_list = list()
@@ -874,7 +871,7 @@ def data_compare_geographies_within_parent(acs, table_id):
 
     # make the where clause and query the requested census data table
     # get parent data first...
-    g.cur.execute("SELECT * FROM %s WHERE (stusab=%%s AND logrecno=%%s)" % (validated_table_id), [parent_geoheader['stusab'], parent_geoheader['logrecno']])
+    g.cur.execute("SELECT * FROM %s WHERE (stusab=%%s AND logrecno=%%s)" % (validated_table_id), [parent_geography['stusab'], parent_geography['logrecno']])
     parent_data = g.cur.fetchone()
     stusab = parent_data.pop('stusab')
     logrecno = parent_data.pop('logrecno')
