@@ -3,7 +3,7 @@ from __future__ import division
 
 from flask import Flask
 from flask import abort, request, g
-from flask import make_response, request, current_app
+from flask import make_response, current_app
 from functools import update_wrapper
 import json
 import psycopg2
@@ -736,6 +736,7 @@ def table_geo_comparison_rowcount(table_id):
 
 # get geoheader data for children at the requested summary level
 def get_child_geoids_by_gis(parent_geoid, child_summary_level):
+    parent_sumlevel = parent_geoid[0:3]
     child_geoids = []
     tables = {
         'child': SUMLEV_NAMES.get(child_summary_level, {}).get('tiger_table'),
@@ -757,7 +758,7 @@ def get_child_geoids_by_prefix(parent_geoid, child_summary_level):
     child_geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid)
 
     g.cur.execute("SELECT geoid,stusab,logrecno,name FROM geoheader WHERE geoid LIKE %s ORDER BY geoid;", [child_geoid_prefix])
-    child_geoheaders = g.cur.fetchall()
+    return g.cur.fetchall()
 
 # Example: /1.0/data/compare/acs2011_5yr/B01001?sumlevel=050&within=04000US53
 @app.route("/1.0/data/compare/<acs>/<table_id>")
