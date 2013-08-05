@@ -734,6 +734,31 @@ def table_geo_comparison_rowcount(table_id):
 
 ## DATA RETRIEVAL ##
 
+# get geoheader data for children at the requested summary level
+def get_child_geoids_by_gis(parent_geoid, child_summary_level):
+    child_geoids = []
+    tables = {
+        'child': SUMLEV_NAMES.get(child_summary_level, {}).get('tiger_table'),
+        'parent': SUMLEV_NAMES.get(parent_sumlevel, {}).get('tiger_table')
+    }
+    parent_tiger_geoid = parent_geoid.split('US')[1]
+    g.cur.execute("""SELECT tiger2012.%(child)s.geoid
+        FROM tiger2012.%(child)s
+        JOIN tiger2012.%(parent)s ON ST_Intersects(tiger2012.%(parent)s.the_geom, tiger2012.%(child)s.the_geom)
+        WHERE tiger2012.%(parent)s.geoid=%%s;""" % tables, [parent_tiger_geoid])
+
+    child_geoids = ['%s00US%s' % (child_summary_level, r['geoid']) for r in g.cur]
+
+    g.cur.execute("SELECT geoid,stusab,logrecno,name FROM geoheader WHERE geoid IN %s ORDER BY geoid;", [tuple(child_geoids)])
+    return g.cur.fetchall()
+
+
+def get_child_geoids_by_prefix(parent_geoid, child_summary_level):
+    child_geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid)
+
+    g.cur.execute("SELECT geoid,stusab,logrecno,name FROM geoheader WHERE geoid LIKE %s ORDER BY geoid;", [child_geoid_prefix])
+    child_geoheaders = g.cur.fetchall()
+
 # Example: /1.0/data/compare/acs2011_5yr/B01001?sumlevel=050&within=04000US53
 @app.route("/1.0/data/compare/<acs>/<table_id>")
 @qwarg_validate({
@@ -801,23 +826,15 @@ def data_compare_geographies_within_parent(acs, table_id):
     data['comparison']['parent_name'] = parent_geography['name']
     data['comparison']['parent_geoid'] = parent_geoid
 
-    # get geoheader data for children at the requested summary level
-    child_geoids = []
-    tables = {
-        'child': SUMLEV_NAMES.get(child_summary_level, {}).get('tiger_table'),
-        'parent': SUMLEV_NAMES.get(parent_sumlevel, {}).get('tiger_table')
-    }
-    parent_tiger_geoid = parent_geoid.split('US')[1]
-    g.cur.execute("""SELECT tiger2012.%(child)s.geoid
-        FROM tiger2012.%(child)s
-        JOIN tiger2012.%(parent)s ON ST_Intersects(tiger2012.%(parent)s.the_geom, tiger2012.%(child)s.the_geom)
-        WHERE tiger2012.%(parent)s.geoid=%%s;""" % tables, [parent_tiger_geoid])
-    for row in g.cur:
-        child_geoids.append('%s00US%s' % (child_summary_level, row['geoid']))
+    if parent_sumlevel in ('010', '020', '030', '040', '050', '140', '150') and child_summary_level in ('020', '030', '040', '050', '140', '150'):
+        # nation - region - division - state - county - tract - block group line
+        child_geoheaders = get_child_geoids_by_prefix(parent_geoid, child_summary_level)
+    elif parent_sumlevel == '040' and child_summary_level in ('500', '610', '620', '950', '960', '970'):
+        # Parent is 'state', child is school or congressional districts
+        child_geoheaders = get_child_geoids_by_prefix(parent_geoid, child_summary_level)
+    else:
+        child_geoheaders = get_child_geoids_by_gis(parent_geoid, child_summary_level)
 
-    g.cur.execute("SELECT geoid,stusab,logrecno,name FROM geoheader WHERE geoid IN %s ORDER BY geoid;", [tuple(child_geoids)])
-    child_geoheaders = g.cur.fetchall()
-    # and get geoheader for parent, so we can get its data too
     g.cur.execute("SELECT geoid,stusab,logrecno,name FROM geoheader WHERE geoid=%s;", [parent_geoid])
     parent_geoheader = g.cur.fetchone()
 
