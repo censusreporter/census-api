@@ -894,7 +894,7 @@ def data_compare_geographies_within_parent(acs, table_id):
 
         column_data = []
         for (k, v) in sorted(record.items(), key=lambda tup: tup[0]):
-            column_data.append((k, v))
+            column_data.append((k.upper(), v))
         data['child_geographies'][child_geoid]['data'] = OrderedDict(column_data)
 
         if child_geodata_map:
