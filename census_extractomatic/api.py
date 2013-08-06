@@ -877,7 +877,7 @@ def data_compare_geographies_within_parent(acs, table_id):
     logrecno = parent_data.pop('logrecno')
     column_data = []
     for (k, v) in sorted(parent_data.items(), key=lambda tup: tup[0]):
-        column_data.append((k, v))
+        column_data.append((k.upper(), v))
     data['parent_geography']['data'] = OrderedDict(column_data)
 
     # ... and then children so we can loop through with cursor
