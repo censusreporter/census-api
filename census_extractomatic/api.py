@@ -335,10 +335,10 @@ def geo_profile(acs, state, logrecno):
     race_dict['percent_asian'] = build_item('b02001', 'Total population', 'Asian', default_data_years, data,
                                         lambda data: maybe_percent(data['b02001005'], data['b02001001']))
 
-    race_dict['percent_other'] = build_item('b02001', 'Total population', 'Islander', default_data_years, data,
+    race_dict['percent_native_islander'] = build_item('b02001', 'Total population', 'Islander', default_data_years, data,
                                         lambda data: maybe_percent(data['b02001006'], data['b02001001']))
 
-    race_dict['percent_native_islander'] = build_item('b02001', 'Total population', 'Other race', default_data_years, data,
+    race_dict['percent_other'] = build_item('b02001', 'Total population', 'Other race', default_data_years, data,
                                         lambda data: maybe_percent(data['b02001007'], data['b02001001']))
 
     race_dict['percent_two_or_more'] = build_item('b02001', 'Total population', 'Two+ races', default_data_years, data,
