@@ -3,7 +3,7 @@ from __future__ import division
 
 from flask import Flask
 from flask import abort, request, g
-from flask import make_response, request, current_app
+from flask import make_response, current_app
 from functools import update_wrapper
 import json
 import psycopg2
@@ -60,26 +60,26 @@ SUMLEV_NAMES = {
     "010": {"name": "nation", "plural": ""},
     "020": {"name": "region", "plural": "regions"},
     "030": {"name": "division", "plural": "divisions"},
-    "040": {"name": "state", "plural": "states"},
-    "050": {"name": "county", "plural": "counties"},
-    "101": {"name": "block", "plural": "blocks"},
-    "140": {"name": "census tract", "plural": "census tracts"},
-    "150": {"name": "block group", "plural": "block groups"},
-    "160": {"name": "place", "plural": "places"},
-    "300": {"name": "MSA", "plural": "MSAs"},
-    "310": {"name": "CBSA", "plural": "CBSAs"},
-    "350": {"name": "NECTA", "plural": "NECTAs"},
-    "400": {"name": "urban area", "plural": "urban areas"},
-    "500": {"name": "congressional district", "plural": "congressional districts"},
-    "610": {"name": "state senate district", "plural": "state senate districts"},
-    "620": {"name": "state house district", "plural": "state house districts"},
-    "700": {"name": "VTD", "plural": "VTDs"},
-    "795": {"name": "PUMA", "plural": "PUMAs"},
+    "040": {"name": "state", "plural": "states", "tiger_table": "state"},
+    "050": {"name": "county", "plural": "counties", "tiger_table": "county"},
+    "101": {"name": "block", "plural": "blocks", "tiger_table": "tabblock"},
+    "140": {"name": "census tract", "plural": "census tracts", "tiger_table": "tract"},
+    "150": {"name": "block group", "plural": "block groups", "tiger_table": "bg"},
+    "160": {"name": "place", "plural": "places", "tiger_table": "place"},
+    "300": {"name": "MSA", "plural": "MSAs", "tiger_table": "metdiv"},
+    "310": {"name": "CBSA", "plural": "CBSAs", "tiger_table": "cbsa"},
+    "350": {"name": "NECTA", "plural": "NECTAs", "tiger_table": "necta"},
+    "400": {"name": "urban area", "plural": "urban areas", "tiger_table": "uac"},
+    "500": {"name": "congressional district", "plural": "congressional districts", "tiger_table": "cd"},
+    "610": {"name": "state senate district", "plural": "state senate districts", "tiger_table": "sldu"},
+    "620": {"name": "state house district", "plural": "state house districts", "tiger_table": "sldl"},
+    "700": {"name": "VTD", "plural": "VTDs", "tiger_table": "vtd"},
+    "795": {"name": "PUMA", "plural": "PUMAs", "tiger_table": "puma"},
     "850": {"name": "ZCTA3", "plural": "ZCTA3s"},
-    "860": {"name": "ZCTA5", "plural": "ZCTA5s"},
-    "950": {"name": "elementary school district", "plural": "elementary school districts"},
-    "960": {"name": "secondary school district", "plural": "secondary school districts"},
-    "970": {"name": "unified school district", "plural": "unified school districts"},
+    "860": {"name": "ZCTA5", "plural": "ZCTA5s", "tiger_table": "zcta5"},
+    "950": {"name": "elementary school district", "plural": "elementary school districts", "tiger_table": "elsd"},
+    "960": {"name": "secondary school district", "plural": "secondary school districts", "tiger_table": "scsd"},
+    "970": {"name": "unified school district", "plural": "unified school districts", "tiger_table": "unsd"},
 }
 
 def crossdomain(origin=None, methods=None, headers=None,
@@ -520,66 +520,6 @@ def latest_geo_profile(geoid):
     return geo_profile(acs, state, logrecno)
 
 
-@app.route("/1.0/<acs>/<table>")
-@qwarg_validate({
-    'geoids': {'valid': StringList(), 'required': True},
-    'sumlevel': {'valid': OneOf(SUMLEV_NAMES), 'required': True}
-})
-def table_details(acs, table):
-    if acs not in allowed_acs:
-        abort(404, 'ACS %s is not supported.' % acs)
-
-    g.cur.execute("SET search_path=%s", [acs])
-
-    geoids = tuple(request.qwargs.geoids)
-    if not geoids:
-        abort(400, 'Must include at least one geoid separated by commas.')
-
-    # If they specify a sumlevel, then we look for the geographies "underneath"
-    # the specified geoids that sit at the specified sumlevel
-    child_summary_level = request.qwargs.sumlevel
-    if child_summary_level:
-        # A hacky way to represent the state-county-town geography relationship line
-        if child_summary_level not in ('050', '060'):
-            abort(400, 'Only support child sumlevel or 50 or 60 for now.')
-
-        if len(geoids) > 1:
-            abort(400, 'Only support one parent geoid for now.')
-
-        child_summary_level = int(child_summary_level)
-
-        desired_geoid_prefix = '%03d00US%s%%' % (child_summary_level, geoids[0][7:])
-
-        g.cur.execute("SELECT geoid,stusab,logrecno FROM geoheader WHERE geoid LIKE %s", [desired_geoid_prefix])
-        geoids = g.cur.fetchall()
-    else:
-        # Find the logrecno for the geoids they asked for
-        g.cur.execute("SELECT geoid,stusab,logrecno FROM geoheader WHERE geoid IN %s", [geoids, ])
-        geoids = g.cur.fetchall()
-
-    geoid_mapping = dict()
-    for r in geoids:
-        geoid_mapping[(r['stusab'], r['logrecno'])] = r['geoid']
-
-    where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (r['stusab'], r['logrecno']) for r in geoids])
-
-    # Query the table they asked for using the geometries they asked for
-    data = dict()
-    g.cur.execute("SELECT * FROM %s WHERE %s" % (table, where))
-    for r in g.cur:
-        stusab = r.pop('stusab')
-        logrecno = r.pop('logrecno')
-
-        geoid = geoid_mapping[(stusab, logrecno)]
-
-        column_data = []
-        for (k, v) in sorted(r.items(), key=lambda tup: tup[0]):
-            column_data.append((k, v))
-        data[geoid] = OrderedDict(column_data)
-
-    return json.dumps(data)
-
-
 ## GEO LOOKUPS ##
 
 # Example: /1.0/geo/search?q=spok
@@ -794,6 +734,32 @@ def table_geo_comparison_rowcount(table_id):
 
 ## DATA RETRIEVAL ##
 
+# get geoheader data for children at the requested summary level
+def get_child_geoids_by_gis(parent_geoid, child_summary_level):
+    parent_sumlevel = parent_geoid[0:3]
+    child_geoids = []
+    tables = {
+        'child': SUMLEV_NAMES.get(child_summary_level, {}).get('tiger_table'),
+        'parent': SUMLEV_NAMES.get(parent_sumlevel, {}).get('tiger_table')
+    }
+    parent_tiger_geoid = parent_geoid.split('US')[1]
+    g.cur.execute("""SELECT tiger2012.%(child)s.geoid
+        FROM tiger2012.%(child)s
+        JOIN tiger2012.%(parent)s ON ST_Intersects(tiger2012.%(parent)s.the_geom, tiger2012.%(child)s.the_geom)
+        WHERE tiger2012.%(parent)s.geoid=%%s;""" % tables, [parent_tiger_geoid])
+
+    child_geoids = ['%s00US%s' % (child_summary_level, r['geoid']) for r in g.cur]
+
+    g.cur.execute("SELECT geoid,stusab,logrecno,name FROM geoheader WHERE geoid IN %s ORDER BY geoid;", [tuple(child_geoids)])
+    return g.cur.fetchall()
+
+
+def get_child_geoids_by_prefix(parent_geoid, child_summary_level):
+    child_geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid.split('US')[1])
+
+    g.cur.execute("SELECT geoid,stusab,logrecno,name FROM geoheader WHERE geoid LIKE %s ORDER BY geoid;", [child_geoid_prefix])
+    return g.cur.fetchall()
+
 # Example: /1.0/data/compare/acs2011_5yr/B01001?sumlevel=050&within=04000US53
 @app.route("/1.0/data/compare/<acs>/<table_id>")
 @qwarg_validate({
@@ -821,8 +787,8 @@ def data_compare_geographies_within_parent(acs, table_id):
 
     # add some basic metadata about the comparison and data table requested.
     data['comparison']['child_summary_level'] = child_summary_level
-    data['comparison']['child_geography_name'] = SUMLEV_NAMES.get(child_summary_level, {}).get('name','')
-    data['comparison']['child_geography_name_plural'] = SUMLEV_NAMES.get(child_summary_level, {}).get('plural','')
+    data['comparison']['child_geography_name'] = SUMLEV_NAMES.get(child_summary_level, {}).get('name')
+    data['comparison']['child_geography_name_plural'] = SUMLEV_NAMES.get(child_summary_level, {}).get('plural')
 
     g.cur.execute("SELECT * FROM census_table_metadata WHERE table_id=%s ORDER BY column_id;", [table_id])
     table_metadata = g.cur.fetchall()
@@ -857,17 +823,18 @@ def data_compare_geographies_within_parent(acs, table_id):
     data['parent_geography']['geography']['summary_level'] = parent_sumlevel
 
     data['comparison']['parent_summary_level'] = parent_sumlevel
-    data['comparison']['parent_geography_name'] = SUMLEV_NAMES.get(parent_sumlevel, {}).get('name','')
+    data['comparison']['parent_geography_name'] = SUMLEV_NAMES.get(parent_sumlevel, {}).get('name')
     data['comparison']['parent_name'] = parent_geography['name']
     data['comparison']['parent_geoid'] = parent_geoid
 
-    # get geoheader data for children at the requested summary level
-    geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid.split('US')[1])
-    g.cur.execute("SELECT geoid,stusab,logrecno,name FROM geoheader WHERE geoid LIKE %s ORDER BY geoid;", [geoid_prefix])
-    child_geoheaders = g.cur.fetchall()
-    # and get geoheader for parent, so we can get its data too
-    g.cur.execute("SELECT geoid,stusab,logrecno,name FROM geoheader WHERE geoid=%s;", [parent_geoid])
-    parent_geoheader = g.cur.fetchone()
+    if parent_sumlevel in ('010', '020', '030', '040', '050', '140', '150') and child_summary_level in ('020', '030', '040', '050', '140', '150'):
+        # nation - region - division - state - county - tract - block group line
+        child_geoheaders = get_child_geoids_by_prefix(parent_geoid, child_summary_level)
+    elif parent_sumlevel == '040' and child_summary_level in ('500', '610', '620', '950', '960', '970'):
+        # Parent is 'state', child is school or congressional districts
+        child_geoheaders = get_child_geoids_by_prefix(parent_geoid, child_summary_level)
+    else:
+        child_geoheaders = get_child_geoids_by_gis(parent_geoid, child_summary_level)
 
     # start compiling child data for our response
     child_geoid_map = dict()
@@ -904,7 +871,7 @@ def data_compare_geographies_within_parent(acs, table_id):
 
     # make the where clause and query the requested census data table
     # get parent data first...
-    g.cur.execute("SELECT * FROM %s WHERE (stusab=%%s AND logrecno=%%s)" % (validated_table_id), [parent_geoheader['stusab'], parent_geoheader['logrecno']])
+    g.cur.execute("SELECT * FROM %s WHERE (stusab=%%s AND logrecno=%%s)" % (validated_table_id), [parent_geography['stusab'], parent_geography['logrecno']])
     parent_data = g.cur.fetchone()
     stusab = parent_data.pop('stusab')
     logrecno = parent_data.pop('logrecno')
