@@ -824,7 +824,7 @@ def data_compare_geographies_within_parent(acs, table_id):
     data['comparison']['child_geography_name'] = SUMLEV_NAMES.get(child_summary_level, {}).get('name','')
     data['comparison']['child_geography_name_plural'] = SUMLEV_NAMES.get(child_summary_level, {}).get('plural','')
 
-    g.cur.execute("SELECT * FROM census_table_metadata WHERE table_id=%s;", [table_id])
+    g.cur.execute("SELECT * FROM census_table_metadata WHERE table_id=%s ORDER BY column_id;", [table_id])
     table_metadata = g.cur.fetchall()
     validated_table_id = table_metadata[0]['table_id']
 
