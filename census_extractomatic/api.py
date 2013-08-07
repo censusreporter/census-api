@@ -906,7 +906,7 @@ def data_compare_geographies_within_parent(acs, table_id):
     data['comparison']['parent_name'] = parent_geography['name']
     data['comparison']['parent_geoid'] = parent_geoid
 
-    if parent_sumlevel in PARENT_CHILD_CONTAINMENT and child_sumlevel in PARENT_CHILD_CONTAINMENT[parent_sumlevel]:
+    if parent_sumlevel in PARENT_CHILD_CONTAINMENT and child_summary_level in PARENT_CHILD_CONTAINMENT[parent_sumlevel]:
         child_geoheaders = get_child_geoids_by_prefix(parent_geoid, child_summary_level)
     else:
         child_geoheaders = get_child_geoids_by_gis(parent_geoid, child_summary_level)
