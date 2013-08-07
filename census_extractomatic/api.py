@@ -902,8 +902,8 @@ def data_compare_geographies_within_parent(acs, table_id):
     if parent_sumlevel in ('010', '020', '030', '040', '050', '140', '150') and child_summary_level in ('020', '030', '040', '050', '140', '150'):
         # nation - region - division - state - county - tract - block group line
         child_geoheaders = get_child_geoids_by_prefix(parent_geoid, child_summary_level)
-    elif parent_sumlevel == '040' and child_summary_level in ('500', '610', '620', '950', '960', '970'):
-        # Parent is 'state', child is school or congressional districts
+    elif parent_sumlevel == '040' and child_summary_level in ('160', '500', '610', '620', '950', '960', '970'):
+        # Parent is 'state', child is CDP, school or congressional districts
         child_geoheaders = get_child_geoids_by_prefix(parent_geoid, child_summary_level)
     else:
         child_geoheaders = get_child_geoids_by_gis(parent_geoid, child_summary_level)
