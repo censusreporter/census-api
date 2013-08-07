@@ -73,7 +73,7 @@ SUMLEV_NAMES = {
     "140": {"name": "census tract", "plural": "census tracts", "tiger_table": "tract"},
     "150": {"name": "block group", "plural": "block groups", "tiger_table": "bg"},
     "160": {"name": "place", "plural": "places", "tiger_table": "place"},
-    "250": {"name": "native area", "plural": "native areas", "tiger_table": "aiannh"}
+    "250": {"name": "native area", "plural": "native areas", "tiger_table": "aiannh"},
     "300": {"name": "MSA", "plural": "MSAs", "tiger_table": "metdiv"},
     "310": {"name": "CBSA", "plural": "CBSAs", "tiger_table": "cbsa"},
     "350": {"name": "NECTA", "plural": "NECTAs", "tiger_table": "necta"},
