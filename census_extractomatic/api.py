@@ -787,6 +787,7 @@ def table_geo_comparison_rowcount(table_id):
 
     releases = sorted([name for name in ACS_NAMES if year in name])
     for acs in releases:
+        g.cur.execute("SET search_path=%s,public;", [acs])
         release = OrderedDict()
         release['release_name'] = ACS_NAMES[acs]['name']
         release['release_slug'] = acs
@@ -812,7 +813,6 @@ def table_geo_comparison_rowcount(table_id):
         data.append(release)
 
     return json.dumps(data)
-
 
 
 ## DATA RETRIEVAL ##
