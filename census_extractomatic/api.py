@@ -82,6 +82,65 @@ SUMLEV_NAMES = {
     "970": {"name": "unified school district", "plural": "unified school districts", "tiger_table": "unsd"},
 }
 
+state_fips = {
+    "01": "Alabama",
+    "02": "Alaska",
+    "04": "Arizona",
+    "05": "Arkansas",
+    "06": "California",
+    "08": "Colorado",
+    "09": "Connecticut",
+    "10": "Delaware",
+    "11": "District of Columbia",
+    "12": "Florida",
+    "13": "Georgia",
+    "15": "Hawaii",
+    "16": "Idaho",
+    "17": "Illinois",
+    "18": "Indiana",
+    "19": "Iowa",
+    "20": "Kansas",
+    "21": "Kentucky",
+    "22": "Louisiana",
+    "23": "Maine",
+    "24": "Maryland",
+    "25": "Massachusetts",
+    "26": "Michigan",
+    "27": "Minnesota",
+    "28": "Mississippi",
+    "29": "Missouri",
+    "30": "Montana",
+    "31": "Nebraska",
+    "32": "Nevada",
+    "33": "New Hampshire",
+    "34": "New Jersey",
+    "35": "New Mexico",
+    "36": "New York",
+    "37": "North Carolina",
+    "38": "North Dakota",
+    "39": "Ohio",
+    "40": "Oklahoma",
+    "41": "Oregon",
+    "42": "Pennsylvania",
+    "44": "Rhode Island",
+    "45": "South Carolina",
+    "46": "South Dakota",
+    "47": "Tennessee",
+    "48": "Texas",
+    "49": "Utah",
+    "50": "Vermont",
+    "51": "Virginia",
+    "53": "Washington",
+    "54": "West Virginia",
+    "55": "Wisconsin",
+    "56": "Wyoming",
+    "60": "American Samoa",
+    "66": "Guam",
+    "69": "Commonwealth of the Northern Mariana Islands",
+    "72": "Puerto Rico",
+    "78": "United States Virgin Islands"
+}
+
 def crossdomain(origin=None, methods=None, headers=None,
                 max_age=21600, attach_to_all=True,
                 automatic_options=True):
@@ -522,6 +581,18 @@ def latest_geo_profile(geoid):
 
 ## GEO LOOKUPS ##
 
+def build_geo_full_name(row):
+    geoid = row['geoid']
+    sumlevel = row['sumlevel']
+    if sumlevel in ('500', '610', '620'):
+        return "%s %s" % (state_fips[geoid[:2]], row['name'])
+    elif sumlevel in ('050', '950', '960', '970', '160'):
+        return "%s, %s" % (row['name'], state_fips[geoid[:2]])
+    elif sumlevel == '860':
+        return "Zip Code: %s" % row['name']
+    else:
+        return row['name']
+
 # Example: /1.0/geo/search?q=spok
 @app.route("/1.0/geo/search")
 @qwarg_validate({
@@ -562,6 +633,7 @@ def geo_search():
 
     for row in g.cur:
         row['full_geoid'] = "%s00US%s" % (row['sumlevel'], row['geoid'])
+        row['full_name'] = build_geo_full_name(row)
         if 'geom' in row:
             row['geom'] = json.loads(row['geom'])
         data.append(row)
