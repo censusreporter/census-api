@@ -602,6 +602,7 @@ def build_geo_full_name(row):
         return row['name']
 
 # Example: /1.0/geo/search?q=spok
+# Example: /1.0/geo/search?q=spok&sumlevs=050,160
 @app.route("/1.0/geo/search")
 @qwarg_validate({
     'lat': {'valid': FloatRange(-90.0, 90.0)},
@@ -780,6 +781,7 @@ def table_geo_comparison_rowcount(table_id):
     year = request.qwargs.year
     child_summary_level = request.qwargs.sumlevel
     parent_geoid = request.qwargs.within
+    parent_sumlevel = parent_geoid[:3]
 
     data = []
 
@@ -796,9 +798,10 @@ def table_geo_comparison_rowcount(table_id):
             release['table_name'] = table_record['table_title']
             release['table_universe'] = table_record['universe']
 
-            geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid.split('US')[1])
-            g.cur.execute("SELECT geoid,stusab,logrecno,name FROM %s.geoheader WHERE geoid LIKE %%s ORDER BY geoid;" % acs, [geoid_prefix])
-            child_geoheaders = g.cur.fetchall()
+            if parent_sumlevel in PARENT_CHILD_CONTAINMENT and child_summary_level in PARENT_CHILD_CONTAINMENT[parent_sumlevel]:
+                child_geoheaders = get_child_geoids_by_prefix(parent_geoid, child_summary_level)
+            else:
+                child_geoheaders = get_child_geoids_by_gis(parent_geoid, child_summary_level)
 
             where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoheaders])
             g.cur.execute("SELECT COUNT(*) FROM %s.%s WHERE %s" % (acs, validated_table_id, where))
