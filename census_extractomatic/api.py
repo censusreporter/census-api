@@ -606,7 +606,7 @@ def build_geo_full_name(row):
     'lat': {'valid': FloatRange(-90.0, 90.0)},
     'lon': {'valid': FloatRange(-180.0, 180.0)},
     'q': {'valid': NonemptyString()},
-    'sumlevels': {'valid': StringList(item_validator=OneOf(SUMLEV_NAMES))},
+    'sumlevs': {'valid': StringList(item_validator=OneOf(SUMLEV_NAMES))},
     'geom': {'valid': Bool()}
 })
 @crossdomain(origin='*')
