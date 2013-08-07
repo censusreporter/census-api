@@ -73,6 +73,7 @@ SUMLEV_NAMES = {
     "140": {"name": "census tract", "plural": "census tracts", "tiger_table": "tract"},
     "150": {"name": "block group", "plural": "block groups", "tiger_table": "bg"},
     "160": {"name": "place", "plural": "places", "tiger_table": "place"},
+    "250": {"name": "native area", "plural": "native areas", "tiger_table": "aiannh"}
     "300": {"name": "MSA", "plural": "MSAs", "tiger_table": "metdiv"},
     "310": {"name": "CBSA", "plural": "CBSAs", "tiger_table": "cbsa"},
     "350": {"name": "NECTA", "plural": "NECTAs", "tiger_table": "necta"},
@@ -632,9 +633,9 @@ def geo_search():
         where_args.append(tuple(sumlevs))
 
     if with_geom:
-        g.cur.execute("SELECT awater,aland,sumlevel,geoid,name,ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geom FROM tiger2012.census_names_simple WHERE %s ORDER BY sumlevel, aland DESC LIMIT 25;" % where, where_args)
+        g.cur.execute("SELECT awater,aland,sumlevel,geoid,name,ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geom FROM tiger2012.census_names WHERE %s ORDER BY sumlevel, aland DESC LIMIT 25;" % where, where_args)
     else:
-        g.cur.execute("SELECT awater,aland,sumlevel,geoid,name FROM tiger2012.census_names_simple WHERE %s ORDER BY sumlevel, aland DESC LIMIT 25;" % where, where_args)
+        g.cur.execute("SELECT awater,aland,sumlevel,geoid,name FROM tiger2012.census_names WHERE %s ORDER BY sumlevel, aland DESC LIMIT 25;" % where, where_args)
 
     data = []
 
