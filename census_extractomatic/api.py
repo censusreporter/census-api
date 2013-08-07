@@ -56,6 +56,13 @@ ACS_NAMES = {
     'acs2007_3yr': {'name': 'ACS 2007 3-year', 'years': '2005-2007'},
 }
 
+PARENT_CHILD_CONTAINMENT = {
+    '040': ['050', '060', '101', '140','150', '160', '500', '610', '620', '950', '960', '970'],
+    '050': ['060', '101', '140', '150'],
+    '140': ['101','150'],
+    '150': ['101'],
+}
+
 SUMLEV_NAMES = {
     "010": {"name": "nation", "plural": ""},
     "020": {"name": "region", "plural": "regions"},
@@ -899,11 +906,7 @@ def data_compare_geographies_within_parent(acs, table_id):
     data['comparison']['parent_name'] = parent_geography['name']
     data['comparison']['parent_geoid'] = parent_geoid
 
-    if parent_sumlevel in ('010', '020', '030', '040', '050', '140', '150') and child_summary_level in ('020', '030', '040', '050', '140', '150'):
-        # nation - region - division - state - county - tract - block group line
-        child_geoheaders = get_child_geoids_by_prefix(parent_geoid, child_summary_level)
-    elif parent_sumlevel == '040' and child_summary_level in ('160', '500', '610', '620', '950', '960', '970'):
-        # Parent is 'state', child is CDP, school or congressional districts
+    if parent_sumlevel in PARENT_CHILD_CONTAINMENT and child_sumlevel in PARENT_CHILD_CONTAINMENT[parent_sumlevel]:
         child_geoheaders = get_child_geoids_by_prefix(parent_geoid, child_summary_level)
     else:
         child_geoheaders = get_child_geoids_by_gis(parent_geoid, child_summary_level)
