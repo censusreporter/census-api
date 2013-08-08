@@ -821,16 +821,11 @@ def table_geo_comparison_rowcount(table_id):
 def get_child_geoids_by_gis(parent_geoid, child_summary_level):
     parent_sumlevel = parent_geoid[0:3]
     child_geoids = []
-    tables = {
-        'child': SUMLEV_NAMES.get(child_summary_level, {}).get('tiger_table'),
-        'parent': SUMLEV_NAMES.get(parent_sumlevel, {}).get('tiger_table')
-    }
     parent_tiger_geoid = parent_geoid.split('US')[1]
-    g.cur.execute("""SELECT tiger2012.%(child)s.geoid
-        FROM tiger2012.%(child)s
-        JOIN tiger2012.%(parent)s ON ST_Intersects(tiger2012.%(parent)s.the_geom, tiger2012.%(child)s.the_geom)
-        WHERE tiger2012.%(parent)s.geoid=%%s;""" % tables, [parent_tiger_geoid])
-
+    g.cur.execute("""SELECT child.geoid
+        FROM tiger2012.census_names parent
+        JOIN tiger2012.census_names child ON ST_Intersects(parent.the_geom, child.the_geom) AND child.sumlevel=%s
+        WHERE parent.geoid=%s AND parent.sumlevel=%s;""", [child_summary_level, parent_tiger_geoid, parent_sumlevel])
     child_geoids = ['%s00US%s' % (child_summary_level, r['geoid']) for r in g.cur]
 
     g.cur.execute("SELECT geoid,stusab,logrecno,name FROM geoheader WHERE geoid IN %s ORDER BY geoid;", [tuple(child_geoids)])
