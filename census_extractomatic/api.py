@@ -803,12 +803,14 @@ def table_geo_comparison_rowcount(table_id):
                 child_geoheaders = get_child_geoids_by_prefix(parent_geoid, child_summary_level)
             else:
                 child_geoheaders = get_child_geoids_by_gis(parent_geoid, child_summary_level)
-
-            where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoheaders])
-            g.cur.execute("SELECT COUNT(*) FROM %s.%s WHERE %s" % (acs, validated_table_id, where))
-            acs_rowcount = g.cur.fetchone()
-
-            release['results'] = acs_rowcount['count']
+                
+            if child_geoheaders:
+                where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoheaders])
+                g.cur.execute("SELECT COUNT(*) FROM %s.%s WHERE %s" % (acs, validated_table_id, where))
+                acs_rowcount = g.cur.fetchone()
+                release['results'] = acs_rowcount['count']
+            else:
+                release['results'] = 0
 
         data.append(release)
 
@@ -954,29 +956,32 @@ def data_compare_geographies_within_parent(acs, table_id):
         column_data.append((k.upper(), v))
     data['parent_geography']['data'] = OrderedDict(column_data)
 
-    # ... and then children so we can loop through with cursor
-    where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoheaders])
-    g.cur.execute("SELECT * FROM %s WHERE %s" % (validated_table_id, where))
-    # store the number of rows returned in comparison object
-    data['comparison']['results'] = g.cur.rowcount
+    if child_geoheaders:
+        # ... and then children so we can loop through with cursor
+        where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoheaders])
+        g.cur.execute("SELECT * FROM %s WHERE %s" % (validated_table_id, where))
+        # store the number of rows returned in comparison object
+        data['comparison']['results'] = g.cur.rowcount
 
-    # grab one row at a time
-    for record in g.cur:
-        stusab = record.pop('stusab')
-        logrecno = record.pop('logrecno')
-        child_geoid = child_geoid_map[(stusab, logrecno)]
+        # grab one row at a time
+        for record in g.cur:
+            stusab = record.pop('stusab')
+            logrecno = record.pop('logrecno')
+            child_geoid = child_geoid_map[(stusab, logrecno)]
 
-        column_data = []
-        for (k, v) in sorted(record.items(), key=lambda tup: tup[0]):
-            column_data.append((k.upper(), v))
-        data['child_geographies'][child_geoid]['data'] = OrderedDict(column_data)
+            column_data = []
+            for (k, v) in sorted(record.items(), key=lambda tup: tup[0]):
+                column_data.append((k.upper(), v))
+            data['child_geographies'][child_geoid]['data'] = OrderedDict(column_data)
 
-        if child_geodata_map:
-            try:
-                data['child_geographies'][child_geoid]['geography']['geometry'] = child_geodata_map[child_geoid.split('US')[1]]
-            except:
-                # we may not have geometries for all sumlevs
-                pass
+            if child_geodata_map:
+                try:
+                    data['child_geographies'][child_geoid]['geography']['geometry'] = child_geodata_map[child_geoid.split('US')[1]]
+                except:
+                    # we may not have geometries for all sumlevs
+                    pass
+    else:
+        data['comparison']['results'] = 0
 
     return json.dumps(data, indent=4, separators=(',', ': '))
 
