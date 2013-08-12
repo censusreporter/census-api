@@ -694,6 +694,7 @@ def format_table_search_result(obj, obj_type):
         'type': obj_type,
         'table_id': obj['table_id'],
         'table_name': obj['table_title'],
+        'simple_table_name': obj['simple_table_title'],
         'topics': obj['topics']
     }
 
