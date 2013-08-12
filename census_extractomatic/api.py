@@ -806,7 +806,7 @@ def table_geo_comparison_rowcount(table_id):
         release['release_name'] = ACS_NAMES[acs]['name']
         release['release_slug'] = acs
 
-        g.cur.execute("SELECT * FROM %s.census_table_metadata WHERE table_id=%%s;" % acs, [table_id])
+        g.cur.execute("SELECT * FROM census_table_metadata WHERE table_id=%s;", [table_id])
         table_record = g.cur.fetchone()
         if table_record:
             validated_table_id = table_record['table_id']
@@ -884,13 +884,13 @@ def data_compare_geographies_within_parent(acs, table_id):
     data['comparison']['child_geography_name'] = SUMLEV_NAMES.get(child_summary_level, {}).get('name')
     data['comparison']['child_geography_name_plural'] = SUMLEV_NAMES.get(child_summary_level, {}).get('plural')
 
-    g.cur.execute("SELECT * FROM census_table_metadata WHERE table_id=%s ORDER BY column_id;", [table_id])
+    g.cur.execute("""SELECT tab.table_id,tab.table_title,tab.universe,col.column_id,col.column_title,col.indent
+        FROM census_column_metadata col
+        LEFT JOIN census_table_metadata tab USING (table_id, sequence_number)
+        WHERE table_id=%s
+        ORDER BY column_id;""", [table_id])
     table_metadata = g.cur.fetchall()
     validated_table_id = table_metadata[0]['table_id']
-
-    # census_table_metadata has fields table_id, sequence_number,
-    # line_number, column_id, subject_area, table_title,
-    # universe, column_title, indent, parent_column_id
 
     # get the basic table record, and add a map of columnID -> column name
     table_record = table_metadata[0]
@@ -957,7 +957,7 @@ def data_compare_geographies_within_parent(acs, table_id):
         # get the child geometries and store for later
         g.cur.execute("SELECT geoid, ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geometry FROM tiger2012.census_names_simple WHERE sumlevel=%s AND geoid IN %s ORDER BY geoid;", [child_summary_level, tuple(child_geoid_list)])
         child_geodata = g.cur.fetchall()
-        child_geodata_map = {record['geoid']: json.loads(record['geometry']) for record in child_geodata}
+        child_geodata_map = dict([(record['geoid'], json.loads(record['geometry'])) for record in child_geodata])
 
     # make the where clause and query the requested census data table
     # get parent data first...
