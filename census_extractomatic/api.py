@@ -694,18 +694,16 @@ def format_table_search_result(obj, obj_type):
         'type': obj_type,
         'table_id': obj['table_id'],
         'table_name': obj['table_title'],
-        #TODO: 'topics': obj['topics'],
+        'topics': obj['topics']
     }
 
     if obj_type == 'table':
         result.update({
             'id': obj['table_id'],
-            'text': 'Table: %s' % obj['table_title'],
         })
     elif obj_type == 'column':
         result.update({
-            'id': '|'.join([obj['table_id'], obj['column_id']]),
-            'text': 'Table with Column: %s in %s' % (obj['column_title'], obj['table_title']),
+            'id': obj['column_id'],
             'column_id': obj['column_id'],
             'column_name': obj['column_title'],
         })
@@ -728,40 +726,55 @@ def table_search():
     acs = request.qwargs.acs
     q = request.qwargs.q
     topics = request.qwargs.topics
-    if not q and not topics:
+    if not (q or topics):
         abort(400, "Must provide a query term or topics for filtering.")
 
-    # prepare search term where clauses
-    if q:
-        q += "%"
-        table_where = "lower(table_title) LIKE lower(%s)"
-        column_where = "lower(column_title) LIKE lower(%s)"
-        where_args = [q]
+    g.cur.execute("SET search_path=%s,public;", [acs])
 
-    # TODO: allow filtering by comma-separated list of topic areas
+    table_where_parts = []
+    table_where_args = []
+    column_where_parts = []
+    column_where_args = []
+
+    if q:
+        # Throw a wildcard on either side of the query
+        q = "%%%s%%" % q
+        table_where_parts.append("lower(table_title) LIKE lower(%s)")
+        table_where_args.append(q)
+        column_where_parts.append("lower(column_title) LIKE lower(%s)")
+        column_where_args.append(q)
+
     if topics:
-        topic_list = unquote(topics).split(',')
-        topic_table_where = "" #TODO - depends on where we put topic data
-        topic_column_where = "" #TODO - depends on where we put topic data
-        if q:
-            table_where = "AND " + topic_table_where
-            column_where = "AND " + topic_column_where
-            where_args = [q, topic_list]
-        else:
-            table_where = topic_table_where
-            column_where = topic_column_where
-            where_args = [topic_list]
+        table_where_parts.append("tabtopics.topic IN %s")
+        table_where_args.append(tuple(topics))
+        column_where_parts.append("tabtopics.topic IN %s")
+        column_where_args.append(tuple(topics))
+
+    if table_where_parts:
+        table_where = ' AND '.join(table_where_parts)
+        column_where = ' AND '.join(column_where_parts)
+    else:
+        table_where = 'TRUE'
+        column_where = 'TRUE'
 
     data = []
-    # retrieve matching tables. TODO: add topics field to query
-    g.cur.execute("SELECT table_id, table_title FROM %s.census_table_metadata WHERE %s;" % (acs, table_where), where_args)
-    tables = g.cur.fetchall()
-    tables_list = [format_table_search_result(table, 'table') for table in list(tables)]
+    # retrieve matching tables.
+    g.cur.execute("""SELECT tab.table_id,tab.table_title,array(SELECT topic
+                        FROM census_table_topics
+                        WHERE census_table_topics.table_id=tab.table_id AND census_table_topics.sequence_number=tab.sequence_number) AS topics
+                     FROM census_table_metadata tab
+                     JOIN census_table_topics tab_topics USING (table_id, sequence_number)
+                     WHERE %s LIMIT 25""" % (table_where), table_where_args)
+    tables_list = [format_table_search_result(table, 'table') for table in g.cur]
 
     # retrieve matching columns. TODO: add topics field to query
-    g.cur.execute("SELECT table_id, table_title, column_id, column_title FROM %s.census_table_metadata WHERE %s;" % (acs, column_where), where_args)
-    columns = g.cur.fetchall()
-    columns_list = [format_table_search_result(column, 'column') for column in list(columns)]
+    g.cur.execute("""SELECT col.column_id,col.column_title,tab.table_id,tab.table_title,array(SELECT topic
+                        FROM census_table_topics
+                        WHERE census_table_topics.table_id=tab.table_id AND census_table_topics.sequence_number=tab.sequence_number) AS topics
+                     FROM census_column_metadata col
+                     LEFT OUTER JOIN census_table_metadata tab USING (table_id, sequence_number)
+                     WHERE %s LIMIT 25""" % (column_where), column_where_args)
+    columns_list = [format_table_search_result(column, 'column') for column in g.cur]
 
     data.extend(tables_list)
     data.extend(columns_list)
@@ -804,7 +817,7 @@ def table_geo_comparison_rowcount(table_id):
                 child_geoheaders = get_child_geoids_by_prefix(parent_geoid, child_summary_level)
             else:
                 child_geoheaders = get_child_geoids_by_gis(parent_geoid, child_summary_level)
-                
+
             if child_geoheaders:
                 where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoheaders])
                 g.cur.execute("SELECT COUNT(*) FROM %s.%s WHERE %s" % (acs, validated_table_id, where))
