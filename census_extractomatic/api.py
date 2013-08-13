@@ -763,7 +763,7 @@ def table_search():
 
     data = []
     # retrieve matching tables.
-    g.cur.execute("""SELECT tab.table_id,tab.table_title,tab.simple_table_title,array(SELECT topic
+    g.cur.execute("""SELECT tab.table_id,tab.table_title,tab.simple_table_title,tab.universe,array(SELECT topic
                         FROM census_table_topics
                         WHERE census_table_topics.table_id=tab.table_id AND census_table_topics.sequence_number=tab.sequence_number) AS topics
                      FROM census_table_metadata tab
@@ -774,7 +774,7 @@ def table_search():
     tables_list = [format_table_search_result(table, 'table') for table in g.cur]
 
     # retrieve matching columns. TODO: add topics field to query
-    g.cur.execute("""SELECT col.column_id,col.column_title,tab.table_id,tab.table_title,tab.simple_table_title,array(SELECT topic
+    g.cur.execute("""SELECT col.column_id,col.column_title,tab.table_id,tab.table_title,tab.simple_table_title,tab.universe,array(SELECT topic
                         FROM census_table_topics
                         WHERE census_table_topics.table_id=tab.table_id AND census_table_topics.sequence_number=tab.sequence_number) AS topics
                      FROM census_column_metadata col
