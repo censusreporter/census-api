@@ -746,9 +746,9 @@ def table_search():
         column_where_args.append(q)
 
     if topics:
-        table_where_parts.append("tabtopics.topic IN %s")
+        table_where_parts.append("tab_topics.topic IN %s")
         table_where_args.append(tuple(topics))
-        column_where_parts.append("tabtopics.topic IN %s")
+        column_where_parts.append("tab_topics.topic IN %s")
         column_where_args.append(tuple(topics))
 
     if table_where_parts:
@@ -760,21 +760,26 @@ def table_search():
 
     data = []
     # retrieve matching tables.
-    g.cur.execute("""SELECT tab.table_id,tab.table_title,array(SELECT topic
+    g.cur.execute("""SELECT tab.table_id,tab.table_title,tab.simple_table_title,array(SELECT topic
                         FROM census_table_topics
                         WHERE census_table_topics.table_id=tab.table_id AND census_table_topics.sequence_number=tab.sequence_number) AS topics
                      FROM census_table_metadata tab
                      JOIN census_table_topics tab_topics USING (table_id, sequence_number)
-                     WHERE %s LIMIT 25""" % (table_where), table_where_args)
+                     WHERE %s
+                     ORDER BY char_length(tab.table_id), table_title
+                     LIMIT 25""" % (table_where), table_where_args)
     tables_list = [format_table_search_result(table, 'table') for table in g.cur]
 
     # retrieve matching columns. TODO: add topics field to query
-    g.cur.execute("""SELECT col.column_id,col.column_title,tab.table_id,tab.table_title,array(SELECT topic
+    g.cur.execute("""SELECT col.column_id,col.column_title,tab.table_id,tab.table_title,tab.simple_table_title,array(SELECT topic
                         FROM census_table_topics
                         WHERE census_table_topics.table_id=tab.table_id AND census_table_topics.sequence_number=tab.sequence_number) AS topics
                      FROM census_column_metadata col
                      LEFT OUTER JOIN census_table_metadata tab USING (table_id, sequence_number)
-                     WHERE %s LIMIT 25""" % (column_where), column_where_args)
+                     LEFT OUTER JOIN census_table_topics tab_topics USING (table_id, sequence_number)
+                     WHERE %s
+                     ORDER BY char_length(tab.table_id), table_title
+                     LIMIT 25""" % (column_where), column_where_args)
     columns_list = [format_table_search_result(column, 'column') for column in g.cur]
 
     data.extend(tables_list)
