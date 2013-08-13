@@ -885,7 +885,7 @@ def data_compare_geographies_within_parent(acs, table_id):
     data['comparison']['child_geography_name'] = SUMLEV_NAMES.get(child_summary_level, {}).get('name')
     data['comparison']['child_geography_name_plural'] = SUMLEV_NAMES.get(child_summary_level, {}).get('plural')
 
-    g.cur.execute("""SELECT tab.table_id,tab.table_title,tab.universe,col.column_id,col.column_title,col.indent
+    g.cur.execute("""SELECT tab.table_id,tab.table_title,tab.universe,tab.denominator_column_id,col.column_id,col.column_title,col.indent
         FROM census_column_metadata col
         LEFT JOIN census_table_metadata tab USING (table_id, sequence_number)
         WHERE table_id=%s
@@ -906,6 +906,7 @@ def data_compare_geographies_within_parent(acs, table_id):
     data['table']['table_id'] = validated_table_id
     data['table']['table_name'] = table_record['table_title']
     data['table']['table_universe'] = table_record['universe']
+    data['table']['denominator_column_id'] = table_record['denominator_column_id']
     data['table']['columns'] = column_map
 
     # add some data about the parent geography
