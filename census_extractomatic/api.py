@@ -695,16 +695,19 @@ def format_table_search_result(obj, obj_type):
         'table_id': obj['table_id'],
         'table_name': obj['table_title'],
         'simple_table_name': obj['simple_table_title'],
-        'topics': obj['topics']
+        'topics': obj['topics'],
+        'universe': obj['universe'],
     }
 
     if obj_type == 'table':
         result.update({
             'id': obj['table_id'],
+            'unique_key': obj['table_id'],
         })
     elif obj_type == 'column':
         result.update({
             'id': obj['column_id'],
+            'unique_key': '%s|%s' % (obj['table_id'], obj['column_id']),
             'column_id': obj['column_id'],
             'column_name': obj['column_title'],
         })
