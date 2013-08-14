@@ -740,9 +740,10 @@ def table_search():
     column_where_args = []
 
     if q and q != '*':
-        table_where_parts.append("lower(table_title) LIKE lower(%%%s%%)")
+        q = '%%%s%%' % q
+        table_where_parts.append("lower(tab.table_title) LIKE lower(%s)")
         table_where_args.append(q)
-        column_where_parts.append("lower(column_title) LIKE lower(%%%s%%)")
+        column_where_parts.append("lower(col.column_title) LIKE lower(%s)")
         column_where_args.append(q)
 
     if topics:
@@ -762,12 +763,11 @@ def table_search():
 
     data = []
     # retrieve matching tables.
-    g.cur.execute("""SELECT tab.table_id,tab.table_title,tab.simple_table_title,tab.universe,array(SELECT topic
-                        FROM census_table_topics
-                        WHERE census_table_topics.table_id=tab.table_id AND census_table_topics.sequence_number=tab.sequence_number) AS topics
+    g.cur.execute("""SELECT tab.table_id,tab.table_title,tab.simple_table_title,tab.universe,array_agg(tab_topics.topic) AS topics
                      FROM census_table_metadata tab
-                     JOIN census_table_topics tab_topics USING (table_id, sequence_number)
+                     INNER JOIN census_table_topics tab_topics USING (table_id, sequence_number)
                      WHERE %s
+                     GROUP BY tab.table_id, tab.sequence_number
                      ORDER BY char_length(tab.table_id), tab.table_id""" % (table_where), table_where_args)
 
     data.extend([format_table_search_result(table, 'table') for table in g.cur])
