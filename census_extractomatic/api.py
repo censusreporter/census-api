@@ -731,6 +731,7 @@ def table_search():
     q = request.qwargs.q
     topics = request.qwargs.topics
 
+    g.cur.execute("SET search_path=%s,public;", [acs])
     if not (q or topics):
         # Special case to return all tables
         g.cur.execute("""SELECT tab.table_id,tab.table_title,tab.simple_table_title,array(SELECT topic
@@ -742,8 +743,6 @@ def table_search():
         tables_list = [format_table_search_result(table, 'table') for table in g.cur]
 
         return json.dumps(tables_list)
-
-    g.cur.execute("SET search_path=%s,public;", [acs])
 
     table_where_parts = []
     table_where_args = []
