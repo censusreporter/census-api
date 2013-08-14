@@ -730,8 +730,18 @@ def table_search():
     acs = request.qwargs.acs
     q = request.qwargs.q
     topics = request.qwargs.topics
+
     if not (q or topics):
-        abort(400, "Must provide a query term or topics for filtering.")
+        # Special case to return all tables
+        g.cur.execute("""SELECT tab.table_id,tab.table_title,tab.simple_table_title,array(SELECT topic
+                        FROM census_table_topics
+                        WHERE census_table_topics.table_id=tab.table_id AND census_table_topics.sequence_number=tab.sequence_number) AS topics
+                     FROM census_table_metadata tab
+                     JOIN census_table_topics tab_topics USING (table_id, sequence_number)
+                     ORDER BY char_length(tab.table_id), table_title""" % (table_where), table_where_args)
+        tables_list = [format_table_search_result(table, 'table') for table in g.cur]
+
+        return json.dumps(data)
 
     g.cur.execute("SET search_path=%s,public;", [acs])
 
