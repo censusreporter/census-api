@@ -734,7 +734,7 @@ def table_search():
     g.cur.execute("SET search_path=%s,public;", [acs])
     if not (q or topics):
         # Special case to return all tables
-        g.cur.execute("""SELECT tab.table_id,tab.table_title,tab.simple_table_title,array(SELECT topic
+        g.cur.execute("""SELECT tab.table_id,tab.table_title,tab.simple_table_title,tab.universe,array(SELECT topic
                         FROM census_table_topics
                         WHERE census_table_topics.table_id=tab.table_id AND census_table_topics.sequence_number=tab.sequence_number) AS topics
                      FROM census_table_metadata tab
