@@ -738,10 +738,10 @@ def table_search():
                         WHERE census_table_topics.table_id=tab.table_id AND census_table_topics.sequence_number=tab.sequence_number) AS topics
                      FROM census_table_metadata tab
                      JOIN census_table_topics tab_topics USING (table_id, sequence_number)
-                     ORDER BY char_length(tab.table_id), table_title""" % (table_where), table_where_args)
+                     ORDER BY char_length(tab.table_id), table_title""")
         tables_list = [format_table_search_result(table, 'table') for table in g.cur]
 
-        return json.dumps(data)
+        return json.dumps(tables_list)
 
     g.cur.execute("SET search_path=%s,public;", [acs])
 
