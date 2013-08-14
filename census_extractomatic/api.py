@@ -768,7 +768,7 @@ def table_search():
                      FROM census_table_metadata tab
                      JOIN census_table_topics tab_topics USING (table_id, sequence_number)
                      WHERE %s
-                     ORDER BY char_length(tab.table_id), table_title""" % (table_where), table_where_args)
+                     ORDER BY char_length(tab.table_id), tab.table_id""" % (table_where), table_where_args)
 
     data.extend([format_table_search_result(table, 'table') for table in g.cur])
 
@@ -782,7 +782,7 @@ def table_search():
                          LEFT OUTER JOIN census_table_metadata tab USING (table_id, sequence_number)
                          LEFT OUTER JOIN census_table_topics tab_topics USING (table_id, sequence_number)
                          WHERE %s
-                         ORDER BY char_length(tab.table_id), table_title""" % (column_where), column_where_args)
+                         ORDER BY char_length(tab.table_id), tab.table_id""" % (column_where), column_where_args)
         data.extend([format_table_search_result(column, 'column') for column in g.cur])
 
     return json.dumps(data)
