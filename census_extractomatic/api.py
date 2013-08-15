@@ -788,6 +788,51 @@ def table_search():
     return json.dumps(data)
 
 
+# Example: /1.0/table/B01001?release=acs2011_1yr
+@app.route("/1.0/table/<table_id>")
+@qwarg_validate({
+    'acs': {'valid': OneOf(allowed_acs), 'default': 'acs2011_1yr'}
+})
+@crossdomain(origin='*')
+def table_details(table_id):
+    g.cur.execute("SET search_path=%s,public;", [request.qwargs.acs])
+
+    g.cur.execute("""SELECT *,array(SELECT topic
+                        FROM census_table_topics
+                        WHERE census_table_topics.table_id=tab.table_id AND census_table_topics.sequence_number=tab.sequence_number) AS topics
+                     FROM census_table_metadata tab
+                     WHERE table_id=%s""", [table_id])
+    row = g.cur.fetchone()
+
+    if not row:
+        abort(404, "Table %s not found." % table_id)
+
+    data = OrderedDict([
+        ("table_id", row['table_id']),
+        ("table_title", row['table_title']),
+        ("simple_table_title", row['simple_table_title']),
+        ("subject_area", row['subject_area']),
+        ("universe", row['universe']),
+        ("denominator_column_id", row['denominator_column_id']),
+        ("topics", row['topics'])
+    ])
+
+    g.cur.execute("""SELECT *
+                     FROM census_column_metadata
+                     WHERE table_id=%s AND sequence_number=%s""", [row['table_id'], row['sequence_number']])
+
+    rows = []
+    for row in g.cur:
+        rows.append((row['column_id'], dict(
+            column_title=row['column_title'],
+            indent=row['indent'],
+            parent_column_id=row['parent_column_id']
+        )))
+    data['columns'] = OrderedDict(rows)
+
+    return json.dumps(data)
+
+
 # Example: /1.0/table/compare/rowcounts/B01001?year=2011&sumlevel=050&within=04000US53
 @app.route("/1.0/table/compare/rowcounts/<table_id>")
 @qwarg_validate({
