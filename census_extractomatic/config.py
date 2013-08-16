@@ -7,4 +7,4 @@ class Production(Config):
 
 
 class Development(Config):
-    DATABASE_URI = 'postgresql://census:censuspassword@ec2-75-101-221-29.compute-1.amazonaws.com/postgres'
+    DATABASE_URI = 'postgresql://census:censuspassword@staging.censusreporter.org/postgres'
