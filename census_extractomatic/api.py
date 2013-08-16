@@ -644,7 +644,7 @@ def geo_search():
     for row in g.cur:
         row['full_geoid'] = "%s00US%s" % (row['sumlevel'], row['geoid'])
         row['full_name'] = build_geo_full_name(row)
-        if 'geom' in row:
+        if 'geom' in row and row['geom']:
             row['geom'] = json.loads(row['geom'])
         data.append(row)
 
