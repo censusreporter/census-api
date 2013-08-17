@@ -848,7 +848,7 @@ def table_geo_comparison_rowcount(table_id):
     parent_geoid = request.qwargs.within
     parent_sumlevel = parent_geoid[:3]
 
-    data = []
+    data = OrderedDict()
 
     releases = sorted([name for name in ACS_NAMES if year in name])
     for acs in releases:
@@ -877,7 +877,7 @@ def table_geo_comparison_rowcount(table_id):
             else:
                 release['results'] = 0
 
-        data.append(release)
+        data[acs] = release
 
     return json.dumps(data)
 
