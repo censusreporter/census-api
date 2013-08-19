@@ -57,7 +57,6 @@ ACS_NAMES = {
 }
 
 PARENT_CHILD_CONTAINMENT = {
-    '010': ['040', '050', '060', '101', '140','150', '160', '500', '610', '620', '950', '960', '970'],
     '040': ['050', '060', '101', '140','150', '160', '500', '610', '620', '950', '960', '970'],
     '050': ['060', '101', '140', '150'],
     '140': ['101','150'],
@@ -864,7 +863,9 @@ def table_geo_comparison_rowcount(table_id):
             release['table_name'] = table_record['table_title']
             release['table_universe'] = table_record['universe']
 
-            if parent_sumlevel in PARENT_CHILD_CONTAINMENT and child_summary_level in PARENT_CHILD_CONTAINMENT[parent_sumlevel]:
+            if parent_sumlevel == '010':
+                child_geoheaders = get_all_child_geoids(child_summary_level)
+            elif parent_sumlevel in PARENT_CHILD_CONTAINMENT and child_summary_level in PARENT_CHILD_CONTAINMENT[parent_sumlevel]:
                 child_geoheaders = get_child_geoids_by_prefix(parent_geoid, child_summary_level)
             else:
                 child_geoheaders = get_child_geoids_by_gis(parent_geoid, child_summary_level)
@@ -883,6 +884,11 @@ def table_geo_comparison_rowcount(table_id):
 
 
 ## DATA RETRIEVAL ##
+
+def get_all_child_geoids(child_summary_level):
+    g.cur.execute("SELECT geoid,stusab,logrecno,name FROM geoheader WHERE sumlevel=%s", [int(child_summary_level)])
+
+    return g.cur.fetchall()
 
 # get geoheader data for children at the requested summary level
 def get_child_geoids_by_gis(parent_geoid, child_summary_level):
@@ -973,7 +979,9 @@ def data_compare_geographies_within_parent(acs, table_id):
     data['comparison']['parent_name'] = parent_geography['name']
     data['comparison']['parent_geoid'] = parent_geoid
 
-    if parent_sumlevel in PARENT_CHILD_CONTAINMENT and child_summary_level in PARENT_CHILD_CONTAINMENT[parent_sumlevel]:
+    if parent_sumlevel == '010':
+                child_geoheaders = get_all_child_geoids(child_summary_level)
+    elif parent_sumlevel in PARENT_CHILD_CONTAINMENT and child_summary_level in PARENT_CHILD_CONTAINMENT[parent_sumlevel]:
         child_geoheaders = get_child_geoids_by_prefix(parent_geoid, child_summary_level)
     else:
         child_geoheaders = get_child_geoids_by_gis(parent_geoid, child_summary_level)
