@@ -879,7 +879,10 @@ def table_geo_comparison_rowcount(table_id):
 ## DATA RETRIEVAL ##
 
 def get_all_child_geoids(child_summary_level):
-    g.cur.execute("SELECT geoid,stusab,logrecno,name FROM geoheader WHERE sumlevel=%s", [int(child_summary_level)])
+    g.cur.execute("""SELECT geoid,stusab,logrecno,name
+        FROM geoheader
+        WHERE sumlevel=%s AND component='00'
+        ORDER BY name""", [int(child_summary_level)])
 
     return g.cur.fetchall()
 
@@ -894,14 +897,20 @@ def get_child_geoids_by_gis(parent_geoid, child_summary_level):
         WHERE parent.geoid=%s AND parent.sumlevel=%s;""", [child_summary_level, parent_tiger_geoid, parent_sumlevel])
     child_geoids = ['%s00US%s' % (child_summary_level, r['geoid']) for r in g.cur]
 
-    g.cur.execute("SELECT geoid,stusab,logrecno,name FROM geoheader WHERE geoid IN %s ORDER BY geoid;", [tuple(child_geoids)])
+    g.cur.execute("""SELECT geoid,stusab,logrecno,name
+        FROM geoheader
+        WHERE geoid IN %s
+        ORDER BY name""", [tuple(child_geoids)])
     return g.cur.fetchall()
 
 
 def get_child_geoids_by_prefix(parent_geoid, child_summary_level):
     child_geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid.split('US')[1])
 
-    g.cur.execute("SELECT geoid,stusab,logrecno,name FROM geoheader WHERE geoid LIKE %s ORDER BY geoid;", [child_geoid_prefix])
+    g.cur.execute("""SELECT geoid,stusab,logrecno,name
+        FROM geoheader
+        WHERE geoid LIKE %s
+        ORDER BY name""", [child_geoid_prefix])
     return g.cur.fetchall()
 
 # Example: /1.0/data/compare/acs2011_5yr/B01001?sumlevel=050&within=04000US53
