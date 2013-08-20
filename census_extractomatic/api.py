@@ -746,10 +746,10 @@ def table_search():
         column_where_args.append(q)
 
     if topics:
-        table_where_parts.append("tab_topics.topic IN %s")
-        table_where_args.append(tuple(topics))
-        column_where_parts.append("tab_topics.topic IN %s")
-        column_where_args.append(tuple(topics))
+        table_where_parts.append('tab.topics @> %s')
+        table_where_args.append(topics)
+        column_where_parts.append('tab.topics @> %s')
+        column_where_args.append(topics)
 
     if table_where_parts:
         table_where = ' AND '.join(table_where_parts)
@@ -762,11 +762,9 @@ def table_search():
 
     data = []
     # retrieve matching tables.
-    g.cur.execute("""SELECT tab.table_id,tab.table_title,tab.simple_table_title,tab.universe,array_agg(tab_topics.topic) AS topics
+    g.cur.execute("""SELECT tab.table_id,tab.table_title,tab.simple_table_title,tab.universe,tab.topics
                      FROM census_table_metadata tab
-                     INNER JOIN census_table_topics tab_topics USING (table_id, sequence_number)
                      WHERE %s
-                     GROUP BY tab.table_id, tab.sequence_number
                      ORDER BY char_length(tab.table_id), tab.table_id""" % (table_where), table_where_args)
 
     data.extend([format_table_search_result(table, 'table') for table in g.cur])
@@ -774,12 +772,9 @@ def table_search():
     # retrieve matching columns.
     if q != '*':
         # Special case for when we want ALL the tables (but not all the columns)
-        g.cur.execute("""SELECT col.column_id,col.column_title,tab.table_id,tab.table_title,tab.simple_table_title,tab.universe,array(SELECT topic
-                            FROM census_table_topics
-                            WHERE census_table_topics.table_id=tab.table_id AND census_table_topics.sequence_number=tab.sequence_number) AS topics
+        g.cur.execute("""SELECT col.column_id,col.column_title,tab.table_id,tab.table_title,tab.simple_table_title,tab.universe,tab.topics
                          FROM census_column_metadata col
                          LEFT OUTER JOIN census_table_metadata tab USING (table_id, sequence_number)
-                         LEFT OUTER JOIN census_table_topics tab_topics USING (table_id, sequence_number)
                          WHERE %s
                          ORDER BY char_length(tab.table_id), tab.table_id""" % (column_where), column_where_args)
         data.extend([format_table_search_result(column, 'column') for column in g.cur])
@@ -796,9 +791,7 @@ def table_search():
 def table_details(table_id):
     g.cur.execute("SET search_path=%s,public;", [request.qwargs.acs])
 
-    g.cur.execute("""SELECT *,array(SELECT topic
-                        FROM census_table_topics
-                        WHERE census_table_topics.table_id=tab.table_id AND census_table_topics.sequence_number=tab.sequence_number) AS topics
+    g.cur.execute("""SELECT *
                      FROM census_table_metadata tab
                      WHERE table_id=%s""", [table_id])
     row = g.cur.fetchone()
