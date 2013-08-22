@@ -949,6 +949,10 @@ def data_compare_geographies_within_parent(acs, table_id):
         WHERE table_id=%s
         ORDER BY column_id;""", [table_id])
     table_metadata = g.cur.fetchall()
+
+    if not table_metadata:
+        abort(404, 'Table id %s is not available in %s.' % (table_id, acs))
+
     validated_table_id = table_metadata[0]['table_id']
 
     # get the basic table record, and add a map of columnID -> column name
