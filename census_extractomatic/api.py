@@ -913,6 +913,53 @@ def get_child_geoids_by_prefix(parent_geoid, child_summary_level):
         ORDER BY name""", [child_geoid_prefix])
     return g.cur.fetchall()
 
+# Example: /1.0/data/rank/acs2011_5yr/B01001001?geoid=04000US53
+# Example: /1.0/data/rank/acs2011_5yr/B01001001?geoid=16000US5367000&within=04000US53
+# Example: /1.0/data/rank/acs2011_5yr/B01001001?geoid=05000US53063
+@app.route("/1.0/data/rank/<acs>/<column_id>")
+@qwarg_validate({
+    'within': {'valid': NonemptyString(), 'required': False, 'default': '01000US'},
+    'geoid': {'valid': NonemptyString(), 'required': True}
+})
+@crossdomain(origin='*')
+def data_rank_geographies_within_parent(acs, column_id):
+    # make sure we support the requested ACS release
+    if acs not in allowed_acs:
+        abort(404, 'ACS %s is not supported.' % acs)
+    g.cur.execute("SET search_path=%s,public;", [acs])
+
+    table_id = column_id[:-3]
+    parent_geoid = request.qwargs.within
+    geoid_of_interest = request.qwargs.geoid
+
+    # TODO should validate the parent and geoid of interest.
+
+    child_summary_level = geoid_of_interest[:3]
+    parent_sumlevel = parent_geoid[:3]
+    if parent_sumlevel == '010':
+        child_geoheaders = get_all_child_geoids(child_summary_level)
+    elif parent_sumlevel in PARENT_CHILD_CONTAINMENT and child_summary_level in PARENT_CHILD_CONTAINMENT[parent_sumlevel]:
+        child_geoheaders = get_child_geoids_by_prefix(parent_geoid, child_summary_level)
+    else:
+        child_geoheaders = get_child_geoids_by_gis(parent_geoid, child_summary_level)
+
+    where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoheaders])
+
+    g.cur.execute("""SELECT rank() OVER (ORDER BY %(column_id)s DESC),ntile(100) OVER (ORDER BY %(column_id)s DESC),%(column_id)s,g.geoid,g.name
+        FROM %(table_id)s
+        JOIN geoheader g USING (stusab, logrecno)
+        WHERE %(where)s""" % {'column_id': column_id, 'table_id': table_id, 'where': where})
+
+    ranks = []
+
+    ranks.extend(g.cur.fetchmany(3))
+
+    for r in g.cur:
+        if r['geoid'] == geoid_of_interest or g.cur.rownumber >= g.cur.rowcount - 3:
+            ranks.append(r)
+
+    return json.dumps(ranks)
+
 # Example: /1.0/data/compare/acs2011_5yr/B01001?sumlevel=050&within=04000US53
 @app.route("/1.0/data/compare/<acs>/<table_id>")
 @qwarg_validate({
