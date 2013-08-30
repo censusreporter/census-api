@@ -1,5 +1,5 @@
-census extractomatic
-====================
+census api
+==========
 
 The home for the API that powers the [Census Reporter](http://censusreporter.org/) project.
 
