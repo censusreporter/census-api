@@ -634,9 +634,17 @@ def geo_search():
         where_args.append(tuple(sumlevs))
 
     if with_geom:
-        g.cur.execute("SELECT awater,aland,sumlevel,geoid,name,ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geom FROM tiger2012.census_names WHERE %s ORDER BY sumlevel, aland DESC LIMIT 25;" % where, where_args)
+        g.cur.execute("""SELECT awater,aland,sumlevel,geoid,name,ST_AsGeoJSON(ST_Simplify(the_geom,0.001)) as geom
+            FROM tiger2012.census_names
+            WHERE %s
+            ORDER BY sumlevel, aland DESC
+            LIMIT 25;""" % where, where_args)
     else:
-        g.cur.execute("SELECT awater,aland,sumlevel,geoid,name FROM tiger2012.census_names WHERE %s ORDER BY sumlevel, aland DESC LIMIT 25;" % where, where_args)
+        g.cur.execute("""SELECT awater,aland,sumlevel,geoid,name
+            FROM tiger2012.census_names
+            WHERE %s
+            ORDER BY sumlevel, aland DESC
+            LIMIT 25;""" % where, where_args)
 
     data = []
 
@@ -665,9 +673,15 @@ def geo_lookup(geoid):
     id_part = geoid_parts[1]
 
     if request.qwargs.geom:
-        g.cur.execute("SELECT awater,aland,name,intptlat,intptlon,ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geom FROM tiger2012.census_names WHERE sumlevel=%s AND geoid=%s LIMIT 1", [sumlevel_part, id_part])
+        g.cur.execute("""SELECT awater,aland,name,intptlat,intptlon,ST_AsGeoJSON(ST_Simplify(the_geom,0.001)) as geom
+            FROM tiger2012.census_names
+            WHERE sumlevel=%s AND geoid=%s
+            LIMIT 1""", [sumlevel_part, id_part])
     else:
-        g.cur.execute("SELECT awater,aland,name,intptlat,intptlon FROM tiger2012.census_names WHERE sumlevel=%s AND geoid=%s LIMIT 1", [sumlevel_part, id_part])
+        g.cur.execute("""SELECT awater,aland,name,intptlat,intptlon
+            FROM tiger2012.census_names
+            WHERE sumlevel=%s AND geoid=%s
+            LIMIT 1""", [sumlevel_part, id_part])
 
     result = g.cur.fetchone()
 
@@ -955,10 +969,55 @@ def data_rank_geographies_within_parent(acs, column_id):
     ranks.extend(g.cur.fetchmany(3))
 
     for r in g.cur:
-        if r['geoid'] == geoid_of_interest or g.cur.rownumber >= g.cur.rowcount - 3:
+        if r['geoid'] == geoid_of_interest or g.cur.rownumber >= g.cur.rowcount - 2:
             ranks.append(r)
 
     return json.dumps(ranks)
+
+# Example: /1.0/data/histogram/acs2011_5yr/B01001001?geoid=04000US53
+# Example: /1.0/data/histogram/acs2011_5yr/B01001001?geoid=16000US5367000&within=04000US53
+# Example: /1.0/data/histogram/acs2011_5yr/B01001001?geoid=05000US53063
+@app.route("/1.0/data/histogram/<acs>/<column_id>")
+@qwarg_validate({
+    'within': {'valid': NonemptyString(), 'required': False, 'default': '01000US'},
+    'geoid': {'valid': NonemptyString(), 'required': True}
+})
+@crossdomain(origin='*')
+def data_histogram_geographies_within_parent(acs, column_id):
+    # make sure we support the requested ACS release
+    if acs not in allowed_acs:
+        abort(404, 'ACS %s is not supported.' % acs)
+    g.cur.execute("SET search_path=%s,public;", [acs])
+
+    table_id = column_id[:-3]
+    parent_geoid = request.qwargs.within
+    geoid_of_interest = request.qwargs.geoid
+
+    # TODO should validate the parent and geoid of interest.
+
+    child_summary_level = geoid_of_interest[:3]
+    parent_sumlevel = parent_geoid[:3]
+    if parent_sumlevel == '010':
+        child_geoheaders = get_all_child_geoids(child_summary_level)
+    elif parent_sumlevel in PARENT_CHILD_CONTAINMENT and child_summary_level in PARENT_CHILD_CONTAINMENT[parent_sumlevel]:
+        child_geoheaders = get_child_geoids_by_prefix(parent_geoid, child_summary_level)
+    else:
+        child_geoheaders = get_child_geoids_by_gis(parent_geoid, child_summary_level)
+
+    where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoheaders])
+
+    g.cur.execute("""SELECT percentile,count(percentile)
+        FROM (SELECT ntile(100) OVER (ORDER BY %(column_id)s DESC) AS percentile
+            FROM %(table_id)s
+            WHERE %(where)s) x
+        GROUP BY x.percentile
+        ORDER BY x.percentile""" % {'column_id': column_id, 'table_id': table_id, 'where': where})
+    # g.cur.execute("""SELECT percentile,COUNT(percentile)
+    #     FROM (SELECT ntile(100) OVER (ORDER BY %(column_id)s DESC) AS percentile FROM %(table_id)s WHERE %(where)s) x
+    #     GROUP BY percentile
+    #     ORDER BY percentile""" % {'column_id': column_id, 'table_id': table_id, 'where': where})
+
+    return json.dumps(g.cur.fetchall())
 
 # Example: /1.0/data/compare/acs2011_5yr/B01001?sumlevel=050&within=04000US53
 @app.route("/1.0/data/compare/<acs>/<table_id>")
@@ -1033,7 +1092,7 @@ def data_compare_geographies_within_parent(acs, table_id):
     data['comparison']['parent_geoid'] = parent_geoid
 
     if parent_sumlevel == '010':
-                child_geoheaders = get_all_child_geoids(child_summary_level)
+        child_geoheaders = get_all_child_geoids(child_summary_level)
     elif parent_sumlevel in PARENT_CHILD_CONTAINMENT and child_summary_level in PARENT_CHILD_CONTAINMENT[parent_sumlevel]:
         child_geoheaders = get_child_geoids_by_prefix(parent_geoid, child_summary_level)
     else:
@@ -1059,7 +1118,9 @@ def data_compare_geographies_within_parent(acs, table_id):
     child_geodata_map = {}
     if geometries:
         # get the parent geometry and add to API response
-        g.cur.execute("SELECT ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geometry FROM tiger2012.census_names WHERE sumlevel=%s AND geoid=%s;", [parent_sumlevel, parent_geoid.split('US')[1]])
+        g.cur.execute("""SELECT ST_AsGeoJSON(ST_Simplify(the_geom,0.001)) as geometry
+            FROM tiger2012.census_names
+            WHERE sumlevel=%s AND geoid=%s;""", [parent_sumlevel, parent_geoid.split('US')[1]])
         parent_geometry = g.cur.fetchone()
         try:
             data['parent_geography']['geography']['geometry'] = json.loads(parent_geometry['geometry'])
@@ -1068,7 +1129,10 @@ def data_compare_geographies_within_parent(acs, table_id):
             pass
 
         # get the child geometries and store for later
-        g.cur.execute("SELECT geoid, ST_AsGeoJSON(ST_Simplify(the_geom,0.01)) as geometry FROM tiger2012.census_names WHERE sumlevel=%s AND geoid IN %s ORDER BY geoid;", [child_summary_level, tuple(child_geoid_list)])
+        g.cur.execute("""SELECT geoid, ST_AsGeoJSON(ST_Simplify(the_geom,0.001)) as geometry
+            FROM tiger2012.census_names
+            WHERE sumlevel=%s AND geoid IN %s
+            ORDER BY geoid;""", [child_summary_level, tuple(child_geoid_list)])
         child_geodata = g.cur.fetchall()
         child_geodata_map = dict([(record['geoid'], json.loads(record['geometry'])) for record in child_geodata])
 
