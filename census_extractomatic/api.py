@@ -960,7 +960,7 @@ def data_rank_geographies_within_parent(acs, column_id):
 
     where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoheaders])
 
-    g.cur.execute("""SELECT rank() OVER (ORDER BY %(column_id)s DESC),ntile(100) OVER (ORDER BY %(column_id)s DESC),%(column_id)s,g.geoid,g.name
+    g.cur.execute("""SELECT rank() OVER (ORDER BY %(column_id)s DESC),%(column_id)s,g.geoid,g.name
         FROM %(table_id)s
         JOIN geoheader g USING (stusab, logrecno)
         WHERE %(where)s""" % {'column_id': column_id, 'table_id': table_id, 'where': where})
