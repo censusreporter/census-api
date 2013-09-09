@@ -69,6 +69,7 @@ SUMLEV_NAMES = {
     "030": {"name": "division", "plural": "divisions"},
     "040": {"name": "state", "plural": "states", "tiger_table": "state"},
     "050": {"name": "county", "plural": "counties", "tiger_table": "county"},
+    "060": {"name": "county subdivision", "plural": "county subdivisions", "tiger_table": "cousub"},
     "101": {"name": "block", "plural": "blocks", "tiger_table": "tabblock"},
     "140": {"name": "census tract", "plural": "census tracts", "tiger_table": "tract"},
     "150": {"name": "block group", "plural": "block groups", "tiger_table": "bg"},
