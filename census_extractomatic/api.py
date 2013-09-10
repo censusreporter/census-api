@@ -369,69 +369,73 @@ def geo_profile(acs, state, logrecno):
     pop_dict['total'] = population_by_age_total
     pop_dict['male'] = population_by_age_male
     pop_dict['female'] = population_by_age_female
+    
+    total_population = data['b01001001']
+    total_population_male = data['b01001002']
+    total_population_female = data['b01001026']
 
     population_by_age_male['0-9'] = build_item('b01001', 'Total population', '0-9', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001003', 'b01001004')))
+                                        lambda data: maybe_percent(sum(data, 'b01001003', 'b01001004'), total_population_male))
     population_by_age_female['0-9'] = build_item('b01001', 'Total population', '0-9', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001027', 'b01001028')))
+                                        lambda data: maybe_percent(sum(data, 'b01001027', 'b01001028'), total_population_female))
     population_by_age_total['0-9'] = build_item('b01001', 'Total population', '0-9', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001003', 'b01001004', 'b01001027', 'b01001028')))
+                                        lambda data: maybe_percent(sum(data, 'b01001003', 'b01001004', 'b01001027', 'b01001028'), total_population))
 
     population_by_age_male['10-19'] = build_item('b01001', 'Total population', '10-19', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001005', 'b01001006', 'b01001007')))
+                                        lambda data: maybe_percent(sum(data, 'b01001005', 'b01001006', 'b01001007'), total_population_male))
     population_by_age_female['10-19'] = build_item('b01001', 'Total population', '10-19', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001029', 'b01001030', 'b01001031')))
+                                        lambda data: maybe_percent(sum(data, 'b01001029', 'b01001030', 'b01001031'), total_population_female))
     population_by_age_total['10-19'] = build_item('b01001', 'Total population', '10-19', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001005', 'b01001006', 'b01001007', 'b01001029', 'b01001030', 'b01001031')))
+                                        lambda data: maybe_percent(sum(data, 'b01001005', 'b01001006', 'b01001007', 'b01001029', 'b01001030', 'b01001031'), total_population))
 
     population_by_age_male['20-29'] = build_item('b01001', 'Total population', '20-29', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001008', 'b01001009', 'b01001010', 'b01001011')))
+                                        lambda data: maybe_percent(sum(data, 'b01001008', 'b01001009', 'b01001010', 'b01001011'), total_population_male))
     population_by_age_female['20-29'] = build_item('b01001', 'Total population', '20-29', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001032', 'b01001033', 'b01001034', 'b01001035')))
+                                        lambda data: maybe_percent(sum(data, 'b01001032', 'b01001033', 'b01001034', 'b01001035'), total_population_female))
     population_by_age_total['20-29'] = build_item('b01001', 'Total population', '20-29', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001008', 'b01001009', 'b01001010', 'b01001011', 'b01001032', 'b01001033', 'b01001034', 'b01001035')))
+                                        lambda data: maybe_percent(sum(data, 'b01001008', 'b01001009', 'b01001010', 'b01001011', 'b01001032', 'b01001033', 'b01001034', 'b01001035'), total_population))
 
     population_by_age_male['30-39'] = build_item('b01001', 'Total population', '30-39', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001012', 'b01001013')))
+                                        lambda data: maybe_percent(sum(data, 'b01001012', 'b01001013'), total_population_male))
     population_by_age_female['30-39'] = build_item('b01001', 'Total population', '30-39', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001036', 'b01001037')))
+                                        lambda data: maybe_percent(sum(data, 'b01001036', 'b01001037'), total_population_female))
     population_by_age_total['30-39'] = build_item('b01001', 'Total population', '30-39', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001012', 'b01001013', 'b01001036', 'b01001037')))
+                                        lambda data: maybe_percent(sum(data, 'b01001012', 'b01001013', 'b01001036', 'b01001037'), total_population))
 
     population_by_age_male['40-49'] = build_item('b01001', 'Total population', '40-49', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001014', 'b01001015')))
+                                        lambda data: maybe_percent(sum(data, 'b01001014', 'b01001015'), total_population_male))
     population_by_age_female['40-49'] = build_item('b01001', 'Total population', '40-49', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001038', 'b01001039')))
+                                        lambda data: maybe_percent(sum(data, 'b01001038', 'b01001039'), total_population_female))
     population_by_age_total['40-49'] = build_item('b01001', 'Total population', '40-49', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001014', 'b01001015', 'b01001038', 'b01001039')))
+                                        lambda data: maybe_percent(sum(data, 'b01001014', 'b01001015', 'b01001038', 'b01001039'), total_population))
 
     population_by_age_male['50-59'] = build_item('b01001', 'Total population', '50-59', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001016', 'b01001017')))
+                                        lambda data: maybe_percent(sum(data, 'b01001016', 'b01001017'), total_population_male))
     population_by_age_female['50-59'] = build_item('b01001', 'Total population', '50-59', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001040', 'b01001041')))
+                                        lambda data: maybe_percent(sum(data, 'b01001040', 'b01001041'), total_population_female))
     population_by_age_total['50-59'] = build_item('b01001', 'Total population', '50-59', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001016', 'b01001017', 'b01001040', 'b01001041')))
+                                        lambda data: maybe_percent(sum(data, 'b01001016', 'b01001017', 'b01001040', 'b01001041'), total_population))
 
     population_by_age_male['60-69'] = build_item('b01001', 'Total population', '60-69', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001018', 'b01001019', 'b01001020', 'b01001021')))
+                                        lambda data: maybe_percent(sum(data, 'b01001018', 'b01001019', 'b01001020', 'b01001021'), total_population_male))
     population_by_age_female['60-69'] = build_item('b01001', 'Total population', '60-69', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001042', 'b01001043', 'b01001044', 'b01001045')))
+                                        lambda data: maybe_percent(sum(data, 'b01001042', 'b01001043', 'b01001044', 'b01001045'), total_population_female))
     population_by_age_total['60-69'] = build_item('b01001', 'Total population', '60-69', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001018', 'b01001019', 'b01001020', 'b01001021', 'b01001042', 'b01001043', 'b01001044', 'b01001045')))
+                                        lambda data: maybe_percent(sum(data, 'b01001018', 'b01001019', 'b01001020', 'b01001021', 'b01001042', 'b01001043', 'b01001044', 'b01001045'), total_population))
 
     population_by_age_male['70-79'] = build_item('b01001', 'Total population', '70-79', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001022', 'b01001023')))
+                                        lambda data: maybe_percent(sum(data, 'b01001022', 'b01001023'), total_population_male))
     population_by_age_female['70-79'] = build_item('b01001', 'Total population', '70-79', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001046', 'b01001047')))
+                                        lambda data: maybe_percent(sum(data, 'b01001046', 'b01001047'), total_population_female))
     population_by_age_total['70-79'] = build_item('b01001', 'Total population', '70-79', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001022', 'b01001023', 'b01001046', 'b01001047')))
+                                        lambda data: maybe_percent(sum(data, 'b01001022', 'b01001023', 'b01001046', 'b01001047'), total_population))
 
     population_by_age_male['80+'] = build_item('b01001', 'Total population', '80+', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001024', 'b01001025')))
+                                        lambda data: maybe_percent(sum(data, 'b01001024', 'b01001025'), total_population_male))
     population_by_age_female['80+'] = build_item('b01001', 'Total population', '80+', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001048', 'b01001049')))
+                                        lambda data: maybe_percent(sum(data, 'b01001048', 'b01001049'), total_population_female))
     population_by_age_total['80+'] = build_item('b01001', 'Total population', '80+', default_data_years, data,
-                                        lambda data: maybe_int(sum(data, 'b01001024', 'b01001025', 'b01001048', 'b01001049')))
+                                        lambda data: maybe_percent(sum(data, 'b01001024', 'b01001025', 'b01001048', 'b01001049'), total_population))
 
     # Demographics: Sex
     sex_dict = dict()
@@ -484,11 +488,14 @@ def geo_profile(acs, state, logrecno):
     g.cur.execute("SELECT * FROM B03003 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
 
-    ethnicity_dict = dict()
-    doc['demographics']['ethnicity'] = ethnicity_dict
-
-    ethnicity_dict['percent_hispanic'] = build_item('b03003', 'Total population', 'Hispanic/Latino', default_data_years, data,
+    # Adding 'Hispanic' value to race_dict. No longer valid to use visuals that are "parts of a whole" like donut charts.
+    race_dict['percent_hispanic'] = build_item('b03003', 'Total population', 'Hispanic/Latino', default_data_years, data,
                                         lambda data: maybe_percent(data['b03003003'], data['b03003001']))
+
+    #ethnicity_dict = dict()
+    #doc['demographics']['ethnicity'] = ethnicity_dict
+    #ethnicity_dict['percent_hispanic'] = build_item('b03003', 'Total population', 'Hispanic/Latino', default_data_years, data,
+    #                                    lambda data: maybe_percent(data['b03003003'], data['b03003001']))
 
     # Economics: Per-Capita Income
     g.cur.execute("SELECT * FROM B19301 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
