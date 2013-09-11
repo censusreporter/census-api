@@ -459,43 +459,28 @@ def geo_profile(acs, state, logrecno):
                                         lambda data: maybe_float(data['b01002003']))
 
     # Demographics: Race
-    g.cur.execute("SELECT * FROM B02001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    # Uses Table B03002 (HISPANIC OR LATINO ORIGIN BY RACE), pulling race numbers from "Not Hispanic or Latino" columns
+    # Also collapses smaller groups into "Other"
+    g.cur.execute("SELECT * FROM B03002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
+    total_population = data['b03002001']
 
     race_dict = OrderedDict()
     doc['demographics']['race'] = race_dict
-    race_dict['percent_white'] = build_item('b02001', 'Total population', 'White', default_data_years, data,
-                                        lambda data: maybe_percent(data['b02001002'], data['b02001001']))
+    race_dict['percent_white'] = build_item('b03002', 'Total population', 'White', default_data_years, data,
+                                        lambda data: maybe_percent(data['b03002003'], total_population))
 
-    race_dict['percent_black'] = build_item('b02001', 'Total population', 'Black', default_data_years, data,
-                                        lambda data: maybe_percent(data['b02001003'], data['b02001001']))
+    race_dict['percent_black'] = build_item('b03002', 'Total population', 'Black', default_data_years, data,
+                                        lambda data: maybe_percent(data['b03002004'], total_population))
 
-    race_dict['percent_native_american'] = build_item('b02001', 'Total population', 'Native', default_data_years, data,
-                                        lambda data: maybe_percent(data['b02001004'], data['b02001001']))
+    race_dict['percent_asian'] = build_item('b03002', 'Total population', 'Asian', default_data_years, data,
+                                        lambda data: maybe_percent(data['b03002006'], total_population))
 
-    race_dict['percent_asian'] = build_item('b02001', 'Total population', 'Asian', default_data_years, data,
-                                        lambda data: maybe_percent(data['b02001005'], data['b02001001']))
+    race_dict['percent_hispanic'] = build_item('b03002', 'Total population', 'Hispanic', default_data_years, data,
+                                        lambda data: maybe_percent(data['b03002012'], total_population))
 
-    race_dict['percent_native_islander'] = build_item('b02001', 'Total population', 'Islander', default_data_years, data,
-                                        lambda data: maybe_percent(data['b02001006'], data['b02001001']))
-
-    race_dict['percent_other'] = build_item('b02001', 'Total population', 'Other race', default_data_years, data,
-                                        lambda data: maybe_percent(data['b02001007'], data['b02001001']))
-
-    race_dict['percent_two_or_more'] = build_item('b02001', 'Total population', 'Two+ races', default_data_years, data,
-                                        lambda data: maybe_percent(data['b02001008'], data['b02001001']))
-
-    g.cur.execute("SELECT * FROM B03003 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
-    data = g.cur.fetchone()
-
-    # Adding 'Hispanic' value to race_dict. No longer valid to use visuals that are "parts of a whole" like donut charts.
-    race_dict['percent_hispanic'] = build_item('b03003', 'Total population', 'Hispanic/Latino', default_data_years, data,
-                                        lambda data: maybe_percent(data['b03003003'], data['b03003001']))
-
-    #ethnicity_dict = dict()
-    #doc['demographics']['ethnicity'] = ethnicity_dict
-    #ethnicity_dict['percent_hispanic'] = build_item('b03003', 'Total population', 'Hispanic/Latino', default_data_years, data,
-    #                                    lambda data: maybe_percent(data['b03003003'], data['b03003001']))
+    race_dict['percent_other'] = build_item('b03002', 'Total population', 'Other', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b03002005', 'b03002007', 'b03002008', 'b03002009'), total_population))
 
     # Economics: Per-Capita Income
     g.cur.execute("SELECT * FROM B19301 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
