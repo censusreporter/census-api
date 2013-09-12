@@ -516,8 +516,8 @@ def geo_profile(acs, state, logrecno):
                                         
     poverty_children = OrderedDict()
     poverty_seniors = OrderedDict()
-    poverty_dict['children'] = poverty_by_age_children
-    poverty_dict['seniors'] = poverty_by_age_seniors
+    poverty_dict['children'] = poverty_children
+    poverty_dict['seniors'] = poverty_seniors
 
     total_population = data['b17001001']
 
