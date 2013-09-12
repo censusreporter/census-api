@@ -344,6 +344,7 @@ def geo_profile(acs, state, logrecno):
                                  land_area=None))
 
     # Demographics: Age
+    # multiple data points, suitable for visualization
     g.cur.execute("SELECT * FROM B01001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
 
@@ -438,6 +439,7 @@ def geo_profile(acs, state, logrecno):
                                         lambda data: maybe_percent(sum(data, 'b01001024', 'b01001025', 'b01001048', 'b01001049'), total_population))
 
     # Demographics: Sex
+    # multiple data points, suitable for visualization
     sex_dict = dict()
     doc['demographics']['sex'] = sex_dict
     sex_dict['percent_male'] = build_item('b01001', 'Total population', 'Male', default_data_years, data,
@@ -459,8 +461,9 @@ def geo_profile(acs, state, logrecno):
                                         lambda data: maybe_float(data['b01002003']))
 
     # Demographics: Race
-    # Uses Table B03002 (HISPANIC OR LATINO ORIGIN BY RACE), pulling race numbers from "Not Hispanic or Latino" columns
-    # Also collapses smaller groups into "Other"
+    # multiple data points, suitable for visualization
+    # uses Table B03002 (HISPANIC OR LATINO ORIGIN BY RACE), pulling race numbers from "Not Hispanic or Latino" columns
+    # also collapses smaller groups into "Other"
     g.cur.execute("SELECT * FROM B03002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
     total_population = data['b03002001']
@@ -483,6 +486,7 @@ def geo_profile(acs, state, logrecno):
                                         lambda data: maybe_percent(sum(data, 'b03002005', 'b03002007', 'b03002008', 'b03002009'), total_population))
 
     # Economics: Per-Capita Income
+    # single data point
     g.cur.execute("SELECT * FROM B19301 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
 
@@ -493,6 +497,7 @@ def geo_profile(acs, state, logrecno):
                                         lambda data: maybe_int(data['b19301001']))
 
     # Economics: Median Household Income
+    # single data point
     g.cur.execute("SELECT * FROM B19013 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
 
@@ -508,6 +513,24 @@ def geo_profile(acs, state, logrecno):
 
     poverty_dict['percent_below_poverty_line'] = build_item('b17001', 'Population for whom poverty status is determined', 'Persons below poverty line', default_data_years, data,
                                         lambda data: maybe_percent(data['b17001002'], data['b17001001']))
+                                        
+    poverty_children = OrderedDict()
+    poverty_seniors = OrderedDict()
+    poverty_dict['children'] = poverty_by_age_children
+    poverty_dict['seniors'] = poverty_by_age_seniors
+
+    total_population = data['b17001001']
+
+    poverty_children['below'] = build_item('b17001', 'Population for whom poverty status is determined', 'Children below poverty level', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b17001004', 'b17001005', 'b17001006', 'b17001007', 'b17001008', 'b17001009', 'b17001018', 'b17001019', 'b17001020', 'b17001021', 'b17001022', 'b17001023'), total_population))
+    poverty_children['above'] = build_item('b17001', 'Population for whom poverty status is determined', 'Children at/above poverty level', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b17001033', 'b17001034', 'b17001035', 'b17001036', 'b17001037', 'b17001038', 'b17001047', 'b17001048', 'b17001049', 'b17001050', 'b17001051', 'b17001052'), total_population))
+
+    poverty_seniors['below'] = build_item('b17001', 'Population for whom poverty status is determined', 'Seniors below poverty level', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b17001015', 'b17001016', 'b17001029', 'b17001030'), total_population))
+    poverty_seniors['above'] = build_item('b17001', 'Population for whom poverty status is determined', 'Seniors at/above poverty level', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b17001044', 'b17001045', 'b17001058', 'b17001059'), total_population))
+
 
     # Economics: Median Travel Time to Work
     g.cur.execute("SELECT * FROM B08006 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
