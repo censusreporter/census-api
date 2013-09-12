@@ -519,17 +519,23 @@ def geo_profile(acs, state, logrecno):
     poverty_dict['children'] = poverty_children
     poverty_dict['seniors'] = poverty_seniors
 
-    total_population = data['b17001001']
+    children_in_poverty = sum(data, 'b17001004', 'b17001005', 'b17001006', 'b17001007', 'b17001008', 'b17001009', 'b17001018', 'b17001019', 'b17001020', 'b17001021', 'b17001022', 'b17001023')
+    children_not_in_poverty = sum(data, 'b17001033', 'b17001034', 'b17001035', 'b17001036', 'b17001037', 'b17001038', 'b17001047', 'b17001048', 'b17001049', 'b17001050', 'b17001051', 'b17001052')
+    total_children_population = children_in_poverty + children_not_in_poverty
+
+    seniors_in_poverty = sum(data, 'b17001015', 'b17001016', 'b17001029', 'b17001030')
+    seniors_not_in_poverty = sum(data, 'b17001044', 'b17001045', 'b17001058', 'b17001059')
+    total_seniors_population = seniors_in_poverty + seniors_not_in_poverty
 
     poverty_children['below'] = build_item('b17001', 'Population for whom poverty status is determined', 'Children below poverty level', default_data_years, data,
-                                        lambda data: maybe_percent(sum(data, 'b17001004', 'b17001005', 'b17001006', 'b17001007', 'b17001008', 'b17001009', 'b17001018', 'b17001019', 'b17001020', 'b17001021', 'b17001022', 'b17001023'), total_population))
+                                        lambda data: maybe_percent(children_in_poverty, total_children_population))
     poverty_children['above'] = build_item('b17001', 'Population for whom poverty status is determined', 'Children at/above poverty level', default_data_years, data,
-                                        lambda data: maybe_percent(sum(data, 'b17001033', 'b17001034', 'b17001035', 'b17001036', 'b17001037', 'b17001038', 'b17001047', 'b17001048', 'b17001049', 'b17001050', 'b17001051', 'b17001052'), total_population))
+                                        lambda data: maybe_percent(children_not_in_poverty, total_children_population))
 
     poverty_seniors['below'] = build_item('b17001', 'Population for whom poverty status is determined', 'Seniors below poverty level', default_data_years, data,
-                                        lambda data: maybe_percent(sum(data, 'b17001015', 'b17001016', 'b17001029', 'b17001030'), total_population))
+                                        lambda data: maybe_percent(seniors_in_poverty, total_seniors_population))
     poverty_seniors['above'] = build_item('b17001', 'Population for whom poverty status is determined', 'Seniors at/above poverty level', default_data_years, data,
-                                        lambda data: maybe_percent(sum(data, 'b17001044', 'b17001045', 'b17001058', 'b17001059'), total_population))
+                                        lambda data: maybe_percent(seniors_not_in_poverty, total_seniors_population))
 
 
     # Economics: Median Travel Time to Work
