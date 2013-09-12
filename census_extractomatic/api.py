@@ -527,14 +527,14 @@ def geo_profile(acs, state, logrecno):
     seniors_not_in_poverty = sum(data, 'b17001044', 'b17001045', 'b17001058', 'b17001059')
     total_seniors_population = seniors_in_poverty + seniors_not_in_poverty
 
-    poverty_children['below'] = build_item('b17001', 'Population for whom poverty status is determined', 'Children below poverty level', default_data_years, data,
+    poverty_children['below'] = build_item('b17001', 'Population for whom poverty status is determined', 'Poverty', default_data_years, data,
                                         lambda data: maybe_percent(children_in_poverty, total_children_population))
-    poverty_children['above'] = build_item('b17001', 'Population for whom poverty status is determined', 'Children at/above poverty level', default_data_years, data,
+    poverty_children['above'] = build_item('b17001', 'Population for whom poverty status is determined', 'Non-poverty', default_data_years, data,
                                         lambda data: maybe_percent(children_not_in_poverty, total_children_population))
 
-    poverty_seniors['below'] = build_item('b17001', 'Population for whom poverty status is determined', 'Seniors below poverty level', default_data_years, data,
+    poverty_seniors['below'] = build_item('b17001', 'Population for whom poverty status is determined', 'Poverty', default_data_years, data,
                                         lambda data: maybe_percent(seniors_in_poverty, total_seniors_population))
-    poverty_seniors['above'] = build_item('b17001', 'Population for whom poverty status is determined', 'Seniors at/above poverty level', default_data_years, data,
+    poverty_seniors['above'] = build_item('b17001', 'Population for whom poverty status is determined', 'Non-poverty', default_data_years, data,
                                         lambda data: maybe_percent(seniors_not_in_poverty, total_seniors_population))
 
 
