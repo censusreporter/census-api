@@ -503,8 +503,27 @@ def geo_profile(acs, state, logrecno):
 
     income_dict['median_household_income'] = build_item('b19013', 'Households', 'Median household income', default_data_years, data,
                                         lambda data: maybe_int(data['b19013001']))
+                                        
+    # Economics: Household Income Distribution
+    # multiple data points, suitable for visualization
+    g.cur.execute("SELECT * FROM B19001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    income_distribution = OrderedDict()
+    income_dict['distribution'] = income_distribution
+    total_households = data['b19001001']
+
+    income_distribution['under_50'] = build_item('b19001', 'Households', 'Under $50K', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b19001002', 'b19001003', 'b19001004', 'b19001005', 'b19001006', 'b19001007', 'b19001008', 'b19001009', 'b19001010'), total_households))
+    income_distribution['50_to_100'] = build_item('b19001', 'Households', '$50K-$100K', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b19001011', 'b19001012', 'b19001013'), total_households))
+    income_distribution['100_to_200'] = build_item('b19001', 'Households', '$100K-$200K', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b19001014', 'b19001015', 'b19001016'), total_households))
+    income_distribution['over_200'] = build_item('b19001', 'Households', 'Over $200K', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b19001017'), total_households))
 
     # Economics: Poverty Rate
+    # provides separate dicts for children and seniors, with multiple data points, suitable for visualization
     g.cur.execute("SELECT * FROM B17001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
 
