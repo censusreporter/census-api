@@ -493,7 +493,7 @@ def geo_profile(acs, state, logrecno):
     income_dict = dict()
     doc['economics']['income'] = income_dict
 
-    income_dict['per_capita_income_in_the_last_12_months'] = build_item('b19301', 'Total population', 'Per capita income in past year', default_data_years, data,
+    income_dict['per_capita_income_in_the_last_12_months'] = build_item('b19301', 'Total population', 'Per capita income', default_data_years, data,
                                         lambda data: maybe_int(data['b19301001']))
 
     # Economics: Median Household Income
@@ -510,7 +510,7 @@ def geo_profile(acs, state, logrecno):
     data = g.cur.fetchone()
 
     income_distribution = OrderedDict()
-    income_dict['distribution'] = income_distribution
+    income_dict['household_distribution'] = income_distribution
     total_households = data['b19001001']
 
     income_distribution['under_50'] = build_item('b19001', 'Households', 'Under $50K', default_data_years, data,
