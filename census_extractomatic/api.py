@@ -652,7 +652,7 @@ def geo_profile(acs, state, logrecno):
     doc['social']['educational_attainment'] = attainment_dict
     total_population = data['b15002001']
 
-    attainment_dict['percent_high_school_grad_or_higher'] = build_item('b15002', 'Population 25 years and over', 'High school degree or higher', default_data_years, data,
+    attainment_dict['percent_high_school_grad_or_higher'] = build_item('b15002', 'Population 25 years and over', 'High school grad or higher', default_data_years, data,
                                         lambda data: maybe_percent((sum(data, 'b15002011', 'b15002012', 'b15002013', 'b15002014', 'b15002015', 'b15002016', 'b15002017', 'b15002018') + sum(data, 'b15002028', 'b15002029', 'b15002030', 'b15002031', 'b15002032', 'b15002033', 'b15002034', 'b15002035')), total_population))
 
     attainment_dict['percent_bachelor_degree_or_higher'] = build_item('b15002', 'Population 25 years and over', 'Bachelor\'s degree or higher', default_data_years, data,
@@ -668,10 +668,7 @@ def geo_profile(acs, state, logrecno):
                                         lambda data: maybe_percent((sum(data, 'b15002011') + sum(data, 'b15002028')), total_population))
 
     attainment_distribution_dict['some_college'] = build_item('b15002', 'Population 25 years and over', 'Some college', default_data_years, data,
-                                        lambda data: maybe_percent((sum(data, 'b15002012', 'b15002013') + sum(data, 'b15002029', 'b15002030')), total_population))
-
-    attainment_distribution_dict['associate_degree'] = build_item('b15002', 'Population 25 years and over', 'Associate degree', default_data_years, data,
-                                        lambda data: maybe_percent((sum(data, 'b15002014') + sum(data, 'b15002031')), total_population))
+                                        lambda data: maybe_percent((sum(data, 'b15002012', 'b15002013', 'b15002014') + sum(data, 'b15002029', 'b15002030', 'b15002031')), total_population))
 
     attainment_distribution_dict['bachelor_degree'] = build_item('b15002', 'Population 25 years and over', 'Bachelor\'s degree', default_data_years, data,
                                         lambda data: maybe_percent((sum(data, 'b15002015') + sum(data, 'b15002032')), total_population))
