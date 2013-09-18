@@ -575,7 +575,7 @@ def geo_profile(acs, state, logrecno):
     travel_time_dict['mean_travel_time'] = build_item('b08006, b08013', 'Workers 16 years and over', 'Mean travel time to work', default_data_years, data,
                                         lambda data: maybe_float(div(_aggregate_minutes, dif(_total_workers_16_and_over, _workers_who_worked_at_home))))
 
-    # Families: Number of Households
+    # Families: Number of Households, Persons per Household, Household type distribution
     g.cur.execute("SELECT * FROM B11001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
 
@@ -587,8 +587,6 @@ def geo_profile(acs, state, logrecno):
     households_dict['number_of_households'] = build_item('b11001', 'Households', 'Number of households', default_data_years, data,
                                         lambda data: _number_of_households)
 
-
-    # Families: Persons per Household
     g.cur.execute("SELECT * FROM B11002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
 
@@ -596,6 +594,22 @@ def geo_profile(acs, state, logrecno):
 
     households_dict['persons_per_household'] = build_item('b11001,b11002', 'Households', 'Persons per household', default_data_years, data,
                                         lambda data: maybe_float(div(_total_persons_in_households, _number_of_households)))
+
+    households_distribution_dict = OrderedDict()
+    households_dict['distribution'] = households_distribution_dict
+
+    households_distribution_dict['married_couples'] = build_item('b11001', 'Households', 'Married couples', default_data_years, data,
+                                        lambda data: maybe_percent(data['b11002003'], _total_persons_in_households))
+
+    households_distribution_dict['male_householder'] = build_item('b11001', 'Households', 'Male householder', default_data_years, data,
+                                        lambda data: maybe_percent(data['b11002006'], _total_persons_in_households))
+
+    households_distribution_dict['female_householder'] = build_item('b11001', 'Households', 'Female householder', default_data_years, data,
+                                        lambda data: maybe_percent(data['b11002009'], _total_persons_in_households))
+
+    households_distribution_dict['nonfamily'] = build_item('b11001', 'Households', 'Non-family', default_data_years, data,
+                                        lambda data: maybe_percent(data['b11002012'], _total_persons_in_households))
+
 
     # Housing: Mobility
     g.cur.execute("SELECT * FROM B07001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
