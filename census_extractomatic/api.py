@@ -669,20 +669,28 @@ def geo_profile(acs, state, logrecno):
     # Housing: Mobility
     g.cur.execute("SELECT * FROM B07003 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
-
-    migration_dict = OrderedDict()
-    doc['housing']['migration_distribution'] = migration_dict
     total_migration_population = data['b07003001']
+
+    migration_dict = dict()
+    doc['housing']['migration'] = migration_dict
 
     migration_dict['same_house_year_ago'] = build_item('b07003', 'Population 1 year and over in the United States', 'Same house year ago', default_data_years, data,
                                         lambda data: maybe_percent(data['b07003004'], total_migration_population))
-    migration_dict['moved_same_county'] = build_item('b07003', 'Population 1 year and over in the United States', 'Moved, same county', default_data_years, data,
+    migration_dict['moved_since_previous_year'] = build_item('b07003', 'Population 1 year and over in the United States', 'Moved in since previous year', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b07003007', 'b07003010', 'b07003013', 'b07003016'), total_migration_population))
+
+    migration_distribution_dict = OrderedDict()
+    doc['housing']['migration_distribution'] = migration_distribution_dict
+
+    migration_distribution_dict['same_house_year_ago'] = build_item('b07003', 'Population 1 year and over in the United States', 'Same house year ago', default_data_years, data,
+                                        lambda data: maybe_percent(data['b07003004'], total_migration_population))
+    migration_distribution_dict['moved_same_county'] = build_item('b07003', 'Population 1 year and over in the United States', 'Moved, same county', default_data_years, data,
                                         lambda data: maybe_percent(data['b07003007'], total_migration_population))
-    migration_dict['moved_different_county'] = build_item('b07003', 'Population 1 year and over in the United States', 'Moved, different county', default_data_years, data,
+    migration_distribution_dict['moved_different_county'] = build_item('b07003', 'Population 1 year and over in the United States', 'Moved, different county', default_data_years, data,
                                         lambda data: maybe_percent(data['b07003010'], total_migration_population))
-    migration_dict['moved_different_state'] = build_item('b07003', 'Population 1 year and over in the United States', 'Moved, different state', default_data_years, data,
+    migration_distribution_dict['moved_different_state'] = build_item('b07003', 'Population 1 year and over in the United States', 'Moved, different state', default_data_years, data,
                                         lambda data: maybe_percent(data['b07003013'], total_migration_population))
-    migration_dict['moved_from_abroad'] = build_item('b07003', 'Population 1 year and over in the United States', 'Moved from abroad', default_data_years, data,
+    migration_distribution_dict['moved_from_abroad'] = build_item('b07003', 'Population 1 year and over in the United States', 'Moved from abroad', default_data_years, data,
                                         lambda data: maybe_percent(data['b07003016'], total_migration_population))
 
     # Housing: Median Value and Distribution of Values
