@@ -611,15 +611,24 @@ def geo_profile(acs, state, logrecno):
                                         lambda data: maybe_percent(data['b11002012'], _total_persons_in_households))
 
 
-    # Housing: Number of Housing Units
-    g.cur.execute("SELECT * FROM B25001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    # Housing: Number of Housing Units, Occupancy Distribution
+    g.cur.execute("SELECT * FROM B25002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
 
     units_dict = dict()
     doc['housing']['units'] = units_dict
+    total_units = data['b25002001']
 
-    units_dict['number_of_housing_units'] = build_item('b25001', 'Housing units', 'Number of housing units', default_data_years, data,
-                                        lambda data: maybe_int(data['b25001001']))
+    units_dict['number'] = build_item('b25002', 'Housing units', 'Number of housing units', default_data_years, data,
+                                        lambda data: maybe_int(total_units))
+
+    occupancy_distribution_dict = OrderedDict()
+    units_dict['occupancy_distribution'] = occupancy_distribution_dict
+
+    occupancy_distribution_dict['occupied'] = build_item('b25002', 'Housing units', 'Occupied', default_data_years, data,
+                                        lambda data: maybe_percent(data['b25002002'], total_units))
+    occupancy_distribution_dict['vacant'] = build_item('b25002', 'Housing units', 'Vacant', default_data_years, data,
+                                        lambda data: maybe_percent(data['b25002003'], total_units))
 
     # Housing: Percentage of Units in Multi-Unit Structure
     g.cur.execute("SELECT * FROM B25024 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
@@ -636,9 +645,6 @@ def geo_profile(acs, state, logrecno):
     ownership_dict = dict()
     doc['housing']['ownership'] = ownership_dict
 
-    ownership_dict['percent_homeownership'] = build_item('b25003', 'Occupied housing units', 'Rate of homeownership', default_data_years, data,
-                                        lambda data: maybe_percent(data['b25003002'], data['b25003001']))
-                                        
     ownership_distribution_dict = OrderedDict()
     ownership_dict['distribution'] = ownership_distribution_dict
     ownership_distribution_dict['owner'] = build_item('b25003', 'Occupied housing units', 'Owner occupied', default_data_years, data,
