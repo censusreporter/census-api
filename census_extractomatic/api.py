@@ -649,12 +649,36 @@ def geo_profile(acs, state, logrecno):
     ownership_dict['percent_homeownership'] = build_item('b25003', 'Occupied housing units', 'Rate of homeownership', default_data_years, data,
                                         lambda data: maybe_percent(data['b25003002'], data['b25003001']))
 
-    # Housing: Median Value
+    # Housing: Median Value and Distribution of Values
     g.cur.execute("SELECT * FROM B25077 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
 
-    ownership_dict['median_value_of_owner_occupied_housing_unit'] = build_item('b25077', 'Owner-occupied housing units', 'Median value of owner-occupied housing units', default_data_years, data,
+    ownership_dict['median_value'] = build_item('b25077', 'Owner-occupied housing units', 'Median value of owner-occupied housing units', default_data_years, data,
                                         lambda data: maybe_int(data['b25077001']))
+                                        
+    g.cur.execute("SELECT * FROM B25075 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    value_distribution = OrderedDict()
+    ownership_dict['value_distribution'] = value_distribution
+    total_value = data['b25075001']
+    ownership_dict['total_value'] = total_value
+
+    value_distribution['under_100'] = build_item('b25075', 'Owner-occupied housing units', 'Under $100K', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b25075002', 'b25075003', 'b25075004', 'b25075005', 'b25075006', 'b25075007', 'b25075008', 'b25075009', 'b25075010', 'b25075011', 'b25075012', 'b25075013', 'b25075014'), total_value))
+    value_distribution['100_to_200'] = build_item('b25075', 'Owner-occupied housing units', '$100K-$200K', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b25075015', 'b25075016', 'b25075017', 'b25075018'), total_value))
+    value_distribution['200_to_300'] = build_item('b25075', 'Owner-occupied housing units', '$200K-$300K', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b25075019', 'b25075020'), total_value))
+    value_distribution['300_to_400'] = build_item('b25075', 'Owner-occupied housing units', '$300K-$400K', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b25075021'), total_value))
+    value_distribution['400_to_500'] = build_item('b25075', 'Owner-occupied housing units', '$400K-$500K', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b25075022'), total_value))
+    value_distribution['500_to_1000000'] = build_item('b25075', 'Owner-occupied housing units', '$500K-$1M', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b25075023', 'b25075024'), total_value))
+    value_distribution['over_1000000'] = build_item('b25075', 'Owner-occupied housing units', 'Over $1M', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b25075025'), total_value))
+
 
     # Social: Educational Attainment
     # Two aggregated data points for "high school and higher," "college degree and higher"
