@@ -611,7 +611,7 @@ def geo_profile(acs, state, logrecno):
                                         lambda data: maybe_percent(data['b11002012'], _total_persons_in_households))
 
 
-    # Housing: Number of Housing Units, Occupancy Distribution
+    # Housing: Number of Housing Units, Occupancy Distribution, Vacancy Distribution
     g.cur.execute("SELECT * FROM B25002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
 
@@ -630,6 +630,20 @@ def geo_profile(acs, state, logrecno):
     occupancy_distribution_dict['vacant'] = build_item('b25002', 'Housing units', 'Vacant', default_data_years, data,
                                         lambda data: maybe_percent(data['b25002003'], total_units))
 
+    g.cur.execute("SELECT * FROM B25004 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    vacancy_distribution_dict = OrderedDict()
+    units_dict['vacancy_distribution'] = vacancy_distribution_dict
+    total_vacant_units = data['b25004001']
+
+    vacancy_distribution_dict['for_rent'] = build_item('b25004', 'Vacant housing units', 'For rent', default_data_years, data,
+                                        lambda data: maybe_percent(data['b25004002'], total_vacant_units))
+    vacancy_distribution_dict['for_sale'] = build_item('b25004', 'Vacant housing units', 'For sale', default_data_years, data,
+                                        lambda data: maybe_percent(data['b25004004'], total_vacant_units))
+    vacancy_distribution_dict['other'] = build_item('b25004', 'Vacant housing units', 'Other', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b25004003', 'b25004005', 'b25004006', 'b25004007', 'b25004008'), total_vacant_units))
+
     # Housing: Percentage of Units in Multi-Unit Structure
     g.cur.execute("SELECT * FROM B25024 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
@@ -638,7 +652,7 @@ def geo_profile(acs, state, logrecno):
                                         lambda data: maybe_percent(sum(data, 'b25024004', 'b25024005', 'b25024006', 'b25024007', 'b25024008', 'b25024009'),
                                                                     data['b25024001']))
 
-    # Housing: Percentage of Homeownership
+    # Housing: Tenure
     g.cur.execute("SELECT * FROM B25003 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
 
