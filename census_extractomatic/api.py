@@ -662,7 +662,9 @@ def geo_profile(acs, state, logrecno):
     value_distribution = OrderedDict()
     ownership_dict['value_distribution'] = value_distribution
     total_value = data['b25075001']
-    ownership_dict['total_value'] = total_value
+
+    ownership_dict['total_value'] = build_item('b25075', 'Owner-occupied housing units', 'Total value of owner-occupied housing units', default_data_years, data,
+                                        lambda data: maybe_int(total_value))
 
     value_distribution['under_100'] = build_item('b25075', 'Owner-occupied housing units', 'Under $100K', default_data_years, data,
                                         lambda data: maybe_percent(sum(data, 'b25075002', 'b25075003', 'b25075004', 'b25075005', 'b25075006', 'b25075007', 'b25075008', 'b25075009', 'b25075010', 'b25075011', 'b25075012', 'b25075013', 'b25075014'), total_value))
