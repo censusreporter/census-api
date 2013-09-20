@@ -371,9 +371,9 @@ def geo_profile(acs, state, logrecno):
     pop_dict['male'] = population_by_age_male
     pop_dict['female'] = population_by_age_female
     
-    total_population = data['b01001001']
-    total_population_male = data['b01001002']
-    total_population_female = data['b01001026']
+    total_population = maybe_int(data['b01001001'])
+    total_population_male = maybe_int(data['b01001002'])
+    total_population_female = maybe_int(data['b01001026'])
 
     population_by_age_male['0-9'] = build_item('b01001', 'Total population', '0-9', default_data_years, data,
                                         lambda data: maybe_percent(sum(data, 'b01001003', 'b01001004'), total_population_male))
@@ -466,7 +466,7 @@ def geo_profile(acs, state, logrecno):
     # also collapses smaller groups into "Other"
     g.cur.execute("SELECT * FROM B03002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
-    total_population = data['b03002001']
+    total_population = maybe_int(data['b03002001'])
 
     race_dict = OrderedDict()
     doc['demographics']['race'] = race_dict
@@ -511,7 +511,7 @@ def geo_profile(acs, state, logrecno):
 
     income_distribution = OrderedDict()
     income_dict['household_distribution'] = income_distribution
-    total_households = data['b19001001']
+    total_households = maybe_int(data['b19001001'])
 
     income_distribution['under_50'] = build_item('b19001', 'Households', 'Under $50K', default_data_years, data,
                                         lambda data: maybe_percent(sum(data, 'b19001002', 'b19001003', 'b19001004', 'b19001005', 'b19001006', 'b19001007', 'b19001008', 'b19001009', 'b19001010'), total_households))
@@ -639,7 +639,7 @@ def geo_profile(acs, state, logrecno):
 
     units_dict = dict()
     doc['housing']['units'] = units_dict
-    total_units = data['b25002001']
+    total_units = maybe_int(data['b25002001'])
 
     units_dict['number'] = build_item('b25002', 'Housing units', 'Number of housing units', default_data_years, data,
                                         lambda data: maybe_int(total_units))
@@ -655,7 +655,7 @@ def geo_profile(acs, state, logrecno):
     # Housing: Structure Distribution
     g.cur.execute("SELECT * FROM B25024 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
-    total_units = data['b25024001']
+    total_units = maybe_int(data['b25024001'])
 
     structure_distribution_dict = OrderedDict()
     units_dict['structure_distribution'] = structure_distribution_dict
@@ -706,7 +706,7 @@ def geo_profile(acs, state, logrecno):
     # Housing: Mobility
     g.cur.execute("SELECT * FROM B07003 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
-    total_migration_population = data['b07003001']
+    total_migration_population = maybe_int(data['b07003001'])
 
     migration_dict = dict()
     doc['housing']['migration'] = migration_dict
@@ -742,7 +742,7 @@ def geo_profile(acs, state, logrecno):
 
     value_distribution = OrderedDict()
     ownership_dict['value_distribution'] = value_distribution
-    total_value = data['b25075001']
+    total_value = maybe_int(data['b25075001'])
 
     ownership_dict['total_value'] = build_item('b25075', 'Owner-occupied housing units', 'Total value of owner-occupied housing units', default_data_years, data,
                                         lambda data: maybe_int(total_value))
@@ -771,7 +771,7 @@ def geo_profile(acs, state, logrecno):
 
     attainment_dict = dict()
     doc['social']['educational_attainment'] = attainment_dict
-    total_population = data['b15002001']
+    total_population = maybe_int(data['b15002001'])
 
     attainment_dict['percent_high_school_grad_or_higher'] = build_item('b15002', 'Population 25 years and over', 'High school grad or higher', default_data_years, data,
                                         lambda data: maybe_percent((sum(data, 'b15002011', 'b15002012', 'b15002013', 'b15002014', 'b15002015', 'b15002016', 'b15002017', 'b15002018') + sum(data, 'b15002028', 'b15002029', 'b15002030', 'b15002031', 'b15002032', 'b15002033', 'b15002034', 'b15002035')), total_population))
@@ -807,7 +807,7 @@ def geo_profile(acs, state, logrecno):
     foreign_dict['percent_foreign_born'] = build_item('b05002', 'Total population', 'Foreign-born persons', default_data_years, data,
                                         lambda data: maybe_percent(data['b05002013'], data['b05002001']))
 
-    # Social: Percentage of Non-English Spoken at Home
+    # Social: Percentage of Non-English Spoken at Home, Language Spoken at Home for Children, Adults
     g.cur.execute("SELECT * FROM B16001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
 
@@ -816,6 +816,44 @@ def geo_profile(acs, state, logrecno):
 
     language_dict['percent_non_english_at_home'] = build_item('b16001', 'Population 5 years and over', 'Persons with language other than English spoken at home', default_data_years, data,
                                         lambda data: maybe_float(maybe_percent(dif(data['b16001001'], data['b16001002']), data['b16001001'])))
+
+
+    g.cur.execute("SELECT * FROM B16007 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    language_children = OrderedDict()
+    language_adults = OrderedDict()
+    language_dict['children'] = language_children
+    language_dict['adults'] = language_adults
+
+    total_children_population = maybe_int(data['b16007002'])
+    total_adult_population = sum(data, 'b16007008', 'b16007014')
+
+    language_children['english'] = build_item('b16007', 'Population 5 years and over', 'English only', default_data_years, data,
+                                        lambda data: maybe_percent(data['b16007002'], total_children_population))
+    language_adults['english'] = build_item('b16007', 'Population 5 years and over', 'English only', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b16007009', 'b16007015'), total_adult_population))
+
+    language_children['spanish'] = build_item('b16007', 'Population 5 years and over', 'Spanish', default_data_years, data,
+                                        lambda data: maybe_percent(data['b16007004'], total_children_population))
+    language_adults['spanish'] = build_item('b16007', 'Population 5 years and over', 'Spanish', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b16007010', 'b16007016'), total_adult_population))
+
+    language_children['indoeuropean'] = build_item('b16007', 'Population 5 years and over', 'Indo-European', default_data_years, data,
+                                        lambda data: maybe_percent(data['b16007005'], total_children_population))
+    language_adults['indoeuropean'] = build_item('b16007', 'Population 5 years and over', 'Indo-European', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b16007011', 'b16007017'), total_adult_population))
+
+    language_children['asian_islander'] = build_item('b16007', 'Population 5 years and over', 'Asian/Islander', default_data_years, data,
+                                        lambda data: maybe_percent(data['b16007006'], total_children_population))
+    language_adults['asian_islander'] = build_item('b16007', 'Population 5 years and over', 'Asian/Islander', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b16007012', 'b16007018'), total_adult_population))
+
+    language_children['other'] = build_item('b16007', 'Population 5 years and over', 'Other', default_data_years, data,
+                                        lambda data: maybe_percent(data['b16007007'], total_children_population))
+    language_adults['other'] = build_item('b16007', 'Population 5 years and over', 'Other', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b16007013', 'b16007019'), total_adult_population))
+
 
     # Social: Number of Veterans
     g.cur.execute("SELECT * FROM B21002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
