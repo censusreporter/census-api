@@ -865,13 +865,13 @@ def geo_profile(acs, state, logrecno):
     veterans_service_dict = OrderedDict()
     veterans_dict['wartime_service'] = veterans_service_dict
     
-    veterans_service_dict['gulf_2001'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Gulf War (2001-)', default_data_years, data,
+    veterans_service_dict['gulf_2001'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Gulf (2001-)', default_data_years, data,
                                         lambda data: maybe_int(sum(data, 'b21002002', 'b21002003', 'b21002004')))
-    veterans_service_dict['gulf_1990s'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Gulf War (1990s)', default_data_years, data,
+    veterans_service_dict['gulf_1990s'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Gulf (1990s)', default_data_years, data,
                                         lambda data: maybe_int(sum(data, 'b21002003', 'b21002004', 'b21002005', 'b21002006')))
     veterans_service_dict['vietnam'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Vietnam', default_data_years, data,
                                         lambda data: maybe_int(sum(data, 'b21002004', 'b21002006', 'b21002007', 'b21002008', 'b21002009')))
-    veterans_service_dict['korean'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Korean War', default_data_years, data,
+    veterans_service_dict['korean'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Korea', default_data_years, data,
                                         lambda data: maybe_int(sum(data, 'b21002008', 'b21002009', 'b21002010', 'b21002011')))
     veterans_service_dict['wwii'] = build_item('b21002', 'Civilian veterans 18 years and over', 'WWII', default_data_years, data,
                                         lambda data: maybe_int(sum(data, 'b21002009', 'b21002011', 'b21002012')))
