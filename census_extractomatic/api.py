@@ -557,7 +557,7 @@ def geo_profile(acs, state, logrecno):
                                         lambda data: maybe_percent(seniors_not_in_poverty, total_seniors_population))
 
 
-    # Economics: Median Travel Time to Work
+    # Economics: Mean Travel Time to Work, Means of Transportation to Work
     g.cur.execute("SELECT * FROM B08006 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
 
@@ -569,11 +569,33 @@ def geo_profile(acs, state, logrecno):
 
     _aggregate_minutes = maybe_int(data['b08013001'])
 
-    travel_time_dict = dict()
-    doc['economics']['travel_time'] = travel_time_dict
+    employment_dict = dict()
+    doc['economics']['employment'] = employment_dict
 
-    travel_time_dict['mean_travel_time'] = build_item('b08006, b08013', 'Workers 16 years and over', 'Mean travel time to work', default_data_years, data,
+    employment_dict['mean_travel_time'] = build_item('b08006, b08013', 'Workers 16 years and over', 'Mean travel time to work', default_data_years, data,
                                         lambda data: maybe_float(div(_aggregate_minutes, dif(_total_workers_16_and_over, _workers_who_worked_at_home))))
+
+    g.cur.execute("SELECT * FROM B08006 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+    total_workers = maybe_int(data['b08006001'])
+    
+    transportation_dict = OrderedDict()
+    employment_dict['transportation_distribution'] = transportation_dict
+
+    transportation_dict['drove_alone'] = build_item('b08006', 'Workers 16 years and over', 'Drove alone', default_data_years, data,
+                                        lambda data: maybe_percent(data['b08006003'], total_workers))
+    transportation_dict['carpooled'] = build_item('b08006', 'Workers 16 years and over', 'Carpooled', default_data_years, data,
+                                        lambda data: maybe_percent(data['b08006004'], total_workers))
+    transportation_dict['public_transit'] = build_item('b08006', 'Workers 16 years and over', 'Public transit', default_data_years, data,
+                                        lambda data: maybe_percent(data['b08006008'], total_workers))
+    transportation_dict['bicycle'] = build_item('b08006', 'Workers 16 years and over', 'Bicycle', default_data_years, data,
+                                        lambda data: maybe_percent(data['b08006014'], total_workers))
+    transportation_dict['walked'] = build_item('b08006', 'Workers 16 years and over', 'Walked', default_data_years, data,
+                                        lambda data: maybe_percent(data['b08006015'], total_workers))
+    transportation_dict['other'] = build_item('b08006', 'Workers 16 years and over', 'Other', default_data_years, data,
+                                        lambda data: maybe_percent(data['b08006016'], total_workers))
+    transportation_dict['worked_at_home'] = build_item('b08006', 'Workers 16 years and over', 'Worked at home', default_data_years, data,
+                                        lambda data: maybe_percent(data['b08006017'], total_workers))
 
     # Families: Number of Households, Persons per Household, Household type distribution
     g.cur.execute("SELECT * FROM B11001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
