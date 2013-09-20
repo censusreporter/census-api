@@ -665,6 +665,26 @@ def geo_profile(acs, state, logrecno):
                                         lambda data: maybe_percent(data['b25003002'], data['b25003001']))
     ownership_distribution_dict['renter'] = build_item('b25003', 'Occupied housing units', 'Renter occupied', default_data_years, data,
                                         lambda data: maybe_percent(data['b25003003'], data['b25003001']))
+
+    g.cur.execute("SELECT * FROM B25026 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    length_of_tenure_dict = OrderedDict()
+    doc['housing']['length_of_tenure'] = length_of_tenure_dict
+    total_tenure_population = data['b25026001']
+
+    length_of_tenure_dict['before_1970'] = build_item('b25026', 'Total population in occupied housing units', 'Before 1970', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b25026008', 'b25026015'), total_tenure_population))
+    length_of_tenure_dict['1970s'] = build_item('b25026', 'Total population in occupied housing units', '1970s', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b25026007', 'b25026014'), total_tenure_population))
+    length_of_tenure_dict['1980s'] = build_item('b25026', 'Total population in occupied housing units', '1980s', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b25026006', 'b25026013'), total_tenure_population))
+    length_of_tenure_dict['1990s'] = build_item('b25026', 'Total population in occupied housing units', '1990s', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b25026005', 'b25026012'), total_tenure_population))
+    length_of_tenure_dict['2000_to_2004'] = build_item('b25026', 'Total population in occupied housing units', '2000-2004', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b25026004', 'b25026011'), total_tenure_population))
+    length_of_tenure_dict['since_2005'] = build_item('b25026', 'Total population in occupied housing units', 'Since 2005', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b25026003', 'b25026010'), total_tenure_population))
                                         
     # Housing: Mobility
     g.cur.execute("SELECT * FROM B07003 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
