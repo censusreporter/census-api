@@ -630,27 +630,22 @@ def geo_profile(acs, state, logrecno):
     occupancy_distribution_dict['vacant'] = build_item('b25002', 'Housing units', 'Vacant', default_data_years, data,
                                         lambda data: maybe_percent(data['b25002003'], total_units))
 
-    g.cur.execute("SELECT * FROM B25004 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
-    data = g.cur.fetchone()
-
-    vacancy_distribution_dict = OrderedDict()
-    units_dict['vacancy_distribution'] = vacancy_distribution_dict
-    total_vacant_units = data['b25004001']
-
-    vacancy_distribution_dict['for_rent'] = build_item('b25004', 'Vacant housing units', 'For rent', default_data_years, data,
-                                        lambda data: maybe_percent(data['b25004002'], total_vacant_units))
-    vacancy_distribution_dict['for_sale'] = build_item('b25004', 'Vacant housing units', 'For sale', default_data_years, data,
-                                        lambda data: maybe_percent(data['b25004004'], total_vacant_units))
-    vacancy_distribution_dict['other'] = build_item('b25004', 'Vacant housing units', 'Other', default_data_years, data,
-                                        lambda data: maybe_percent(sum(data, 'b25004003', 'b25004005', 'b25004006', 'b25004007', 'b25004008'), total_vacant_units))
-
-    # Housing: Percentage of Units in Multi-Unit Structure
+    # Housing: Structure Distribution
     g.cur.execute("SELECT * FROM B25024 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
+    total_units = data['b25024001']
 
-    units_dict['percent_units_in_multi_unit_structure'] = build_item('b25024', 'Housing units', 'Housing units in multi-unit structures', default_data_years, data,
-                                        lambda data: maybe_percent(sum(data, 'b25024004', 'b25024005', 'b25024006', 'b25024007', 'b25024008', 'b25024009'),
-                                                                    data['b25024001']))
+    structure_distribution_dict = OrderedDict()
+    units_dict['structure_distribution'] = structure_distribution_dict
+
+    structure_distribution_dict['single_unit'] = build_item('b25024', 'Housing units', 'Single unit', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b25024002', 'b25024003'), total_units))
+    structure_distribution_dict['multi_unit'] = build_item('b25024', 'Housing units', 'Multi-unit', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b25024004', 'b25024005', 'b25024006', 'b25024007', 'b25024008', 'b25024009'), total_units))
+    structure_distribution_dict['mobile_home'] = build_item('b25024', 'Housing units', 'Mobile home', default_data_years, data,
+                                        lambda data: maybe_percent(data['b25024010'], total_units))
+    structure_distribution_dict['vehicle'] = build_item('b25024', 'Housing units', 'Boat, RV, van, etc.', default_data_years, data,
+                                        lambda data: maybe_percent(data['b25024011'], total_units))
 
     # Housing: Tenure
     g.cur.execute("SELECT * FROM B25003 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
@@ -696,7 +691,7 @@ def geo_profile(acs, state, logrecno):
 
     migration_dict['same_house_year_ago'] = build_item('b07003', 'Population 1 year and over in the United States', 'Same house year ago', default_data_years, data,
                                         lambda data: maybe_percent(data['b07003004'], total_migration_population))
-    migration_dict['moved_since_previous_year'] = build_item('b07003', 'Population 1 year and over in the United States', 'Moved in since previous year', default_data_years, data,
+    migration_dict['moved_since_previous_year'] = build_item('b07003', 'Population 1 year and over in the United States', 'Moved since previous year', default_data_years, data,
                                         lambda data: maybe_percent(sum(data, 'b07003007', 'b07003010', 'b07003013', 'b07003016'), total_migration_population))
 
     migration_distribution_dict = OrderedDict()
@@ -704,13 +699,13 @@ def geo_profile(acs, state, logrecno):
 
     migration_distribution_dict['same_house_year_ago'] = build_item('b07003', 'Population 1 year and over in the United States', 'Same house year ago', default_data_years, data,
                                         lambda data: maybe_percent(data['b07003004'], total_migration_population))
-    migration_distribution_dict['moved_same_county'] = build_item('b07003', 'Population 1 year and over in the United States', 'Moved, same county', default_data_years, data,
+    migration_distribution_dict['moved_same_county'] = build_item('b07003', 'Population 1 year and over in the United States', 'From same county', default_data_years, data,
                                         lambda data: maybe_percent(data['b07003007'], total_migration_population))
-    migration_distribution_dict['moved_different_county'] = build_item('b07003', 'Population 1 year and over in the United States', 'Moved, different county', default_data_years, data,
+    migration_distribution_dict['moved_different_county'] = build_item('b07003', 'Population 1 year and over in the United States', 'From different county', default_data_years, data,
                                         lambda data: maybe_percent(data['b07003010'], total_migration_population))
-    migration_distribution_dict['moved_different_state'] = build_item('b07003', 'Population 1 year and over in the United States', 'Moved, different state', default_data_years, data,
+    migration_distribution_dict['moved_different_state'] = build_item('b07003', 'Population 1 year and over in the United States', 'From different state', default_data_years, data,
                                         lambda data: maybe_percent(data['b07003013'], total_migration_population))
-    migration_distribution_dict['moved_from_abroad'] = build_item('b07003', 'Population 1 year and over in the United States', 'Moved from abroad', default_data_years, data,
+    migration_distribution_dict['moved_from_abroad'] = build_item('b07003', 'Population 1 year and over in the United States', 'From abroad', default_data_years, data,
                                         lambda data: maybe_percent(data['b07003016'], total_migration_population))
 
     # Housing: Median Value and Distribution of Values
