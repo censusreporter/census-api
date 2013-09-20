@@ -855,16 +855,46 @@ def geo_profile(acs, state, logrecno):
                                         lambda data: maybe_percent(sum(data, 'b16007013', 'b16007019'), total_adult_population))
 
 
-    # Social: Number of Veterans
+    # Social: Number of Veterans, Wartime Service, Sex of Veterans
     g.cur.execute("SELECT * FROM B21002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
 
     veterans_dict = dict()
-    doc['social']['veteran_status'] = veterans_dict
+    doc['social']['veterans'] = veterans_dict
 
-    veterans_dict['number_of_veterans'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Number of veterans', default_data_years, data,
-                                        lambda data: maybe_int(data['b21002001']))
+    veterans_service_dict = OrderedDict()
+    veterans_dict['wartime_service'] = veterans_service_dict
+    
+    veterans_service_dict['gulf_2001'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Gulf War (2001-)', default_data_years, data,
+                                        lambda data: maybe_int(sum(data, 'b21002002', 'b21002003', 'b21002004')))
+    veterans_service_dict['gulf_1990s'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Gulf War (1990s)', default_data_years, data,
+                                        lambda data: maybe_int(sum(data, 'b21002003', 'b21002004', 'b21002005', 'b21002006')))
+    veterans_service_dict['vietnam'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Vietnam', default_data_years, data,
+                                        lambda data: maybe_int(sum(data, 'b21002004', 'b21002006', 'b21002007', 'b21002008', 'b21002009')))
+    veterans_service_dict['korean'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Korean War', default_data_years, data,
+                                        lambda data: maybe_int(sum(data, 'b21002008', 'b21002009', 'b21002010', 'b21002011')))
+    veterans_service_dict['wwii'] = build_item('b21002', 'Civilian veterans 18 years and over', 'WWII', default_data_years, data,
+                                        lambda data: maybe_int(sum(data, 'b21002009', 'b21002011', 'b21002012')))
 
+    g.cur.execute("SELECT * FROM B21001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    veterans_sex_dict = OrderedDict()
+    veterans_dict['sex'] = veterans_sex_dict
+    
+    veterans_sex_dict['male'] = build_item('b21001', 'Civilian population 18 years and over', 'Male', default_data_years, data,
+                                        lambda data: maybe_int(data['b21001005']))
+    veterans_sex_dict['female'] = build_item('b21001', 'Civilian population 18 years and over', 'Female', default_data_years, data,
+                                        lambda data: maybe_int(data['b21001023']))
+
+    total_veterans = maybe_int(data['b21001002'])
+
+    veterans_dict['number'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Number of veterans', default_data_years, data,
+                                        lambda data: total_veterans)
+
+    veterans_dict['percentage'] = build_item('b21001', 'Civilian population 18 years and over', 'Percentage of veterans', default_data_years, data,
+                                        lambda data: maybe_percent(total_veterans, data['b21001001']))
+    
     return json.dumps(doc)
 
 
