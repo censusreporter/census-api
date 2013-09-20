@@ -889,10 +889,10 @@ def geo_profile(acs, state, logrecno):
 
     total_veterans = maybe_int(data['b21001002'])
 
-    veterans_dict['number'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Number of veterans', default_data_years, data,
+    veterans_dict['number'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Total veterans', default_data_years, data,
                                         lambda data: total_veterans)
 
-    veterans_dict['percentage'] = build_item('b21001', 'Civilian population 18 years and over', 'Percentage of veterans', default_data_years, data,
+    veterans_dict['percentage'] = build_item('b21001', 'Civilian population 18 years and over', 'Population with veteran status', default_data_years, data,
                                         lambda data: maybe_percent(total_veterans, data['b21001001']))
     
     return json.dumps(doc)
