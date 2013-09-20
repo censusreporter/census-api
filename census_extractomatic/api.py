@@ -830,7 +830,7 @@ def geo_profile(acs, state, logrecno):
     total_adult_population = sum(data, 'b16007008', 'b16007014')
 
     language_children['english'] = build_item('b16007', 'Population 5 years and over', 'English only', default_data_years, data,
-                                        lambda data: maybe_percent(data['b16007002'], total_children_population))
+                                        lambda data: maybe_percent(data['b16007003'], total_children_population))
     language_adults['english'] = build_item('b16007', 'Population 5 years and over', 'English only', default_data_years, data,
                                         lambda data: maybe_percent(sum(data, 'b16007009', 'b16007015'), total_adult_population))
 
