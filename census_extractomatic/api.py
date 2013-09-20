@@ -804,8 +804,28 @@ def geo_profile(acs, state, logrecno):
     foreign_dict = dict()
     doc['social']['place_of_birth'] = foreign_dict
 
-    foreign_dict['percent_foreign_born'] = build_item('b05002', 'Total population', 'Foreign-born persons', default_data_years, data,
+    foreign_dict['percent_foreign_born'] = build_item('b05002', 'Total population', 'Foreign-born population', default_data_years, data,
                                         lambda data: maybe_percent(data['b05002013'], data['b05002001']))
+
+    g.cur.execute("SELECT * FROM B05006 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    place_of_birth_dict = OrderedDict()
+    foreign_dict['distribution'] = place_of_birth_dict
+    total_foreign_population = data['b05006001']
+    
+    place_of_birth_dict['europe'] = build_item('b05006', 'Foreign-born population', 'Europe', default_data_years, data,
+                                        lambda data: maybe_percent(data['b05006002'], total_foreign_population))
+    place_of_birth_dict['asia'] = build_item('b05006', 'Foreign-born population', 'Asia', default_data_years, data,
+                                        lambda data: maybe_percent(data['b05006047'], total_foreign_population))
+    place_of_birth_dict['africa'] = build_item('b05006', 'Foreign-born population', 'Africa', default_data_years, data,
+                                        lambda data: maybe_percent(data['b05006091'], total_foreign_population))
+    place_of_birth_dict['oceania'] = build_item('b05006', 'Foreign-born population', 'Oceania', default_data_years, data,
+                                        lambda data: maybe_percent(data['b05006116'], total_foreign_population))
+    place_of_birth_dict['latin_america'] = build_item('b05006', 'Foreign-born population', 'Latin America', default_data_years, data,
+                                        lambda data: maybe_percent(data['b05006123'], total_foreign_population))
+    place_of_birth_dict['north_america'] = build_item('b05006', 'Foreign-born population', 'North America', default_data_years, data,
+                                        lambda data: maybe_percent(data['b05006159'], total_foreign_population))
 
     # Social: Percentage of Non-English Spoken at Home, Language Spoken at Home for Children, Adults
     g.cur.execute("SELECT * FROM B16001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
