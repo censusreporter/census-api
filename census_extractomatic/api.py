@@ -676,9 +676,9 @@ def geo_profile(acs, state, logrecno):
                                         lambda data: maybe_rate(data['b13016006'], sum(data, 'b13016006', 'b13016014')))
     birth_rate_by_age_dict['35_to_39'] = build_item('b13016', 'Women 15 to 50 years', '35-39', default_data_years, data,
                                         lambda data: maybe_rate(data['b13016007'], sum(data, 'b13016007', 'b13016015')))
-    birth_rate_by_age_dict['40_to_44'] = build_item('b13016', 'Women 15 to 50 years', '40-49', default_data_years, data,
+    birth_rate_by_age_dict['40_to_44'] = build_item('b13016', 'Women 15 to 50 years', '40-44', default_data_years, data,
                                         lambda data: maybe_rate(data['b13016008'], sum(data, 'b13016008', 'b13016016')))
-    birth_rate_by_age_dict['45_to_49'] = build_item('b13016', 'Women 15 to 50 years', '40-49', default_data_years, data,
+    birth_rate_by_age_dict['45_to_49'] = build_item('b13016', 'Women 15 to 50 years', '45-49', default_data_years, data,
                                         lambda data: maybe_rate(data['b13016009'], sum(data, 'b13016009', 'b13016017')))
 
     # Families: Number of Households, Persons per Household, Household type distribution
