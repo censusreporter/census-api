@@ -235,6 +235,13 @@ def maybe_percent(numerator, denominator, decimals=1):
     return round(numerator / denominator * 100, decimals)
 
 
+def maybe_rate(numerator, denominator, decimals=1):
+    if not numerator or not denominator:
+        return None
+
+    return round(numerator / denominator * 1000, decimals)
+
+
 def build_item(table_id, universe, name, data_years, data, transform):
     val = dict(table_id=table_id,
         universe=universe,
@@ -641,10 +648,10 @@ def geo_profile(acs, state, logrecno):
     
     children_family_type_dict['married_couple'] = build_item('b09002', 'Own children under 18 years', 'Married couple', default_data_years, data,
                                         lambda data: maybe_percent(data['b09002002'], total_families_with_children))
-    children_family_type_dict['female_householder'] = build_item('b09002', 'Own children under 18 years', 'Female householder', default_data_years, data,
-                                        lambda data: maybe_percent(data['b09002015'], total_families_with_children))
     children_family_type_dict['male_householder'] = build_item('b09002', 'Own children under 18 years', 'Male householder', default_data_years, data,
                                         lambda data: maybe_percent(data['b09002009'], total_families_with_children))
+    children_family_type_dict['female_householder'] = build_item('b09002', 'Own children under 18 years', 'Female householder', default_data_years, data,
+                                        lambda data: maybe_percent(data['b09002015'], total_families_with_children))
     
     # Families: Birth Rate by Women's Age
     g.cur.execute("SELECT * FROM B13016 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
@@ -653,17 +660,26 @@ def geo_profile(acs, state, logrecno):
     birth_rate = dict()
     doc['families']['birth_rate'] = birth_rate
 
+    birth_rate['total'] = build_item('b13016', 'Women 15 to 50 years', 'Births per 1,000 women', default_data_years, data,
+                                        lambda data: maybe_rate(data['b13016002'], data['b13016001']))
+
     birth_rate_by_age_dict = OrderedDict()
     birth_rate['by_age'] = birth_rate_by_age_dict
 
-    birth_rate_by_age_dict['15_to_19'] = build_item('b09002', 'Women 15 to 50 years', '15-19', default_data_years, data,
-                                        lambda data: maybe_percent(data['b13016003'], sum(data, 'b13016003', 'b13016011')))
-    birth_rate_by_age_dict['20_to_29'] = build_item('b09002', 'Women 15 to 50 years', '20-29', default_data_years, data,
-                                        lambda data: maybe_percent(sum(data, 'b13016004', 'b13016005'), sum(data, 'b13016004', 'b13016005', 'b13016012', 'b13016013')))
-    birth_rate_by_age_dict['30_to_39'] = build_item('b09002', 'Women 15 to 50 years', '30-39', default_data_years, data,
-                                        lambda data: maybe_percent(sum(data, 'b13016006', 'b13016007'), sum(data, 'b13016006', 'b13016007', 'b13016014', 'b13016015')))
-    birth_rate_by_age_dict['40_to_49'] = build_item('b09002', 'Women 15 to 50 years', '40-49', default_data_years, data,
-                                        lambda data: maybe_percent(sum(data, 'b13016008', 'b13016009'), sum(data, 'b13016008', 'b13016009', 'b13016016', 'b13016017')))
+    birth_rate_by_age_dict['15_to_19'] = build_item('b13016', 'Women 15 to 50 years', '15-19', default_data_years, data,
+                                        lambda data: maybe_rate(data['b13016003'], sum(data, 'b13016003', 'b13016011')))
+    birth_rate_by_age_dict['20_to_24'] = build_item('b13016', 'Women 15 to 50 years', '20-24', default_data_years, data,
+                                        lambda data: maybe_rate(data['b13016004'], sum(data, 'b13016004', 'b13016012')))
+    birth_rate_by_age_dict['25_to_29'] = build_item('b13016', 'Women 15 to 50 years', '25-29', default_data_years, data,
+                                        lambda data: maybe_rate(data['b13016005'], sum(data, 'b13016005', 'b13016013')))
+    birth_rate_by_age_dict['30_to_34'] = build_item('b13016', 'Women 15 to 50 years', '30-35', default_data_years, data,
+                                        lambda data: maybe_rate(data['b13016006'], sum(data, 'b13016006', 'b13016014')))
+    birth_rate_by_age_dict['35_to_39'] = build_item('b13016', 'Women 15 to 50 years', '35-39', default_data_years, data,
+                                        lambda data: maybe_rate(data['b13016007'], sum(data, 'b13016007', 'b13016015')))
+    birth_rate_by_age_dict['40_to_44'] = build_item('b13016', 'Women 15 to 50 years', '40-49', default_data_years, data,
+                                        lambda data: maybe_rate(data['b13016008'], sum(data, 'b13016008', 'b13016016')))
+    birth_rate_by_age_dict['45_to_49'] = build_item('b13016', 'Women 15 to 50 years', '40-49', default_data_years, data,
+                                        lambda data: maybe_rate(data['b13016009'], sum(data, 'b13016009', 'b13016017')))
 
     # Families: Number of Households, Persons per Household, Household type distribution
     g.cur.execute("SELECT * FROM B11001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
