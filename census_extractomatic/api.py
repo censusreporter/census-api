@@ -597,6 +597,37 @@ def geo_profile(acs, state, logrecno):
     transportation_dict['worked_at_home'] = build_item('b08006', 'Workers 16 years and over', 'Worked at home', default_data_years, data,
                                         lambda data: maybe_percent(data['b08006017'], total_workers))
 
+    # Families: Marital Status by Sex
+    g.cur.execute("SELECT * FROM B12002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    marital_status = dict()
+    doc['families']['marital_status'] = marital_status
+
+    male_marital_status_dict = OrderedDict()
+    marital_status['male'] = male_marital_status_dict
+    total_male_population = data['b12002002']
+    female_marital_status_dict = OrderedDict()
+    marital_status['female'] = female_marital_status_dict
+    total_female_population = data['b12002095']
+    
+    male_marital_status_dict['never_married'] = build_item('b12002', 'Population 15 years and over', 'Never married', default_data_years, data,
+                                        lambda data: maybe_percent(data['b12002003'], total_male_population))
+    female_marital_status_dict['never_married'] = build_item('b12002', 'Population 15 years and over', 'Never married', default_data_years, data,
+                                        lambda data: maybe_percent(data['b12002096'], total_female_population))
+    male_marital_status_dict['married'] = build_item('b12002', 'Population 15 years and over', 'Now married', default_data_years, data,
+                                        lambda data: maybe_percent(data['b12002018'], total_male_population))
+    female_marital_status_dict['married'] = build_item('b12002', 'Population 15 years and over', 'Now married', default_data_years, data,
+                                        lambda data: maybe_percent(data['b12002111'], total_female_population))
+    male_marital_status_dict['divorced'] = build_item('b12002', 'Population 15 years and over', 'Divorced', default_data_years, data,
+                                        lambda data: maybe_percent(data['b12002080'], total_male_population))
+    female_marital_status_dict['divorced'] = build_item('b12002', 'Population 15 years and over', 'Divorced', default_data_years, data,
+                                        lambda data: maybe_percent(data['b12002173'], total_female_population))
+    male_marital_status_dict['widowed'] = build_item('b12002', 'Population 15 years and over', 'Widowed', default_data_years, data,
+                                        lambda data: maybe_percent(data['b12002065'], total_male_population))
+    female_marital_status_dict['widowed'] = build_item('b12002', 'Population 15 years and over', 'Widowed', default_data_years, data,
+                                        lambda data: maybe_percent(data['b12002158'], total_female_population))
+
     # Families: Number of Households, Persons per Household, Household type distribution
     g.cur.execute("SELECT * FROM B11001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
