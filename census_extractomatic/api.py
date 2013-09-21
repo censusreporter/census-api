@@ -646,6 +646,25 @@ def geo_profile(acs, state, logrecno):
     children_family_type_dict['male_householder'] = build_item('b09002', 'Own children under 18 years', 'Male householder', default_data_years, data,
                                         lambda data: maybe_percent(data['b09002009'], total_families_with_children))
     
+    # Families: Birth Rate by Women's Age
+    g.cur.execute("SELECT * FROM B13016 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    birth_rate = dict()
+    doc['families']['birth_rate'] = birth_rate
+
+    birth_rate_by_age_dict = OrderedDict()
+    birth_rate['by_age'] = birth_rate_by_age_dict
+
+    birth_rate_by_age_dict['15_to_19'] = build_item('b09002', 'Women 15 to 50 years', '15-19', default_data_years, data,
+                                        lambda data: maybe_percent(data['b13016003'], sum(data, 'b13016003', 'b13016011')))
+    birth_rate_by_age_dict['20_to_29'] = build_item('b09002', 'Women 15 to 50 years', '20-29', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b13016004', 'b13016005'), sum(data, 'b13016004', 'b13016005', 'b13016012', 'b13016013')))
+    birth_rate_by_age_dict['30_to_39'] = build_item('b09002', 'Women 15 to 50 years', '30-39', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b13016006', 'b13016007'), sum(data, 'b13016006', 'b13016007', 'b13016014', 'b13016015')))
+    birth_rate_by_age_dict['40_to_49'] = build_item('b09002', 'Women 15 to 50 years', '40-49', default_data_years, data,
+                                        lambda data: maybe_percent(sum(data, 'b13016008', 'b13016009'), sum(data, 'b13016008', 'b13016009', 'b13016016', 'b13016017')))
+
     # Families: Number of Households, Persons per Household, Household type distribution
     g.cur.execute("SELECT * FROM B11001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
