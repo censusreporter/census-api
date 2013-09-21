@@ -628,6 +628,24 @@ def geo_profile(acs, state, logrecno):
     female_marital_status_dict['widowed'] = build_item('b12002', 'Population 15 years and over', 'Widowed', default_data_years, data,
                                         lambda data: maybe_percent(data['b12002158'], total_female_population))
 
+    # Families: Family Types with Children
+    g.cur.execute("SELECT * FROM B09002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    data = g.cur.fetchone()
+
+    family_types = dict()
+    doc['families']['family_types'] = family_types
+
+    children_family_type_dict = OrderedDict()
+    family_types['children'] = children_family_type_dict
+    total_families_with_children = data['b09002001']
+    
+    children_family_type_dict['married_couple'] = build_item('b09002', 'Own children under 18 years', 'Married couple', default_data_years, data,
+                                        lambda data: maybe_percent(data['b09002002'], total_families_with_children))
+    children_family_type_dict['female_householder'] = build_item('b09002', 'Own children under 18 years', 'Female householder', default_data_years, data,
+                                        lambda data: maybe_percent(data['b09002015'], total_families_with_children))
+    children_family_type_dict['male_householder'] = build_item('b09002', 'Own children under 18 years', 'Male householder', default_data_years, data,
+                                        lambda data: maybe_percent(data['b09002009'], total_families_with_children))
+    
     # Families: Number of Households, Persons per Household, Household type distribution
     g.cur.execute("SELECT * FROM B11001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
     data = g.cur.fetchone()
