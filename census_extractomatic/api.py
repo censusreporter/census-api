@@ -10,7 +10,6 @@ import psycopg2
 import psycopg2.extras
 from collections import OrderedDict
 from datetime import timedelta
-from urllib2 import unquote
 import os
 import urlparse
 from validation import qwarg_validate, NonemptyString, FloatRange, StringList, Bool, OneOf
@@ -27,6 +26,7 @@ if not app.debug:
 
 # Allowed ACS's in "best" order (newest and smallest range preferred)
 allowed_acs = [
+    'acs2012_1yr',
     'acs2011_1yr',
     'acs2011_3yr',
     'acs2011_5yr',
@@ -42,6 +42,7 @@ allowed_acs = [
 ]
 
 ACS_NAMES = {
+    'acs2012_1yr': {'name': 'ACS 2012 1-year', 'years': '2012'},
     'acs2011_1yr': {'name': 'ACS 2011 1-year', 'years': '2011'},
     'acs2011_3yr': {'name': 'ACS 2011 3-year', 'years': '2009-2011'},
     'acs2011_5yr': {'name': 'ACS 2011 5-year', 'years': '2007-2011'},
