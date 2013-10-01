@@ -1534,6 +1534,7 @@ def data_compare_geographies_within_parent(acs, table_id):
     # get parent data first...
     g.cur.execute("SELECT * FROM %s WHERE geoid=%%s" % (validated_table_id), [parent_geography['geoid']])
     parent_data = g.cur.fetchone()
+    parent_data.pop('geoid', None)
     column_data = []
     for (k, v) in sorted(parent_data.items(), key=lambda tup: tup[0]):
         column_data.append((k.upper(), v))
@@ -1548,7 +1549,7 @@ def data_compare_geographies_within_parent(acs, table_id):
 
         # grab one row at a time
         for record in g.cur:
-            child_geoid = record['geoid']
+            child_geoid = record.pop('geoid')
 
             column_data = []
             for (k, v) in sorted(record.items(), key=lambda tup: tup[0]):
