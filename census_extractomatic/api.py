@@ -1184,7 +1184,7 @@ def table_search():
         # Special case for when we want ALL the tables (but not all the columns)
         g.cur.execute("""SELECT col.column_id,col.column_title,tab.table_id,tab.table_title,tab.simple_table_title,tab.universe,tab.topics
                          FROM census_column_metadata col
-                         LEFT OUTER JOIN census_table_metadata tab USING (table_id, sequence_number)
+                         LEFT OUTER JOIN census_table_metadata tab USING (table_id)
                          WHERE %s
                          ORDER BY char_length(tab.table_id), tab.table_id""" % (column_where), column_where_args)
         data.extend([format_table_search_result(column, 'column') for column in g.cur])
@@ -1221,7 +1221,7 @@ def table_details(table_id):
 
     g.cur.execute("""SELECT *
                      FROM census_column_metadata
-                     WHERE table_id=%s AND sequence_number=%s""", [row['table_id'], row['sequence_number']])
+                     WHERE table_id=%s""", [row['table_id']])
 
     rows = []
     for row in g.cur:
@@ -1447,7 +1447,7 @@ def data_compare_geographies_within_parent(acs, table_id):
 
     g.cur.execute("""SELECT tab.table_id,tab.table_title,tab.universe,tab.denominator_column_id,col.column_id,col.column_title,col.indent
         FROM census_column_metadata col
-        LEFT JOIN census_table_metadata tab USING (table_id, sequence_number)
+        LEFT JOIN census_table_metadata tab USING (table_id)
         WHERE table_id=%s
         ORDER BY column_id;""", [table_id])
     table_metadata = g.cur.fetchall()
