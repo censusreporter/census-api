@@ -265,11 +265,11 @@ def find_geoid(geoid, acs=None):
         acs_to_search = allowed_acs
 
     for acs in acs_to_search:
-        g.cur.execute("SELECT stusab,logrecno FROM %s.geoheader WHERE geoid=%%s" % acs, [geoid])
+        g.cur.execute("SELECT geoid FROM %s.geoheader WHERE geoid=%%s" % acs, [geoid])
         if g.cur.rowcount == 1:
             result = g.cur.fetchone()
-            return (acs, result['stusab'], result['logrecno'])
-    return (None, None, None)
+            return (acs, result['geoid'])
+    return (None, None)
 
 
 @app.before_request
@@ -291,46 +291,7 @@ def teardown_request(exception):
     g.cur.close()
 
 
-@app.route("/1.0/latest/geoid/search")
-@qwarg_validate({
-    'name': {'valid': NonemptyString(), 'required': True}
-})
-def latest_geoid_search():
-    term = "%s%%" % request.qwargs.name
-
-    result = []
-    for acs in allowed_acs:
-        g.cur.execute("SELECT geoid,stusab as state,name FROM %s.geoheader WHERE name LIKE %%s LIMIT 5" % acs, [term])
-        if g.cur.rowcount > 0:
-            result = g.cur.fetchall()
-            for r in result:
-                r['acs'] = acs
-            break
-
-    return json.dumps(result)
-
-
-@app.route("/1.0/<acs>/geoid/search")
-@qwarg_validate({
-    'name': {'valid': NonemptyString()}
-})
-def acs_geoid_search(acs):
-    if acs not in allowed_acs:
-        abort(404, "I don't know anything about that ACS.")
-
-    term = "%s%%" % request.qwargs.name
-
-    result = []
-    g.cur.execute("SELECT geoid,stusab as state,name FROM %s.geoheader WHERE name LIKE %%s LIMIT 5" % acs, [term])
-    if g.cur.rowcount > 0:
-        result = g.cur.fetchall()
-        for r in result:
-            r['acs'] = acs
-
-    return json.dumps(result)
-
-
-def geo_profile(acs, state, logrecno):
+def geo_profile(acs, geoid):
     g.cur.execute("SET search_path=%s", [acs])
 
     doc = OrderedDict([('geography', dict()),
@@ -343,17 +304,16 @@ def geo_profile(acs, state, logrecno):
     doc['geography']['census_release'] = ACS_NAMES.get(acs).get('name')
     default_data_years = ACS_NAMES.get(acs).get('years')
 
-    g.cur.execute("SELECT * FROM geoheader WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM geoheader WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
     doc['geography'].update(dict(name=data['name'],
                                  pretty_name=None,
-                                 stusab=data['stusab'],
                                  sumlevel=data['sumlevel'],
                                  land_area=None))
 
     # Demographics: Age
     # multiple data points, suitable for visualization
-    g.cur.execute("SELECT * FROM B01001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B01001 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
 
     doc['geography']['total_population'] = maybe_int(data['b01001001'])
@@ -378,7 +338,7 @@ def geo_profile(acs, state, logrecno):
     pop_dict['total'] = population_by_age_total
     pop_dict['male'] = population_by_age_male
     pop_dict['female'] = population_by_age_female
-    
+
     total_population = maybe_int(data['b01001001'])
     total_population_male = maybe_int(data['b01001002'])
     total_population_female = maybe_int(data['b01001026'])
@@ -456,7 +416,7 @@ def geo_profile(acs, state, logrecno):
     sex_dict['percent_female'] = build_item('b01001', 'Total population', 'Female', default_data_years, data,
                                         lambda data: maybe_percent(data['b01001026'], data['b01001001']))
 
-    g.cur.execute("SELECT * FROM B01002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B01002 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
 
     age_dict['median_age'] = build_item('b01002', 'Total population', 'Median age', default_data_years, data,
@@ -472,7 +432,7 @@ def geo_profile(acs, state, logrecno):
     # multiple data points, suitable for visualization
     # uses Table B03002 (HISPANIC OR LATINO ORIGIN BY RACE), pulling race numbers from "Not Hispanic or Latino" columns
     # also collapses smaller groups into "Other"
-    g.cur.execute("SELECT * FROM B03002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B03002 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
     total_population = maybe_int(data['b03002001'])
 
@@ -495,7 +455,7 @@ def geo_profile(acs, state, logrecno):
 
     # Economics: Per-Capita Income
     # single data point
-    g.cur.execute("SELECT * FROM B19301 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B19301 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
 
     income_dict = dict()
@@ -506,15 +466,15 @@ def geo_profile(acs, state, logrecno):
 
     # Economics: Median Household Income
     # single data point
-    g.cur.execute("SELECT * FROM B19013 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B19013 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
 
     income_dict['median_household_income'] = build_item('b19013', 'Households', 'Median household income', default_data_years, data,
                                         lambda data: maybe_int(data['b19013001']))
-                                        
+
     # Economics: Household Income Distribution
     # multiple data points, suitable for visualization
-    g.cur.execute("SELECT * FROM B19001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B19001 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
 
     income_distribution = OrderedDict()
@@ -532,7 +492,7 @@ def geo_profile(acs, state, logrecno):
 
     # Economics: Poverty Rate
     # provides separate dicts for children and seniors, with multiple data points, suitable for visualization
-    g.cur.execute("SELECT * FROM B17001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B17001 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
 
     poverty_dict = dict()
@@ -540,7 +500,7 @@ def geo_profile(acs, state, logrecno):
 
     poverty_dict['percent_below_poverty_line'] = build_item('b17001', 'Population for whom poverty status is determined', 'Persons below poverty line', default_data_years, data,
                                         lambda data: maybe_percent(data['b17001002'], data['b17001001']))
-                                        
+
     poverty_children = OrderedDict()
     poverty_seniors = OrderedDict()
     poverty_dict['children'] = poverty_children
@@ -566,13 +526,13 @@ def geo_profile(acs, state, logrecno):
 
 
     # Economics: Mean Travel Time to Work, Means of Transportation to Work
-    g.cur.execute("SELECT * FROM B08006 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B08006 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
 
     _total_workers_16_and_over = maybe_int(data['b08006001'])
     _workers_who_worked_at_home = maybe_int(data['b08006017'])
 
-    g.cur.execute("SELECT * FROM B08013 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B08013 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
 
     _aggregate_minutes = maybe_int(data['b08013001'])
@@ -583,10 +543,10 @@ def geo_profile(acs, state, logrecno):
     employment_dict['mean_travel_time'] = build_item('b08006, b08013', 'Workers 16 years and over', 'Mean travel time to work', default_data_years, data,
                                         lambda data: maybe_float(div(_aggregate_minutes, dif(_total_workers_16_and_over, _workers_who_worked_at_home))))
 
-    g.cur.execute("SELECT * FROM B08006 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B08006 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
     total_workers = maybe_int(data['b08006001'])
-    
+
     transportation_dict = OrderedDict()
     employment_dict['transportation_distribution'] = transportation_dict
 
@@ -606,7 +566,7 @@ def geo_profile(acs, state, logrecno):
                                         lambda data: maybe_percent(data['b08006017'], total_workers))
 
     # Families: Marital Status by Sex
-    g.cur.execute("SELECT * FROM B12002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B12002 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
 
     marital_status = dict()
@@ -618,7 +578,7 @@ def geo_profile(acs, state, logrecno):
     female_marital_status_dict = OrderedDict()
     marital_status['female'] = female_marital_status_dict
     total_female_population = data['b12002095']
-    
+
     male_marital_status_dict['never_married'] = build_item('b12002', 'Population 15 years and over', 'Never married', default_data_years, data,
                                         lambda data: maybe_percent(data['b12002003'], total_male_population))
     female_marital_status_dict['never_married'] = build_item('b12002', 'Population 15 years and over', 'Never married', default_data_years, data,
@@ -637,7 +597,7 @@ def geo_profile(acs, state, logrecno):
                                         lambda data: maybe_percent(data['b12002158'], total_female_population))
 
     # Families: Family Types with Children
-    g.cur.execute("SELECT * FROM B09002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B09002 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
 
     family_types = dict()
@@ -646,16 +606,16 @@ def geo_profile(acs, state, logrecno):
     children_family_type_dict = OrderedDict()
     family_types['children'] = children_family_type_dict
     total_families_with_children = data['b09002001']
-    
+
     children_family_type_dict['married_couple'] = build_item('b09002', 'Own children under 18 years', 'Married couple', default_data_years, data,
                                         lambda data: maybe_percent(data['b09002002'], total_families_with_children))
     children_family_type_dict['male_householder'] = build_item('b09002', 'Own children under 18 years', 'Male householder', default_data_years, data,
                                         lambda data: maybe_percent(data['b09002009'], total_families_with_children))
     children_family_type_dict['female_householder'] = build_item('b09002', 'Own children under 18 years', 'Female householder', default_data_years, data,
                                         lambda data: maybe_percent(data['b09002015'], total_families_with_children))
-    
+
     # Families: Birth Rate by Women's Age
-    g.cur.execute("SELECT * FROM B13016 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B13016 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
 
     birth_rate = dict()
@@ -683,7 +643,7 @@ def geo_profile(acs, state, logrecno):
                                         lambda data: maybe_rate(data['b13016009'], sum(data, 'b13016009', 'b13016017')))
 
     # Families: Number of Households, Persons per Household, Household type distribution
-    g.cur.execute("SELECT * FROM B11001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B11001 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
 
     households_dict = dict()
@@ -694,7 +654,7 @@ def geo_profile(acs, state, logrecno):
     households_dict['number_of_households'] = build_item('b11001', 'Households', 'Number of households', default_data_years, data,
                                         lambda data: _number_of_households)
 
-    g.cur.execute("SELECT * FROM B11002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B11002 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
 
     _total_persons_in_households = maybe_int(data['b11002001'])
@@ -719,7 +679,7 @@ def geo_profile(acs, state, logrecno):
 
 
     # Housing: Number of Housing Units, Occupancy Distribution, Vacancy Distribution
-    g.cur.execute("SELECT * FROM B25002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B25002 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
 
     units_dict = dict()
@@ -738,7 +698,7 @@ def geo_profile(acs, state, logrecno):
                                         lambda data: maybe_percent(data['b25002003'], total_units))
 
     # Housing: Structure Distribution
-    g.cur.execute("SELECT * FROM B25024 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B25024 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
     total_units = maybe_int(data['b25024001'])
 
@@ -755,7 +715,7 @@ def geo_profile(acs, state, logrecno):
                                         lambda data: maybe_percent(data['b25024011'], total_units))
 
     # Housing: Tenure
-    g.cur.execute("SELECT * FROM B25003 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B25003 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
 
     ownership_dict = dict()
@@ -768,7 +728,7 @@ def geo_profile(acs, state, logrecno):
     ownership_distribution_dict['renter'] = build_item('b25003', 'Occupied housing units', 'Renter occupied', default_data_years, data,
                                         lambda data: maybe_percent(data['b25003003'], data['b25003001']))
 
-    g.cur.execute("SELECT * FROM B25026 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B25026 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
 
     length_of_tenure_dict = OrderedDict()
@@ -787,9 +747,9 @@ def geo_profile(acs, state, logrecno):
                                         lambda data: maybe_percent(sum(data, 'b25026004', 'b25026011'), total_tenure_population))
     length_of_tenure_dict['since_2005'] = build_item('b25026', 'Total population in occupied housing units', 'Since 2005', default_data_years, data,
                                         lambda data: maybe_percent(sum(data, 'b25026003', 'b25026010'), total_tenure_population))
-                                        
+
     # Housing: Mobility
-    g.cur.execute("SELECT * FROM B07003 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B07003 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
     total_migration_population = maybe_int(data['b07003001'])
 
@@ -816,13 +776,13 @@ def geo_profile(acs, state, logrecno):
                                         lambda data: maybe_percent(data['b07003016'], total_migration_population))
 
     # Housing: Median Value and Distribution of Values
-    g.cur.execute("SELECT * FROM B25077 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B25077 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
 
     ownership_dict['median_value'] = build_item('b25077', 'Owner-occupied housing units', 'Median value of owner-occupied housing units', default_data_years, data,
                                         lambda data: maybe_int(data['b25077001']))
-                                        
-    g.cur.execute("SELECT * FROM B25075 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+
+    g.cur.execute("SELECT * FROM B25075 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
 
     value_distribution = OrderedDict()
@@ -851,7 +811,7 @@ def geo_profile(acs, state, logrecno):
     # Social: Educational Attainment
     # Two aggregated data points for "high school and higher," "college degree and higher"
     # and distribution dict for chart
-    g.cur.execute("SELECT * FROM B15002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B15002 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
 
     attainment_dict = dict()
@@ -883,7 +843,7 @@ def geo_profile(acs, state, logrecno):
                                         lambda data: maybe_percent((sum(data, 'b15002016', 'b15002017', 'b15002018') + sum(data, 'b15002033', 'b15002034', 'b15002035')), total_population))
 
     # Social: Place of Birth
-    g.cur.execute("SELECT * FROM B05002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B05002 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
 
     foreign_dict = dict()
@@ -892,13 +852,13 @@ def geo_profile(acs, state, logrecno):
     foreign_dict['percent_foreign_born'] = build_item('b05002', 'Total population', 'Foreign-born population', default_data_years, data,
                                         lambda data: maybe_percent(data['b05002013'], data['b05002001']))
 
-    g.cur.execute("SELECT * FROM B05006 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B05006 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
 
     place_of_birth_dict = OrderedDict()
     foreign_dict['distribution'] = place_of_birth_dict
     total_foreign_population = data['b05006001']
-    
+
     place_of_birth_dict['europe'] = build_item('b05006', 'Foreign-born population', 'Europe', default_data_years, data,
                                         lambda data: maybe_percent(data['b05006002'], total_foreign_population))
     place_of_birth_dict['asia'] = build_item('b05006', 'Foreign-born population', 'Asia', default_data_years, data,
@@ -913,7 +873,7 @@ def geo_profile(acs, state, logrecno):
                                         lambda data: maybe_percent(data['b05006159'], total_foreign_population))
 
     # Social: Percentage of Non-English Spoken at Home, Language Spoken at Home for Children, Adults
-    g.cur.execute("SELECT * FROM B16001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B16001 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
 
     language_dict = dict()
@@ -923,7 +883,7 @@ def geo_profile(acs, state, logrecno):
                                         lambda data: maybe_float(maybe_percent(dif(data['b16001001'], data['b16001002']), data['b16001001'])))
 
 
-    g.cur.execute("SELECT * FROM B16007 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B16007 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
 
     language_children = OrderedDict()
@@ -961,7 +921,7 @@ def geo_profile(acs, state, logrecno):
 
 
     # Social: Number of Veterans, Wartime Service, Sex of Veterans
-    g.cur.execute("SELECT * FROM B21002 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B21002 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
 
     veterans_dict = dict()
@@ -969,7 +929,7 @@ def geo_profile(acs, state, logrecno):
 
     veterans_service_dict = OrderedDict()
     veterans_dict['wartime_service'] = veterans_service_dict
-    
+
     veterans_service_dict['wwii'] = build_item('b21002', 'Civilian veterans 18 years and over', 'WWII', default_data_years, data,
                                         lambda data: maybe_int(sum(data, 'b21002009', 'b21002011', 'b21002012')))
     veterans_service_dict['korea'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Korea', default_data_years, data,
@@ -981,12 +941,12 @@ def geo_profile(acs, state, logrecno):
     veterans_service_dict['gulf_2001'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Gulf (2001-)', default_data_years, data,
                                         lambda data: maybe_int(sum(data, 'b21002002', 'b21002003', 'b21002004')))
 
-    g.cur.execute("SELECT * FROM B21001 WHERE stusab=%s AND logrecno=%s;", [state, logrecno])
+    g.cur.execute("SELECT * FROM B21001 WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
 
     veterans_sex_dict = OrderedDict()
     veterans_dict['sex'] = veterans_sex_dict
-    
+
     veterans_sex_dict['male'] = build_item('b21001', 'Civilian population 18 years and over', 'Male', default_data_years, data,
                                         lambda data: maybe_int(data['b21001005']))
     veterans_sex_dict['female'] = build_item('b21001', 'Civilian population 18 years and over', 'Female', default_data_years, data,
@@ -999,28 +959,28 @@ def geo_profile(acs, state, logrecno):
 
     veterans_dict['percentage'] = build_item('b21001', 'Civilian population 18 years and over', 'Population with veteran status', default_data_years, data,
                                         lambda data: maybe_percent(total_veterans, data['b21001001']))
-    
+
     return json.dumps(doc)
 
 
 @app.route("/1.0/<acs>/<geoid>/profile")
 def acs_geo_profile(acs, geoid):
-    acs, state, logrecno = find_geoid(geoid, acs)
+    acs, geoid = find_geoid(geoid, acs)
 
     if not acs:
         abort(404, 'That ACS doesn\'t know about have that geoid.')
 
-    return geo_profile(acs, state, logrecno)
+    return geo_profile(acs, geoid)
 
 
 @app.route("/1.0/latest/<geoid>/profile")
 def latest_geo_profile(geoid):
-    acs, state, logrecno = find_geoid(geoid)
+    acs, geoid = find_geoid(geoid)
 
     if not acs:
         abort(404, 'None of the ACS I know about have that geoid.')
 
-    return geo_profile(acs, state, logrecno)
+    return geo_profile(acs, geoid)
 
 
 ## GEO LOOKUPS ##
@@ -1314,7 +1274,7 @@ def table_geo_comparison_rowcount(table_id):
                 child_geoheaders = get_child_geoids_by_gis(parent_geoid, child_summary_level)
 
             if child_geoheaders:
-                where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoheaders])
+                child_geoids = [child['geoid'] for child in child_geoheaders]
                 g.cur.execute("SELECT COUNT(*) FROM %s.%s WHERE %s" % (acs, validated_table_id, where))
                 acs_rowcount = g.cur.fetchone()
                 release['results'] = acs_rowcount['count']
@@ -1329,7 +1289,7 @@ def table_geo_comparison_rowcount(table_id):
 ## DATA RETRIEVAL ##
 
 def get_all_child_geoids(child_summary_level):
-    g.cur.execute("""SELECT geoid,stusab,logrecno,name
+    g.cur.execute("""SELECT geoid,name
         FROM geoheader
         WHERE sumlevel=%s AND component='00'
         ORDER BY name""", [int(child_summary_level)])
@@ -1347,7 +1307,7 @@ def get_child_geoids_by_gis(parent_geoid, child_summary_level):
         WHERE parent.geoid=%s AND parent.sumlevel=%s;""", [child_summary_level, parent_tiger_geoid, parent_sumlevel])
     child_geoids = ['%s00US%s' % (child_summary_level, r['geoid']) for r in g.cur]
 
-    g.cur.execute("""SELECT geoid,stusab,logrecno,name
+    g.cur.execute("""SELECT geoid,name
         FROM geoheader
         WHERE geoid IN %s
         ORDER BY name""", [tuple(child_geoids)])
@@ -1357,7 +1317,7 @@ def get_child_geoids_by_gis(parent_geoid, child_summary_level):
 def get_child_geoids_by_prefix(parent_geoid, child_summary_level):
     child_geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid.split('US')[1])
 
-    g.cur.execute("""SELECT geoid,stusab,logrecno,name
+    g.cur.execute("""SELECT geoid,name
         FROM geoheader
         WHERE geoid LIKE %s
         ORDER BY name""", [child_geoid_prefix])
@@ -1393,12 +1353,12 @@ def data_rank_geographies_within_parent(acs, column_id):
     else:
         child_geoheaders = get_child_geoids_by_gis(parent_geoid, child_summary_level)
 
-    where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoheaders])
+    child_geoids = [child['geoid'] for child in child_geoheaders]
 
     g.cur.execute("""SELECT rank() OVER (ORDER BY %(column_id)s DESC),%(column_id)s,g.geoid,g.name
         FROM %(table_id)s
-        JOIN geoheader g USING (stusab, logrecno)
-        WHERE %(where)s""" % {'column_id': column_id, 'table_id': table_id, 'where': where})
+        JOIN geoheader g USING (geoid)
+        WHERE geoid IN %%s""" % {'column_id': column_id, 'table_id': table_id}, [tuple(child_geoids)])
 
     ranks = []
 
@@ -1440,7 +1400,7 @@ def data_histogram_geographies_within_parent(acs, column_id):
     else:
         child_geoheaders = get_child_geoids_by_gis(parent_geoid, child_summary_level)
 
-    where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoheaders])
+    child_geoids = [child['geoid'] for child in child_geoheaders]
 
     g.cur.execute("""SELECT percentile,count(percentile)
         FROM (SELECT ntile(100) OVER (ORDER BY %(column_id)s DESC) AS percentile
@@ -1535,11 +1495,9 @@ def data_compare_geographies_within_parent(acs, table_id):
         child_geoheaders = get_child_geoids_by_gis(parent_geoid, child_summary_level)
 
     # start compiling child data for our response
-    child_geoid_map = dict()
     child_geoid_list = list()
     for geoheader in child_geoheaders:
         # store some mapping to make our next query easier
-        child_geoid_map[(geoheader['stusab'], geoheader['logrecno'])] = geoheader['geoid']
         child_geoid_list.append(geoheader['geoid'].split('US')[1])
 
         # build the child item
@@ -1574,10 +1532,8 @@ def data_compare_geographies_within_parent(acs, table_id):
 
     # make the where clause and query the requested census data table
     # get parent data first...
-    g.cur.execute("SELECT * FROM %s WHERE (stusab=%%s AND logrecno=%%s)" % (validated_table_id), [parent_geography['stusab'], parent_geography['logrecno']])
+    g.cur.execute("SELECT * FROM %s WHERE geoid=%%s" % (validated_table_id), [parent_geography['geoid']])
     parent_data = g.cur.fetchone()
-    stusab = parent_data.pop('stusab')
-    logrecno = parent_data.pop('logrecno')
     column_data = []
     for (k, v) in sorted(parent_data.items(), key=lambda tup: tup[0]):
         column_data.append((k.upper(), v))
@@ -1585,16 +1541,14 @@ def data_compare_geographies_within_parent(acs, table_id):
 
     if child_geoheaders:
         # ... and then children so we can loop through with cursor
-        where = " OR ".join(["(stusab='%s' AND logrecno='%s')" % (child['stusab'], child['logrecno']) for child in child_geoheaders])
-        g.cur.execute("SELECT * FROM %s WHERE %s" % (validated_table_id, where))
+        child_geoids = [child['geoid'] for child in child_geoheaders]
+        g.cur.execute("SELECT * FROM %s WHERE geoid IN %%s" % (validated_table_id), [tuple(child_geoids)])
         # store the number of rows returned in comparison object
         data['comparison']['results'] = g.cur.rowcount
 
         # grab one row at a time
         for record in g.cur:
-            stusab = record.pop('stusab')
-            logrecno = record.pop('logrecno')
-            child_geoid = child_geoid_map[(stusab, logrecno)]
+            child_geoid = record['geoid']
 
             column_data = []
             for (k, v) in sorted(record.items(), key=lambda tup: tup[0]):
