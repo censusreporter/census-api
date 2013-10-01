@@ -483,9 +483,9 @@ def geo_profile(acs, geoid):
 
     income_distribution['under_50'] = build_item('b19001', 'Households', 'Under $50K', default_data_years, data,
                                         lambda data: maybe_percent(sum(data, 'b19001002', 'b19001003', 'b19001004', 'b19001005', 'b19001006', 'b19001007', 'b19001008', 'b19001009', 'b19001010'), total_households))
-    income_distribution['50_to_100'] = build_item('b19001', 'Households', '$50K-$100K', default_data_years, data,
+    income_distribution['50_to_100'] = build_item('b19001', 'Households', '$50K - $100K', default_data_years, data,
                                         lambda data: maybe_percent(sum(data, 'b19001011', 'b19001012', 'b19001013'), total_households))
-    income_distribution['100_to_200'] = build_item('b19001', 'Households', '$100K-$200K', default_data_years, data,
+    income_distribution['100_to_200'] = build_item('b19001', 'Households', '$100K - $200K', default_data_years, data,
                                         lambda data: maybe_percent(sum(data, 'b19001014', 'b19001015', 'b19001016'), total_households))
     income_distribution['over_200'] = build_item('b19001', 'Households', 'Over $200K', default_data_years, data,
                                         lambda data: maybe_percent(sum(data, 'b19001017'), total_households))
@@ -523,7 +523,6 @@ def geo_profile(acs, geoid):
                                         lambda data: maybe_percent(seniors_in_poverty, total_seniors_population))
     poverty_seniors['above'] = build_item('b17001', 'Population for whom poverty status is determined', 'Non-poverty', default_data_years, data,
                                         lambda data: maybe_percent(seniors_not_in_poverty, total_seniors_population))
-
 
     # Economics: Mean Travel Time to Work, Means of Transportation to Work
     g.cur.execute("SELECT * FROM B08006 WHERE geoid=%s;", [geoid])
@@ -794,15 +793,15 @@ def geo_profile(acs, geoid):
 
     value_distribution['under_100'] = build_item('b25075', 'Owner-occupied housing units', 'Under $100K', default_data_years, data,
                                         lambda data: maybe_percent(sum(data, 'b25075002', 'b25075003', 'b25075004', 'b25075005', 'b25075006', 'b25075007', 'b25075008', 'b25075009', 'b25075010', 'b25075011', 'b25075012', 'b25075013', 'b25075014'), total_value))
-    value_distribution['100_to_200'] = build_item('b25075', 'Owner-occupied housing units', '$100K-$200K', default_data_years, data,
+    value_distribution['100_to_200'] = build_item('b25075', 'Owner-occupied housing units', '$100K - $200K', default_data_years, data,
                                         lambda data: maybe_percent(sum(data, 'b25075015', 'b25075016', 'b25075017', 'b25075018'), total_value))
-    value_distribution['200_to_300'] = build_item('b25075', 'Owner-occupied housing units', '$200K-$300K', default_data_years, data,
+    value_distribution['200_to_300'] = build_item('b25075', 'Owner-occupied housing units', '$200K - $300K', default_data_years, data,
                                         lambda data: maybe_percent(sum(data, 'b25075019', 'b25075020'), total_value))
-    value_distribution['300_to_400'] = build_item('b25075', 'Owner-occupied housing units', '$300K-$400K', default_data_years, data,
+    value_distribution['300_to_400'] = build_item('b25075', 'Owner-occupied housing units', '$300K - $400K', default_data_years, data,
                                         lambda data: maybe_percent(sum(data, 'b25075021'), total_value))
-    value_distribution['400_to_500'] = build_item('b25075', 'Owner-occupied housing units', '$400K-$500K', default_data_years, data,
+    value_distribution['400_to_500'] = build_item('b25075', 'Owner-occupied housing units', '$400K - $500K', default_data_years, data,
                                         lambda data: maybe_percent(sum(data, 'b25075022'), total_value))
-    value_distribution['500_to_1000000'] = build_item('b25075', 'Owner-occupied housing units', '$500K-$1M', default_data_years, data,
+    value_distribution['500_to_1000000'] = build_item('b25075', 'Owner-occupied housing units', '$500K - $1M', default_data_years, data,
                                         lambda data: maybe_percent(sum(data, 'b25075023', 'b25075024'), total_value))
     value_distribution['over_1000000'] = build_item('b25075', 'Owner-occupied housing units', 'Over $1M', default_data_years, data,
                                         lambda data: maybe_percent(sum(data, 'b25075025'), total_value))
