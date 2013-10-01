@@ -1275,7 +1275,7 @@ def table_geo_comparison_rowcount(table_id):
 
             if child_geoheaders:
                 child_geoids = [child['geoid'] for child in child_geoheaders]
-                g.cur.execute("SELECT COUNT(*) FROM %s.%s WHERE %s" % (acs, validated_table_id, where))
+                g.cur.execute("SELECT COUNT(*) FROM %s.%s WHERE geoid IN %%s" % (acs, validated_table_id), [tuple(child_geoids)])
                 acs_rowcount = g.cur.fetchone()
                 release['results'] = acs_rowcount['count']
             else:
@@ -1405,9 +1405,9 @@ def data_histogram_geographies_within_parent(acs, column_id):
     g.cur.execute("""SELECT percentile,count(percentile)
         FROM (SELECT ntile(100) OVER (ORDER BY %(column_id)s DESC) AS percentile
             FROM %(table_id)s
-            WHERE %(where)s) x
+            WHERE %%s) x
         GROUP BY x.percentile
-        ORDER BY x.percentile""" % {'column_id': column_id, 'table_id': table_id, 'where': where})
+        ORDER BY x.percentile""" % {'column_id': column_id, 'table_id': table_id}, [tuple(child_geoids)])
     # g.cur.execute("""SELECT percentile,COUNT(percentile)
     #     FROM (SELECT ntile(100) OVER (ORDER BY %(column_id)s DESC) AS percentile FROM %(table_id)s WHERE %(where)s) x
     #     GROUP BY percentile
