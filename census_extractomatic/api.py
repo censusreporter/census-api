@@ -243,11 +243,11 @@ def maybe_rate(numerator, denominator, decimals=1):
     return round(numerator / denominator * 1000, decimals)
 
 
-def build_item(table_id, universe, name, data_years, data, transform):
+def build_item(table_id, universe, name, acs_release, data, transform):
     val = dict(table_id=table_id,
         universe=universe,
         name=name,
-        data_years=data_years,
+        acs_release=acs_release,
         values=dict(this=transform(data),
                     county=transform(data),
                     state=transform(data),
@@ -290,9 +290,40 @@ def before_request():
 def teardown_request(exception):
     g.cur.close()
 
+def get_data_fallback(tableID, geoID, acs=None, force_acs=None):
+    # some data categories require queries against two tables,
+    # so we may need to force data from a specific relase, no fallback
+    if force_acs:
+        g.cur.execute("SELECT * FROM %s.%s WHERE geoid=%%s;" % (force_acs, tableID), [geoID])
+        data = g.cur.fetchone()
+        acs = force_acs
+    else:
+        # first try the designated ACS
+        g.cur.execute("SELECT * FROM %s WHERE geoid=%%s;" % (tableID), [geoID])
+        data = g.cur.fetchone()
+    
+        # check to see whether table's first column has any data
+        if not data[sorted(data)[0]]:
+            # if not, search back through 2011 until we (hopefully) find some
+            search_start = allowed_acs.index(acs) + 1
+            search_end = allowed_acs.index('acs2011_5yr') + 1
+            acs_to_search = allowed_acs[search_start:search_end]
+
+            for acs_trial in acs_to_search:
+                g.cur.execute("SELECT * FROM %s.%s WHERE geoid=%%s;" % (acs_trial, tableID), [geoID])
+                data = g.cur.fetchone()
+            
+                if data[sorted(data)[0]]:
+                    acs = acs_trial
+                    break
+
+    #acs_name = ACS_NAMES.get(acs).get('name')
+    return data, acs
+    
 
 def geo_profile(acs, geoid):
     g.cur.execute("SET search_path=%s", [acs])
+    acs_default = acs
 
     doc = OrderedDict([('geography', dict()),
                        ('demographics', dict()),
@@ -301,8 +332,7 @@ def geo_profile(acs, geoid):
                        ('housing', dict()),
                        ('social', dict())])
 
-    doc['geography']['census_release'] = ACS_NAMES.get(acs).get('name')
-    default_data_years = ACS_NAMES.get(acs).get('years')
+    doc['geography']['census_release'] = ACS_NAMES.get(acs_default).get('name')
 
     g.cur.execute("SELECT * FROM geoheader WHERE geoid=%s;", [geoid])
     data = g.cur.fetchone()
@@ -313,19 +343,19 @@ def geo_profile(acs, geoid):
 
     # Demographics: Age
     # multiple data points, suitable for visualization
-    g.cur.execute("SELECT * FROM B01001 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B01001', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
 
     doc['geography']['total_population'] = maybe_int(data['b01001001'])
 
     age_dict = dict()
     doc['demographics']['age'] = age_dict
-    age_dict['percent_under_18'] = build_item('b01001', 'Total population', 'Under 18', default_data_years, data,
+    age_dict['percent_under_18'] = build_item('b01001', 'Total population', 'Under 18', acs_name, data,
                                         lambda data: maybe_percent((sum(data, 'b01001003', 'b01001004', 'b01001005', 'b01001006') +
                                                                     sum(data, 'b01001027', 'b01001028', 'b01001029', 'b01001030')),
                                                                     data['b01001001']))
 
-    age_dict['percent_over_65'] = build_item('b01001', 'Total population', '65 and over', default_data_years, data,
+    age_dict['percent_over_65'] = build_item('b01001', 'Total population', '65 and over', acs_name, data,
                                         lambda data: maybe_percent((sum(data, 'b01001020', 'b01001021', 'b01001022', 'b01001023', 'b01001024', 'b01001025') +
                                                                     sum(data, 'b01001044', 'b01001045', 'b01001046', 'b01001047', 'b01001048', 'b01001049')),
                                                                     data['b01001001']))
@@ -343,162 +373,163 @@ def geo_profile(acs, geoid):
     total_population_male = maybe_int(data['b01001002'])
     total_population_female = maybe_int(data['b01001026'])
 
-    population_by_age_male['0-9'] = build_item('b01001', 'Total population', '0-9', default_data_years, data,
+    population_by_age_male['0-9'] = build_item('b01001', 'Total population', '0-9', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001003', 'b01001004'), total_population_male))
-    population_by_age_female['0-9'] = build_item('b01001', 'Total population', '0-9', default_data_years, data,
+    population_by_age_female['0-9'] = build_item('b01001', 'Total population', '0-9', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001027', 'b01001028'), total_population_female))
-    population_by_age_total['0-9'] = build_item('b01001', 'Total population', '0-9', default_data_years, data,
+    population_by_age_total['0-9'] = build_item('b01001', 'Total population', '0-9', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001003', 'b01001004', 'b01001027', 'b01001028'), total_population))
 
-    population_by_age_male['10-19'] = build_item('b01001', 'Total population', '10-19', default_data_years, data,
+    population_by_age_male['10-19'] = build_item('b01001', 'Total population', '10-19', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001005', 'b01001006', 'b01001007'), total_population_male))
-    population_by_age_female['10-19'] = build_item('b01001', 'Total population', '10-19', default_data_years, data,
+    population_by_age_female['10-19'] = build_item('b01001', 'Total population', '10-19', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001029', 'b01001030', 'b01001031'), total_population_female))
-    population_by_age_total['10-19'] = build_item('b01001', 'Total population', '10-19', default_data_years, data,
+    population_by_age_total['10-19'] = build_item('b01001', 'Total population', '10-19', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001005', 'b01001006', 'b01001007', 'b01001029', 'b01001030', 'b01001031'), total_population))
 
-    population_by_age_male['20-29'] = build_item('b01001', 'Total population', '20-29', default_data_years, data,
+    population_by_age_male['20-29'] = build_item('b01001', 'Total population', '20-29', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001008', 'b01001009', 'b01001010', 'b01001011'), total_population_male))
-    population_by_age_female['20-29'] = build_item('b01001', 'Total population', '20-29', default_data_years, data,
+    population_by_age_female['20-29'] = build_item('b01001', 'Total population', '20-29', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001032', 'b01001033', 'b01001034', 'b01001035'), total_population_female))
-    population_by_age_total['20-29'] = build_item('b01001', 'Total population', '20-29', default_data_years, data,
+    population_by_age_total['20-29'] = build_item('b01001', 'Total population', '20-29', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001008', 'b01001009', 'b01001010', 'b01001011', 'b01001032', 'b01001033', 'b01001034', 'b01001035'), total_population))
 
-    population_by_age_male['30-39'] = build_item('b01001', 'Total population', '30-39', default_data_years, data,
+    population_by_age_male['30-39'] = build_item('b01001', 'Total population', '30-39', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001012', 'b01001013'), total_population_male))
-    population_by_age_female['30-39'] = build_item('b01001', 'Total population', '30-39', default_data_years, data,
+    population_by_age_female['30-39'] = build_item('b01001', 'Total population', '30-39', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001036', 'b01001037'), total_population_female))
-    population_by_age_total['30-39'] = build_item('b01001', 'Total population', '30-39', default_data_years, data,
+    population_by_age_total['30-39'] = build_item('b01001', 'Total population', '30-39', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001012', 'b01001013', 'b01001036', 'b01001037'), total_population))
 
-    population_by_age_male['40-49'] = build_item('b01001', 'Total population', '40-49', default_data_years, data,
+    population_by_age_male['40-49'] = build_item('b01001', 'Total population', '40-49', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001014', 'b01001015'), total_population_male))
-    population_by_age_female['40-49'] = build_item('b01001', 'Total population', '40-49', default_data_years, data,
+    population_by_age_female['40-49'] = build_item('b01001', 'Total population', '40-49', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001038', 'b01001039'), total_population_female))
-    population_by_age_total['40-49'] = build_item('b01001', 'Total population', '40-49', default_data_years, data,
+    population_by_age_total['40-49'] = build_item('b01001', 'Total population', '40-49', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001014', 'b01001015', 'b01001038', 'b01001039'), total_population))
 
-    population_by_age_male['50-59'] = build_item('b01001', 'Total population', '50-59', default_data_years, data,
+    population_by_age_male['50-59'] = build_item('b01001', 'Total population', '50-59', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001016', 'b01001017'), total_population_male))
-    population_by_age_female['50-59'] = build_item('b01001', 'Total population', '50-59', default_data_years, data,
+    population_by_age_female['50-59'] = build_item('b01001', 'Total population', '50-59', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001040', 'b01001041'), total_population_female))
-    population_by_age_total['50-59'] = build_item('b01001', 'Total population', '50-59', default_data_years, data,
+    population_by_age_total['50-59'] = build_item('b01001', 'Total population', '50-59', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001016', 'b01001017', 'b01001040', 'b01001041'), total_population))
 
-    population_by_age_male['60-69'] = build_item('b01001', 'Total population', '60-69', default_data_years, data,
+    population_by_age_male['60-69'] = build_item('b01001', 'Total population', '60-69', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001018', 'b01001019', 'b01001020', 'b01001021'), total_population_male))
-    population_by_age_female['60-69'] = build_item('b01001', 'Total population', '60-69', default_data_years, data,
+    population_by_age_female['60-69'] = build_item('b01001', 'Total population', '60-69', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001042', 'b01001043', 'b01001044', 'b01001045'), total_population_female))
-    population_by_age_total['60-69'] = build_item('b01001', 'Total population', '60-69', default_data_years, data,
+    population_by_age_total['60-69'] = build_item('b01001', 'Total population', '60-69', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001018', 'b01001019', 'b01001020', 'b01001021', 'b01001042', 'b01001043', 'b01001044', 'b01001045'), total_population))
 
-    population_by_age_male['70-79'] = build_item('b01001', 'Total population', '70-79', default_data_years, data,
+    population_by_age_male['70-79'] = build_item('b01001', 'Total population', '70-79', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001022', 'b01001023'), total_population_male))
-    population_by_age_female['70-79'] = build_item('b01001', 'Total population', '70-79', default_data_years, data,
+    population_by_age_female['70-79'] = build_item('b01001', 'Total population', '70-79', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001046', 'b01001047'), total_population_female))
-    population_by_age_total['70-79'] = build_item('b01001', 'Total population', '70-79', default_data_years, data,
+    population_by_age_total['70-79'] = build_item('b01001', 'Total population', '70-79', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001022', 'b01001023', 'b01001046', 'b01001047'), total_population))
 
-    population_by_age_male['80+'] = build_item('b01001', 'Total population', '80+', default_data_years, data,
+    population_by_age_male['80+'] = build_item('b01001', 'Total population', '80+', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001024', 'b01001025'), total_population_male))
-    population_by_age_female['80+'] = build_item('b01001', 'Total population', '80+', default_data_years, data,
+    population_by_age_female['80+'] = build_item('b01001', 'Total population', '80+', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001048', 'b01001049'), total_population_female))
-    population_by_age_total['80+'] = build_item('b01001', 'Total population', '80+', default_data_years, data,
+    population_by_age_total['80+'] = build_item('b01001', 'Total population', '80+', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b01001024', 'b01001025', 'b01001048', 'b01001049'), total_population))
 
     # Demographics: Sex
     # multiple data points, suitable for visualization
     sex_dict = dict()
     doc['demographics']['sex'] = sex_dict
-    sex_dict['percent_male'] = build_item('b01001', 'Total population', 'Male', default_data_years, data,
+    sex_dict['percent_male'] = build_item('b01001', 'Total population', 'Male', acs_name, data,
                                         lambda data: maybe_percent(data['b01001002'], data['b01001001']))
 
-    sex_dict['percent_female'] = build_item('b01001', 'Total population', 'Female', default_data_years, data,
+    sex_dict['percent_female'] = build_item('b01001', 'Total population', 'Female', acs_name, data,
                                         lambda data: maybe_percent(data['b01001026'], data['b01001001']))
 
-    g.cur.execute("SELECT * FROM B01002 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B01002', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
 
-    age_dict['median_age'] = build_item('b01002', 'Total population', 'Median age', default_data_years, data,
+    age_dict['median_age'] = build_item('b01002', 'Total population', 'Median age', acs_name, data,
                                         lambda data: maybe_float(data['b01002001']))
 
-    age_dict['median_age_male'] = build_item('b01002', 'Total population', 'Median age male', default_data_years, data,
+    age_dict['median_age_male'] = build_item('b01002', 'Total population', 'Median age male', acs_name, data,
                                         lambda data: maybe_float(data['b01002002']))
 
-    age_dict['median_age_female'] = build_item('b01002', 'Total population', 'Median age female', default_data_years, data,
+    age_dict['median_age_female'] = build_item('b01002', 'Total population', 'Median age female', acs_name, data,
                                         lambda data: maybe_float(data['b01002003']))
 
     # Demographics: Race
     # multiple data points, suitable for visualization
     # uses Table B03002 (HISPANIC OR LATINO ORIGIN BY RACE), pulling race numbers from "Not Hispanic or Latino" columns
     # also collapses smaller groups into "Other"
-    g.cur.execute("SELECT * FROM B03002 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B03002', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
+    
     total_population = maybe_int(data['b03002001'])
 
     race_dict = OrderedDict()
     doc['demographics']['race'] = race_dict
-    race_dict['percent_white'] = build_item('b03002', 'Total population', 'White', default_data_years, data,
+    race_dict['percent_white'] = build_item('b03002', 'Total population', 'White', acs_name, data,
                                         lambda data: maybe_percent(data['b03002003'], total_population))
 
-    race_dict['percent_black'] = build_item('b03002', 'Total population', 'Black', default_data_years, data,
+    race_dict['percent_black'] = build_item('b03002', 'Total population', 'Black', acs_name, data,
                                         lambda data: maybe_percent(data['b03002004'], total_population))
 
-    race_dict['percent_asian'] = build_item('b03002', 'Total population', 'Asian', default_data_years, data,
+    race_dict['percent_asian'] = build_item('b03002', 'Total population', 'Asian', acs_name, data,
                                         lambda data: maybe_percent(data['b03002006'], total_population))
 
-    race_dict['percent_hispanic'] = build_item('b03002', 'Total population', 'Hispanic', default_data_years, data,
+    race_dict['percent_hispanic'] = build_item('b03002', 'Total population', 'Hispanic', acs_name, data,
                                         lambda data: maybe_percent(data['b03002012'], total_population))
 
-    race_dict['percent_other'] = build_item('b03002', 'Total population', 'Other', default_data_years, data,
+    race_dict['percent_other'] = build_item('b03002', 'Total population', 'Other', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b03002005', 'b03002007', 'b03002008', 'b03002009'), total_population))
 
     # Economics: Per-Capita Income
     # single data point
-    g.cur.execute("SELECT * FROM B19301 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B19301', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
 
     income_dict = dict()
     doc['economics']['income'] = income_dict
 
-    income_dict['per_capita_income_in_the_last_12_months'] = build_item('b19301', 'Total population', 'Per capita income', default_data_years, data,
+    income_dict['per_capita_income_in_the_last_12_months'] = build_item('b19301', 'Total population', 'Per capita income', acs_name, data,
                                         lambda data: maybe_int(data['b19301001']))
 
     # Economics: Median Household Income
     # single data point
-    g.cur.execute("SELECT * FROM B19013 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B19013', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
 
-    income_dict['median_household_income'] = build_item('b19013', 'Households', 'Median household income', default_data_years, data,
+    income_dict['median_household_income'] = build_item('b19013', 'Households', 'Median household income', acs_name, data,
                                         lambda data: maybe_int(data['b19013001']))
 
     # Economics: Household Income Distribution
     # multiple data points, suitable for visualization
-    g.cur.execute("SELECT * FROM B19001 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B19001', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
 
     income_distribution = OrderedDict()
     income_dict['household_distribution'] = income_distribution
     total_households = maybe_int(data['b19001001'])
 
-    income_distribution['under_50'] = build_item('b19001', 'Households', 'Under $50K', default_data_years, data,
+    income_distribution['under_50'] = build_item('b19001', 'Households', 'Under $50K', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b19001002', 'b19001003', 'b19001004', 'b19001005', 'b19001006', 'b19001007', 'b19001008', 'b19001009', 'b19001010'), total_households))
-    income_distribution['50_to_100'] = build_item('b19001', 'Households', '$50K - $100K', default_data_years, data,
+    income_distribution['50_to_100'] = build_item('b19001', 'Households', '$50K - $100K', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b19001011', 'b19001012', 'b19001013'), total_households))
-    income_distribution['100_to_200'] = build_item('b19001', 'Households', '$100K - $200K', default_data_years, data,
+    income_distribution['100_to_200'] = build_item('b19001', 'Households', '$100K - $200K', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b19001014', 'b19001015', 'b19001016'), total_households))
-    income_distribution['over_200'] = build_item('b19001', 'Households', 'Over $200K', default_data_years, data,
+    income_distribution['over_200'] = build_item('b19001', 'Households', 'Over $200K', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b19001017'), total_households))
 
     # Economics: Poverty Rate
     # provides separate dicts for children and seniors, with multiple data points, suitable for visualization
-    g.cur.execute("SELECT * FROM B17001 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B17001', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
 
     poverty_dict = dict()
     doc['economics']['poverty'] = poverty_dict
 
-    poverty_dict['percent_below_poverty_line'] = build_item('b17001', 'Population for whom poverty status is determined', 'Persons below poverty line', default_data_years, data,
+    poverty_dict['percent_below_poverty_line'] = build_item('b17001', 'Population for whom poverty status is determined', 'Persons below poverty line', acs_name, data,
                                         lambda data: maybe_percent(data['b17001002'], data['b17001001']))
 
     poverty_children = OrderedDict()
@@ -514,59 +545,60 @@ def geo_profile(acs, geoid):
     seniors_not_in_poverty = sum(data, 'b17001044', 'b17001045', 'b17001058', 'b17001059')
     total_seniors_population = seniors_in_poverty + seniors_not_in_poverty
 
-    poverty_children['below'] = build_item('b17001', 'Population for whom poverty status is determined', 'Poverty', default_data_years, data,
+    poverty_children['below'] = build_item('b17001', 'Population for whom poverty status is determined', 'Poverty', acs_name, data,
                                         lambda data: maybe_percent(children_in_poverty, total_children_population))
-    poverty_children['above'] = build_item('b17001', 'Population for whom poverty status is determined', 'Non-poverty', default_data_years, data,
+    poverty_children['above'] = build_item('b17001', 'Population for whom poverty status is determined', 'Non-poverty', acs_name, data,
                                         lambda data: maybe_percent(children_not_in_poverty, total_children_population))
 
-    poverty_seniors['below'] = build_item('b17001', 'Population for whom poverty status is determined', 'Poverty', default_data_years, data,
+    poverty_seniors['below'] = build_item('b17001', 'Population for whom poverty status is determined', 'Poverty', acs_name, data,
                                         lambda data: maybe_percent(seniors_in_poverty, total_seniors_population))
-    poverty_seniors['above'] = build_item('b17001', 'Population for whom poverty status is determined', 'Non-poverty', default_data_years, data,
+    poverty_seniors['above'] = build_item('b17001', 'Population for whom poverty status is determined', 'Non-poverty', acs_name, data,
                                         lambda data: maybe_percent(seniors_not_in_poverty, total_seniors_population))
 
     # Economics: Mean Travel Time to Work, Means of Transportation to Work
-    g.cur.execute("SELECT * FROM B08006 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    # uses two different tables for calculation, so make sure they draw from same ACS release
+    data, acs = get_data_fallback('B08006', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
 
     _total_workers_16_and_over = maybe_int(data['b08006001'])
     _workers_who_worked_at_home = maybe_int(data['b08006017'])
 
-    g.cur.execute("SELECT * FROM B08013 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B08013', geoid, acs=None, force_acs=acs)
+    acs_name = ACS_NAMES.get(acs).get('name')
 
     _aggregate_minutes = maybe_int(data['b08013001'])
 
     employment_dict = dict()
     doc['economics']['employment'] = employment_dict
 
-    employment_dict['mean_travel_time'] = build_item('b08006, b08013', 'Workers 16 years and over', 'Mean travel time to work', default_data_years, data,
+    employment_dict['mean_travel_time'] = build_item('b08006, b08013', 'Workers 16 years and over who did not work at home', 'Mean travel time to work', acs_name, data,
                                         lambda data: maybe_float(div(_aggregate_minutes, dif(_total_workers_16_and_over, _workers_who_worked_at_home))))
 
-    g.cur.execute("SELECT * FROM B08006 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B08006', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
     total_workers = maybe_int(data['b08006001'])
 
     transportation_dict = OrderedDict()
     employment_dict['transportation_distribution'] = transportation_dict
 
-    transportation_dict['drove_alone'] = build_item('b08006', 'Workers 16 years and over', 'Drove alone', default_data_years, data,
+    transportation_dict['drove_alone'] = build_item('b08006', 'Workers 16 years and over', 'Drove alone', acs_name, data,
                                         lambda data: maybe_percent(data['b08006003'], total_workers))
-    transportation_dict['carpooled'] = build_item('b08006', 'Workers 16 years and over', 'Carpooled', default_data_years, data,
+    transportation_dict['carpooled'] = build_item('b08006', 'Workers 16 years and over', 'Carpooled', acs_name, data,
                                         lambda data: maybe_percent(data['b08006004'], total_workers))
-    transportation_dict['public_transit'] = build_item('b08006', 'Workers 16 years and over', 'Public transit', default_data_years, data,
+    transportation_dict['public_transit'] = build_item('b08006', 'Workers 16 years and over', 'Public transit', acs_name, data,
                                         lambda data: maybe_percent(data['b08006008'], total_workers))
-    transportation_dict['bicycle'] = build_item('b08006', 'Workers 16 years and over', 'Bicycle', default_data_years, data,
+    transportation_dict['bicycle'] = build_item('b08006', 'Workers 16 years and over', 'Bicycle', acs_name, data,
                                         lambda data: maybe_percent(data['b08006014'], total_workers))
-    transportation_dict['walked'] = build_item('b08006', 'Workers 16 years and over', 'Walked', default_data_years, data,
+    transportation_dict['walked'] = build_item('b08006', 'Workers 16 years and over', 'Walked', acs_name, data,
                                         lambda data: maybe_percent(data['b08006015'], total_workers))
-    transportation_dict['other'] = build_item('b08006', 'Workers 16 years and over', 'Other', default_data_years, data,
+    transportation_dict['other'] = build_item('b08006', 'Workers 16 years and over', 'Other', acs_name, data,
                                         lambda data: maybe_percent(data['b08006016'], total_workers))
-    transportation_dict['worked_at_home'] = build_item('b08006', 'Workers 16 years and over', 'Worked at home', default_data_years, data,
+    transportation_dict['worked_at_home'] = build_item('b08006', 'Workers 16 years and over', 'Worked at home', acs_name, data,
                                         lambda data: maybe_percent(data['b08006017'], total_workers))
 
     # Families: Marital Status by Sex
-    g.cur.execute("SELECT * FROM B12002 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B12002', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
 
     marital_status = dict()
     doc['families']['marital_status'] = marital_status
@@ -578,26 +610,26 @@ def geo_profile(acs, geoid):
     marital_status['female'] = female_marital_status_dict
     total_female_population = data['b12002095']
 
-    male_marital_status_dict['never_married'] = build_item('b12002', 'Population 15 years and over', 'Never married', default_data_years, data,
+    male_marital_status_dict['never_married'] = build_item('b12002', 'Population 15 years and over', 'Never married', acs_name, data,
                                         lambda data: maybe_percent(data['b12002003'], total_male_population))
-    female_marital_status_dict['never_married'] = build_item('b12002', 'Population 15 years and over', 'Never married', default_data_years, data,
+    female_marital_status_dict['never_married'] = build_item('b12002', 'Population 15 years and over', 'Never married', acs_name, data,
                                         lambda data: maybe_percent(data['b12002096'], total_female_population))
-    male_marital_status_dict['married'] = build_item('b12002', 'Population 15 years and over', 'Now married', default_data_years, data,
+    male_marital_status_dict['married'] = build_item('b12002', 'Population 15 years and over', 'Now married', acs_name, data,
                                         lambda data: maybe_percent(data['b12002018'], total_male_population))
-    female_marital_status_dict['married'] = build_item('b12002', 'Population 15 years and over', 'Now married', default_data_years, data,
+    female_marital_status_dict['married'] = build_item('b12002', 'Population 15 years and over', 'Now married', acs_name, data,
                                         lambda data: maybe_percent(data['b12002111'], total_female_population))
-    male_marital_status_dict['divorced'] = build_item('b12002', 'Population 15 years and over', 'Divorced', default_data_years, data,
+    male_marital_status_dict['divorced'] = build_item('b12002', 'Population 15 years and over', 'Divorced', acs_name, data,
                                         lambda data: maybe_percent(data['b12002080'], total_male_population))
-    female_marital_status_dict['divorced'] = build_item('b12002', 'Population 15 years and over', 'Divorced', default_data_years, data,
+    female_marital_status_dict['divorced'] = build_item('b12002', 'Population 15 years and over', 'Divorced', acs_name, data,
                                         lambda data: maybe_percent(data['b12002173'], total_female_population))
-    male_marital_status_dict['widowed'] = build_item('b12002', 'Population 15 years and over', 'Widowed', default_data_years, data,
+    male_marital_status_dict['widowed'] = build_item('b12002', 'Population 15 years and over', 'Widowed', acs_name, data,
                                         lambda data: maybe_percent(data['b12002065'], total_male_population))
-    female_marital_status_dict['widowed'] = build_item('b12002', 'Population 15 years and over', 'Widowed', default_data_years, data,
+    female_marital_status_dict['widowed'] = build_item('b12002', 'Population 15 years and over', 'Widowed', acs_name, data,
                                         lambda data: maybe_percent(data['b12002158'], total_female_population))
 
     # Families: Family Types with Children
-    g.cur.execute("SELECT * FROM B09002 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B09002', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
 
     family_types = dict()
     doc['families']['family_types'] = family_types
@@ -606,284 +638,285 @@ def geo_profile(acs, geoid):
     family_types['children'] = children_family_type_dict
     total_families_with_children = data['b09002001']
 
-    children_family_type_dict['married_couple'] = build_item('b09002', 'Own children under 18 years', 'Married couple', default_data_years, data,
+    children_family_type_dict['married_couple'] = build_item('b09002', 'Own children under 18 years', 'Married couple', acs_name, data,
                                         lambda data: maybe_percent(data['b09002002'], total_families_with_children))
-    children_family_type_dict['male_householder'] = build_item('b09002', 'Own children under 18 years', 'Male householder', default_data_years, data,
+    children_family_type_dict['male_householder'] = build_item('b09002', 'Own children under 18 years', 'Male householder', acs_name, data,
                                         lambda data: maybe_percent(data['b09002009'], total_families_with_children))
-    children_family_type_dict['female_householder'] = build_item('b09002', 'Own children under 18 years', 'Female householder', default_data_years, data,
+    children_family_type_dict['female_householder'] = build_item('b09002', 'Own children under 18 years', 'Female householder', acs_name, data,
                                         lambda data: maybe_percent(data['b09002015'], total_families_with_children))
 
     # Families: Birth Rate by Women's Age
-    g.cur.execute("SELECT * FROM B13016 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B13016', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
 
     birth_rate = dict()
     doc['families']['birth_rate'] = birth_rate
 
-    birth_rate['total'] = build_item('b13016', 'Women 15 to 50 years', 'Births per 1,000 women', default_data_years, data,
+    birth_rate['total'] = build_item('b13016', 'Women 15 to 50 years', 'Births per 1,000 women', acs_name, data,
                                         lambda data: maybe_rate(data['b13016002'], data['b13016001']))
 
     birth_rate_by_age_dict = OrderedDict()
     birth_rate['by_age'] = birth_rate_by_age_dict
 
-    birth_rate_by_age_dict['15_to_19'] = build_item('b13016', 'Women 15 to 50 years', '15-19', default_data_years, data,
+    birth_rate_by_age_dict['15_to_19'] = build_item('b13016', 'Women 15 to 50 years', '15-19', acs_name, data,
                                         lambda data: maybe_rate(data['b13016003'], sum(data, 'b13016003', 'b13016011')))
-    birth_rate_by_age_dict['20_to_24'] = build_item('b13016', 'Women 15 to 50 years', '20-24', default_data_years, data,
+    birth_rate_by_age_dict['20_to_24'] = build_item('b13016', 'Women 15 to 50 years', '20-24', acs_name, data,
                                         lambda data: maybe_rate(data['b13016004'], sum(data, 'b13016004', 'b13016012')))
-    birth_rate_by_age_dict['25_to_29'] = build_item('b13016', 'Women 15 to 50 years', '25-29', default_data_years, data,
+    birth_rate_by_age_dict['25_to_29'] = build_item('b13016', 'Women 15 to 50 years', '25-29', acs_name, data,
                                         lambda data: maybe_rate(data['b13016005'], sum(data, 'b13016005', 'b13016013')))
-    birth_rate_by_age_dict['30_to_34'] = build_item('b13016', 'Women 15 to 50 years', '30-35', default_data_years, data,
+    birth_rate_by_age_dict['30_to_34'] = build_item('b13016', 'Women 15 to 50 years', '30-35', acs_name, data,
                                         lambda data: maybe_rate(data['b13016006'], sum(data, 'b13016006', 'b13016014')))
-    birth_rate_by_age_dict['35_to_39'] = build_item('b13016', 'Women 15 to 50 years', '35-39', default_data_years, data,
+    birth_rate_by_age_dict['35_to_39'] = build_item('b13016', 'Women 15 to 50 years', '35-39', acs_name, data,
                                         lambda data: maybe_rate(data['b13016007'], sum(data, 'b13016007', 'b13016015')))
-    birth_rate_by_age_dict['40_to_44'] = build_item('b13016', 'Women 15 to 50 years', '40-44', default_data_years, data,
+    birth_rate_by_age_dict['40_to_44'] = build_item('b13016', 'Women 15 to 50 years', '40-44', acs_name, data,
                                         lambda data: maybe_rate(data['b13016008'], sum(data, 'b13016008', 'b13016016')))
-    birth_rate_by_age_dict['45_to_49'] = build_item('b13016', 'Women 15 to 50 years', '45-49', default_data_years, data,
+    birth_rate_by_age_dict['45_to_49'] = build_item('b13016', 'Women 15 to 50 years', '45-49', acs_name, data,
                                         lambda data: maybe_rate(data['b13016009'], sum(data, 'b13016009', 'b13016017')))
 
     # Families: Number of Households, Persons per Household, Household type distribution
-    g.cur.execute("SELECT * FROM B11001 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B11001', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
 
     households_dict = dict()
     doc['families']['households'] = households_dict
+
     # store so we can use this for the next calculation too
     _number_of_households = maybe_int(data['b11001001'])
 
-    households_dict['number_of_households'] = build_item('b11001', 'Households', 'Number of households', default_data_years, data,
+    households_dict['number_of_households'] = build_item('b11001', 'Households', 'Number of households', acs_name, data,
                                         lambda data: _number_of_households)
 
-    g.cur.execute("SELECT * FROM B11002 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B11002', geoid, acs=None, force_acs=acs)
+    acs_name = ACS_NAMES.get(acs).get('name')
 
     _total_persons_in_households = maybe_int(data['b11002001'])
 
-    households_dict['persons_per_household'] = build_item('b11001,b11002', 'Households', 'Persons per household', default_data_years, data,
+    households_dict['persons_per_household'] = build_item('b11001,b11002', 'Households', 'Persons per household', acs_name, data,
                                         lambda data: maybe_float(div(_total_persons_in_households, _number_of_households)))
 
     households_distribution_dict = OrderedDict()
     households_dict['distribution'] = households_distribution_dict
 
-    households_distribution_dict['married_couples'] = build_item('b11001', 'Households', 'Married couples', default_data_years, data,
+    households_distribution_dict['married_couples'] = build_item('b11001', 'Households', 'Married couples', acs_name, data,
                                         lambda data: maybe_percent(data['b11002003'], _total_persons_in_households))
 
-    households_distribution_dict['male_householder'] = build_item('b11001', 'Households', 'Male householder', default_data_years, data,
+    households_distribution_dict['male_householder'] = build_item('b11001', 'Households', 'Male householder', acs_name, data,
                                         lambda data: maybe_percent(data['b11002006'], _total_persons_in_households))
 
-    households_distribution_dict['female_householder'] = build_item('b11001', 'Households', 'Female householder', default_data_years, data,
+    households_distribution_dict['female_householder'] = build_item('b11001', 'Households', 'Female householder', acs_name, data,
                                         lambda data: maybe_percent(data['b11002009'], _total_persons_in_households))
 
-    households_distribution_dict['nonfamily'] = build_item('b11001', 'Households', 'Non-family', default_data_years, data,
+    households_distribution_dict['nonfamily'] = build_item('b11001', 'Households', 'Non-family', acs_name, data,
                                         lambda data: maybe_percent(data['b11002012'], _total_persons_in_households))
 
 
     # Housing: Number of Housing Units, Occupancy Distribution, Vacancy Distribution
-    g.cur.execute("SELECT * FROM B25002 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B25002', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
 
     units_dict = dict()
     doc['housing']['units'] = units_dict
     total_units = maybe_int(data['b25002001'])
 
-    units_dict['number'] = build_item('b25002', 'Housing units', 'Number of housing units', default_data_years, data,
+    units_dict['number'] = build_item('b25002', 'Housing units', 'Number of housing units', acs_name, data,
                                         lambda data: maybe_int(total_units))
 
     occupancy_distribution_dict = OrderedDict()
     units_dict['occupancy_distribution'] = occupancy_distribution_dict
 
-    occupancy_distribution_dict['occupied'] = build_item('b25002', 'Housing units', 'Occupied', default_data_years, data,
+    occupancy_distribution_dict['occupied'] = build_item('b25002', 'Housing units', 'Occupied', acs_name, data,
                                         lambda data: maybe_percent(data['b25002002'], total_units))
-    occupancy_distribution_dict['vacant'] = build_item('b25002', 'Housing units', 'Vacant', default_data_years, data,
+    occupancy_distribution_dict['vacant'] = build_item('b25002', 'Housing units', 'Vacant', acs_name, data,
                                         lambda data: maybe_percent(data['b25002003'], total_units))
 
     # Housing: Structure Distribution
-    g.cur.execute("SELECT * FROM B25024 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B25024', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
     total_units = maybe_int(data['b25024001'])
 
     structure_distribution_dict = OrderedDict()
     units_dict['structure_distribution'] = structure_distribution_dict
 
-    structure_distribution_dict['single_unit'] = build_item('b25024', 'Housing units', 'Single unit', default_data_years, data,
+    structure_distribution_dict['single_unit'] = build_item('b25024', 'Housing units', 'Single unit', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b25024002', 'b25024003'), total_units))
-    structure_distribution_dict['multi_unit'] = build_item('b25024', 'Housing units', 'Multi-unit', default_data_years, data,
+    structure_distribution_dict['multi_unit'] = build_item('b25024', 'Housing units', 'Multi-unit', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b25024004', 'b25024005', 'b25024006', 'b25024007', 'b25024008', 'b25024009'), total_units))
-    structure_distribution_dict['mobile_home'] = build_item('b25024', 'Housing units', 'Mobile home', default_data_years, data,
+    structure_distribution_dict['mobile_home'] = build_item('b25024', 'Housing units', 'Mobile home', acs_name, data,
                                         lambda data: maybe_percent(data['b25024010'], total_units))
-    structure_distribution_dict['vehicle'] = build_item('b25024', 'Housing units', 'Boat, RV, van, etc.', default_data_years, data,
+    structure_distribution_dict['vehicle'] = build_item('b25024', 'Housing units', 'Boat, RV, van, etc.', acs_name, data,
                                         lambda data: maybe_percent(data['b25024011'], total_units))
 
     # Housing: Tenure
-    g.cur.execute("SELECT * FROM B25003 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B25003', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
 
     ownership_dict = dict()
     doc['housing']['ownership'] = ownership_dict
 
     ownership_distribution_dict = OrderedDict()
     ownership_dict['distribution'] = ownership_distribution_dict
-    ownership_distribution_dict['owner'] = build_item('b25003', 'Occupied housing units', 'Owner occupied', default_data_years, data,
+    ownership_distribution_dict['owner'] = build_item('b25003', 'Occupied housing units', 'Owner occupied', acs_name, data,
                                         lambda data: maybe_percent(data['b25003002'], data['b25003001']))
-    ownership_distribution_dict['renter'] = build_item('b25003', 'Occupied housing units', 'Renter occupied', default_data_years, data,
+    ownership_distribution_dict['renter'] = build_item('b25003', 'Occupied housing units', 'Renter occupied', acs_name, data,
                                         lambda data: maybe_percent(data['b25003003'], data['b25003001']))
 
-    g.cur.execute("SELECT * FROM B25026 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B25026', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
 
     length_of_tenure_dict = OrderedDict()
     doc['housing']['length_of_tenure'] = length_of_tenure_dict
     total_tenure_population = data['b25026001']
 
-    length_of_tenure_dict['before_1970'] = build_item('b25026', 'Total population in occupied housing units', 'Before 1970', default_data_years, data,
+    length_of_tenure_dict['before_1970'] = build_item('b25026', 'Total population in occupied housing units', 'Before 1970', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b25026008', 'b25026015'), total_tenure_population))
-    length_of_tenure_dict['1970s'] = build_item('b25026', 'Total population in occupied housing units', '1970s', default_data_years, data,
+    length_of_tenure_dict['1970s'] = build_item('b25026', 'Total population in occupied housing units', '1970s', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b25026007', 'b25026014'), total_tenure_population))
-    length_of_tenure_dict['1980s'] = build_item('b25026', 'Total population in occupied housing units', '1980s', default_data_years, data,
+    length_of_tenure_dict['1980s'] = build_item('b25026', 'Total population in occupied housing units', '1980s', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b25026006', 'b25026013'), total_tenure_population))
-    length_of_tenure_dict['1990s'] = build_item('b25026', 'Total population in occupied housing units', '1990s', default_data_years, data,
+    length_of_tenure_dict['1990s'] = build_item('b25026', 'Total population in occupied housing units', '1990s', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b25026005', 'b25026012'), total_tenure_population))
-    length_of_tenure_dict['2000_to_2004'] = build_item('b25026', 'Total population in occupied housing units', '2000-2004', default_data_years, data,
+    length_of_tenure_dict['2000_to_2004'] = build_item('b25026', 'Total population in occupied housing units', '2000-2004', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b25026004', 'b25026011'), total_tenure_population))
-    length_of_tenure_dict['since_2005'] = build_item('b25026', 'Total population in occupied housing units', 'Since 2005', default_data_years, data,
+    length_of_tenure_dict['since_2005'] = build_item('b25026', 'Total population in occupied housing units', 'Since 2005', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b25026003', 'b25026010'), total_tenure_population))
 
     # Housing: Mobility
-    g.cur.execute("SELECT * FROM B07003 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B07003', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
     total_migration_population = maybe_int(data['b07003001'])
 
     migration_dict = dict()
     doc['housing']['migration'] = migration_dict
 
-    migration_dict['same_house_year_ago'] = build_item('b07003', 'Population 1 year and over in the United States', 'Same house year ago', default_data_years, data,
+    migration_dict['same_house_year_ago'] = build_item('b07003', 'Population 1 year and over in the United States', 'Same house year ago', acs_name, data,
                                         lambda data: maybe_percent(data['b07003004'], total_migration_population))
-    migration_dict['moved_since_previous_year'] = build_item('b07003', 'Population 1 year and over in the United States', 'Moved since previous year', default_data_years, data,
+    migration_dict['moved_since_previous_year'] = build_item('b07003', 'Population 1 year and over in the United States', 'Moved since previous year', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b07003007', 'b07003010', 'b07003013', 'b07003016'), total_migration_population))
 
     migration_distribution_dict = OrderedDict()
     doc['housing']['migration_distribution'] = migration_distribution_dict
 
-    migration_distribution_dict['same_house_year_ago'] = build_item('b07003', 'Population 1 year and over in the United States', 'Same house year ago', default_data_years, data,
+    migration_distribution_dict['same_house_year_ago'] = build_item('b07003', 'Population 1 year and over in the United States', 'Same house year ago', acs_name, data,
                                         lambda data: maybe_percent(data['b07003004'], total_migration_population))
-    migration_distribution_dict['moved_same_county'] = build_item('b07003', 'Population 1 year and over in the United States', 'From same county', default_data_years, data,
+    migration_distribution_dict['moved_same_county'] = build_item('b07003', 'Population 1 year and over in the United States', 'From same county', acs_name, data,
                                         lambda data: maybe_percent(data['b07003007'], total_migration_population))
-    migration_distribution_dict['moved_different_county'] = build_item('b07003', 'Population 1 year and over in the United States', 'From different county', default_data_years, data,
+    migration_distribution_dict['moved_different_county'] = build_item('b07003', 'Population 1 year and over in the United States', 'From different county', acs_name, data,
                                         lambda data: maybe_percent(data['b07003010'], total_migration_population))
-    migration_distribution_dict['moved_different_state'] = build_item('b07003', 'Population 1 year and over in the United States', 'From different state', default_data_years, data,
+    migration_distribution_dict['moved_different_state'] = build_item('b07003', 'Population 1 year and over in the United States', 'From different state', acs_name, data,
                                         lambda data: maybe_percent(data['b07003013'], total_migration_population))
-    migration_distribution_dict['moved_from_abroad'] = build_item('b07003', 'Population 1 year and over in the United States', 'From abroad', default_data_years, data,
+    migration_distribution_dict['moved_from_abroad'] = build_item('b07003', 'Population 1 year and over in the United States', 'From abroad', acs_name, data,
                                         lambda data: maybe_percent(data['b07003016'], total_migration_population))
 
     # Housing: Median Value and Distribution of Values
-    g.cur.execute("SELECT * FROM B25077 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B25077', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
 
-    ownership_dict['median_value'] = build_item('b25077', 'Owner-occupied housing units', 'Median value of owner-occupied housing units', default_data_years, data,
+    ownership_dict['median_value'] = build_item('b25077', 'Owner-occupied housing units', 'Median value of owner-occupied housing units', acs_name, data,
                                         lambda data: maybe_int(data['b25077001']))
 
-    g.cur.execute("SELECT * FROM B25075 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B25075', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
 
     value_distribution = OrderedDict()
     ownership_dict['value_distribution'] = value_distribution
     total_value = maybe_int(data['b25075001'])
 
-    ownership_dict['total_value'] = build_item('b25075', 'Owner-occupied housing units', 'Total value of owner-occupied housing units', default_data_years, data,
+    ownership_dict['total_value'] = build_item('b25075', 'Owner-occupied housing units', 'Total value of owner-occupied housing units', acs_name, data,
                                         lambda data: maybe_int(total_value))
 
-    value_distribution['under_100'] = build_item('b25075', 'Owner-occupied housing units', 'Under $100K', default_data_years, data,
+    value_distribution['under_100'] = build_item('b25075', 'Owner-occupied housing units', 'Under $100K', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b25075002', 'b25075003', 'b25075004', 'b25075005', 'b25075006', 'b25075007', 'b25075008', 'b25075009', 'b25075010', 'b25075011', 'b25075012', 'b25075013', 'b25075014'), total_value))
-    value_distribution['100_to_200'] = build_item('b25075', 'Owner-occupied housing units', '$100K - $200K', default_data_years, data,
+    value_distribution['100_to_200'] = build_item('b25075', 'Owner-occupied housing units', '$100K - $200K', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b25075015', 'b25075016', 'b25075017', 'b25075018'), total_value))
-    value_distribution['200_to_300'] = build_item('b25075', 'Owner-occupied housing units', '$200K - $300K', default_data_years, data,
+    value_distribution['200_to_300'] = build_item('b25075', 'Owner-occupied housing units', '$200K - $300K', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b25075019', 'b25075020'), total_value))
-    value_distribution['300_to_400'] = build_item('b25075', 'Owner-occupied housing units', '$300K - $400K', default_data_years, data,
+    value_distribution['300_to_400'] = build_item('b25075', 'Owner-occupied housing units', '$300K - $400K', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b25075021'), total_value))
-    value_distribution['400_to_500'] = build_item('b25075', 'Owner-occupied housing units', '$400K - $500K', default_data_years, data,
+    value_distribution['400_to_500'] = build_item('b25075', 'Owner-occupied housing units', '$400K - $500K', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b25075022'), total_value))
-    value_distribution['500_to_1000000'] = build_item('b25075', 'Owner-occupied housing units', '$500K - $1M', default_data_years, data,
+    value_distribution['500_to_1000000'] = build_item('b25075', 'Owner-occupied housing units', '$500K - $1M', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b25075023', 'b25075024'), total_value))
-    value_distribution['over_1000000'] = build_item('b25075', 'Owner-occupied housing units', 'Over $1M', default_data_years, data,
+    value_distribution['over_1000000'] = build_item('b25075', 'Owner-occupied housing units', 'Over $1M', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b25075025'), total_value))
 
 
     # Social: Educational Attainment
     # Two aggregated data points for "high school and higher," "college degree and higher"
     # and distribution dict for chart
-    g.cur.execute("SELECT * FROM B15002 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B15002', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
 
     attainment_dict = dict()
     doc['social']['educational_attainment'] = attainment_dict
     total_population = maybe_int(data['b15002001'])
 
-    attainment_dict['percent_high_school_grad_or_higher'] = build_item('b15002', 'Population 25 years and over', 'High school grad or higher', default_data_years, data,
+    attainment_dict['percent_high_school_grad_or_higher'] = build_item('b15002', 'Population 25 years and over', 'High school grad or higher', acs_name, data,
                                         lambda data: maybe_percent((sum(data, 'b15002011', 'b15002012', 'b15002013', 'b15002014', 'b15002015', 'b15002016', 'b15002017', 'b15002018') + sum(data, 'b15002028', 'b15002029', 'b15002030', 'b15002031', 'b15002032', 'b15002033', 'b15002034', 'b15002035')), total_population))
 
-    attainment_dict['percent_bachelor_degree_or_higher'] = build_item('b15002', 'Population 25 years and over', 'Bachelor\'s degree or higher', default_data_years, data,
+    attainment_dict['percent_bachelor_degree_or_higher'] = build_item('b15002', 'Population 25 years and over', 'Bachelor\'s degree or higher', acs_name, data,
                                         lambda data: maybe_percent((sum(data, 'b15002015', 'b15002016', 'b15002017', 'b15002018') + sum(data, 'b15002032', 'b15002033', 'b15002034', 'b15002035')), total_population))
 
     attainment_distribution_dict = OrderedDict()
     doc['social']['educational_attainment_distribution'] = attainment_distribution_dict
 
-    attainment_distribution_dict['non_high_school_grad'] = build_item('b15002', 'Population 25 years and over', 'No degree', default_data_years, data,
+    attainment_distribution_dict['non_high_school_grad'] = build_item('b15002', 'Population 25 years and over', 'No degree', acs_name, data,
                                         lambda data: maybe_percent((sum(data, 'b15002003', 'b15002004', 'b15002005', 'b15002006', 'b15002007', 'b15002008', 'b15002009', 'b15002010') + sum(data, 'b15002020', 'b15002021', 'b15002022', 'b15002023', 'b15002024', 'b15002025', 'b15002026', 'b15002027')), total_population))
 
-    attainment_distribution_dict['high_school_grad'] = build_item('b15002', 'Population 25 years and over', 'High school', default_data_years, data,
+    attainment_distribution_dict['high_school_grad'] = build_item('b15002', 'Population 25 years and over', 'High school', acs_name, data,
                                         lambda data: maybe_percent((sum(data, 'b15002011') + sum(data, 'b15002028')), total_population))
 
-    attainment_distribution_dict['some_college'] = build_item('b15002', 'Population 25 years and over', 'Some college', default_data_years, data,
+    attainment_distribution_dict['some_college'] = build_item('b15002', 'Population 25 years and over', 'Some college', acs_name, data,
                                         lambda data: maybe_percent((sum(data, 'b15002012', 'b15002013', 'b15002014') + sum(data, 'b15002029', 'b15002030', 'b15002031')), total_population))
 
-    attainment_distribution_dict['bachelor_degree'] = build_item('b15002', 'Population 25 years and over', 'Bachelor\'s', default_data_years, data,
+    attainment_distribution_dict['bachelor_degree'] = build_item('b15002', 'Population 25 years and over', 'Bachelor\'s', acs_name, data,
                                         lambda data: maybe_percent((sum(data, 'b15002015') + sum(data, 'b15002032')), total_population))
 
-    attainment_distribution_dict['post_grad_degree'] = build_item('b15002', 'Population 25 years and over', 'Post-grad', default_data_years, data,
+    attainment_distribution_dict['post_grad_degree'] = build_item('b15002', 'Population 25 years and over', 'Post-grad', acs_name, data,
                                         lambda data: maybe_percent((sum(data, 'b15002016', 'b15002017', 'b15002018') + sum(data, 'b15002033', 'b15002034', 'b15002035')), total_population))
 
     # Social: Place of Birth
-    g.cur.execute("SELECT * FROM B05002 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B05002', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
 
     foreign_dict = dict()
     doc['social']['place_of_birth'] = foreign_dict
 
-    foreign_dict['percent_foreign_born'] = build_item('b05002', 'Total population', 'Foreign-born population', default_data_years, data,
+    foreign_dict['percent_foreign_born'] = build_item('b05002', 'Total population', 'Foreign-born population', acs_name, data,
                                         lambda data: maybe_percent(data['b05002013'], data['b05002001']))
 
-    g.cur.execute("SELECT * FROM B05006 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B05006', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
 
     place_of_birth_dict = OrderedDict()
     foreign_dict['distribution'] = place_of_birth_dict
     total_foreign_population = data['b05006001']
 
-    place_of_birth_dict['europe'] = build_item('b05006', 'Foreign-born population', 'Europe', default_data_years, data,
+    place_of_birth_dict['europe'] = build_item('b05006', 'Foreign-born population', 'Europe', acs_name, data,
                                         lambda data: maybe_percent(data['b05006002'], total_foreign_population))
-    place_of_birth_dict['asia'] = build_item('b05006', 'Foreign-born population', 'Asia', default_data_years, data,
+    place_of_birth_dict['asia'] = build_item('b05006', 'Foreign-born population', 'Asia', acs_name, data,
                                         lambda data: maybe_percent(data['b05006047'], total_foreign_population))
-    place_of_birth_dict['africa'] = build_item('b05006', 'Foreign-born population', 'Africa', default_data_years, data,
+    place_of_birth_dict['africa'] = build_item('b05006', 'Foreign-born population', 'Africa', acs_name, data,
                                         lambda data: maybe_percent(data['b05006091'], total_foreign_population))
-    place_of_birth_dict['oceania'] = build_item('b05006', 'Foreign-born population', 'Oceania', default_data_years, data,
+    place_of_birth_dict['oceania'] = build_item('b05006', 'Foreign-born population', 'Oceania', acs_name, data,
                                         lambda data: maybe_percent(data['b05006116'], total_foreign_population))
-    place_of_birth_dict['latin_america'] = build_item('b05006', 'Foreign-born population', 'Latin America', default_data_years, data,
+    place_of_birth_dict['latin_america'] = build_item('b05006', 'Foreign-born population', 'Latin America', acs_name, data,
                                         lambda data: maybe_percent(data['b05006123'], total_foreign_population))
-    place_of_birth_dict['north_america'] = build_item('b05006', 'Foreign-born population', 'North America', default_data_years, data,
+    place_of_birth_dict['north_america'] = build_item('b05006', 'Foreign-born population', 'North America', acs_name, data,
                                         lambda data: maybe_percent(data['b05006159'], total_foreign_population))
 
     # Social: Percentage of Non-English Spoken at Home, Language Spoken at Home for Children, Adults
-    g.cur.execute("SELECT * FROM B16001 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B16001', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
 
     language_dict = dict()
     doc['social']['language'] = language_dict
 
-    language_dict['percent_non_english_at_home'] = build_item('b16001', 'Population 5 years and over', 'Persons with language other than English spoken at home', default_data_years, data,
+    language_dict['percent_non_english_at_home'] = build_item('b16001', 'Population 5 years and over', 'Persons with language other than English spoken at home', acs_name, data,
                                         lambda data: maybe_float(maybe_percent(dif(data['b16001001'], data['b16001002']), data['b16001001'])))
 
 
-    g.cur.execute("SELECT * FROM B16007 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B16007', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
 
     language_children = OrderedDict()
     language_adults = OrderedDict()
@@ -893,35 +926,35 @@ def geo_profile(acs, geoid):
     total_children_population = maybe_int(data['b16007002'])
     total_adult_population = sum(data, 'b16007008', 'b16007014')
 
-    language_children['english'] = build_item('b16007', 'Population 5 years and over', 'English only', default_data_years, data,
+    language_children['english'] = build_item('b16007', 'Population 5 years and over', 'English only', acs_name, data,
                                         lambda data: maybe_percent(data['b16007003'], total_children_population))
-    language_adults['english'] = build_item('b16007', 'Population 5 years and over', 'English only', default_data_years, data,
+    language_adults['english'] = build_item('b16007', 'Population 5 years and over', 'English only', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b16007009', 'b16007015'), total_adult_population))
 
-    language_children['spanish'] = build_item('b16007', 'Population 5 years and over', 'Spanish', default_data_years, data,
+    language_children['spanish'] = build_item('b16007', 'Population 5 years and over', 'Spanish', acs_name, data,
                                         lambda data: maybe_percent(data['b16007004'], total_children_population))
-    language_adults['spanish'] = build_item('b16007', 'Population 5 years and over', 'Spanish', default_data_years, data,
+    language_adults['spanish'] = build_item('b16007', 'Population 5 years and over', 'Spanish', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b16007010', 'b16007016'), total_adult_population))
 
-    language_children['indoeuropean'] = build_item('b16007', 'Population 5 years and over', 'Indo-European', default_data_years, data,
+    language_children['indoeuropean'] = build_item('b16007', 'Population 5 years and over', 'Indo-European', acs_name, data,
                                         lambda data: maybe_percent(data['b16007005'], total_children_population))
-    language_adults['indoeuropean'] = build_item('b16007', 'Population 5 years and over', 'Indo-European', default_data_years, data,
+    language_adults['indoeuropean'] = build_item('b16007', 'Population 5 years and over', 'Indo-European', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b16007011', 'b16007017'), total_adult_population))
 
-    language_children['asian_islander'] = build_item('b16007', 'Population 5 years and over', 'Asian/Islander', default_data_years, data,
+    language_children['asian_islander'] = build_item('b16007', 'Population 5 years and over', 'Asian/Islander', acs_name, data,
                                         lambda data: maybe_percent(data['b16007006'], total_children_population))
-    language_adults['asian_islander'] = build_item('b16007', 'Population 5 years and over', 'Asian/Islander', default_data_years, data,
+    language_adults['asian_islander'] = build_item('b16007', 'Population 5 years and over', 'Asian/Islander', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b16007012', 'b16007018'), total_adult_population))
 
-    language_children['other'] = build_item('b16007', 'Population 5 years and over', 'Other', default_data_years, data,
+    language_children['other'] = build_item('b16007', 'Population 5 years and over', 'Other', acs_name, data,
                                         lambda data: maybe_percent(data['b16007007'], total_children_population))
-    language_adults['other'] = build_item('b16007', 'Population 5 years and over', 'Other', default_data_years, data,
+    language_adults['other'] = build_item('b16007', 'Population 5 years and over', 'Other', acs_name, data,
                                         lambda data: maybe_percent(sum(data, 'b16007013', 'b16007019'), total_adult_population))
 
 
     # Social: Number of Veterans, Wartime Service, Sex of Veterans
-    g.cur.execute("SELECT * FROM B21002 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B21002', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
 
     veterans_dict = dict()
     doc['social']['veterans'] = veterans_dict
@@ -929,34 +962,34 @@ def geo_profile(acs, geoid):
     veterans_service_dict = OrderedDict()
     veterans_dict['wartime_service'] = veterans_service_dict
 
-    veterans_service_dict['wwii'] = build_item('b21002', 'Civilian veterans 18 years and over', 'WWII', default_data_years, data,
+    veterans_service_dict['wwii'] = build_item('b21002', 'Civilian veterans 18 years and over', 'WWII', acs_name, data,
                                         lambda data: maybe_int(sum(data, 'b21002009', 'b21002011', 'b21002012')))
-    veterans_service_dict['korea'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Korea', default_data_years, data,
+    veterans_service_dict['korea'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Korea', acs_name, data,
                                         lambda data: maybe_int(sum(data, 'b21002008', 'b21002009', 'b21002010', 'b21002011')))
-    veterans_service_dict['vietnam'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Vietnam', default_data_years, data,
+    veterans_service_dict['vietnam'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Vietnam', acs_name, data,
                                         lambda data: maybe_int(sum(data, 'b21002004', 'b21002006', 'b21002007', 'b21002008', 'b21002009')))
-    veterans_service_dict['gulf_1990s'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Gulf (1990s)', default_data_years, data,
+    veterans_service_dict['gulf_1990s'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Gulf (1990s)', acs_name, data,
                                         lambda data: maybe_int(sum(data, 'b21002003', 'b21002004', 'b21002005', 'b21002006')))
-    veterans_service_dict['gulf_2001'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Gulf (2001-)', default_data_years, data,
+    veterans_service_dict['gulf_2001'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Gulf (2001-)', acs_name, data,
                                         lambda data: maybe_int(sum(data, 'b21002002', 'b21002003', 'b21002004')))
 
-    g.cur.execute("SELECT * FROM B21001 WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
+    data, acs = get_data_fallback('B21001', geoid, acs_default)
+    acs_name = ACS_NAMES.get(acs).get('name')
 
     veterans_sex_dict = OrderedDict()
     veterans_dict['sex'] = veterans_sex_dict
 
-    veterans_sex_dict['male'] = build_item('b21001', 'Civilian population 18 years and over', 'Male', default_data_years, data,
+    veterans_sex_dict['male'] = build_item('b21001', 'Civilian population 18 years and over', 'Male', acs_name, data,
                                         lambda data: maybe_int(data['b21001005']))
-    veterans_sex_dict['female'] = build_item('b21001', 'Civilian population 18 years and over', 'Female', default_data_years, data,
+    veterans_sex_dict['female'] = build_item('b21001', 'Civilian population 18 years and over', 'Female', acs_name, data,
                                         lambda data: maybe_int(data['b21001023']))
 
     total_veterans = maybe_int(data['b21001002'])
 
-    veterans_dict['number'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Total veterans', default_data_years, data,
+    veterans_dict['number'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Total veterans', acs_name, data,
                                         lambda data: total_veterans)
 
-    veterans_dict['percentage'] = build_item('b21001', 'Civilian population 18 years and over', 'Population with veteran status', default_data_years, data,
+    veterans_dict['percentage'] = build_item('b21001', 'Civilian population 18 years and over', 'Population with veteran status', acs_name, data,
                                         lambda data: maybe_percent(total_veterans, data['b21001001']))
 
     return json.dumps(doc)
