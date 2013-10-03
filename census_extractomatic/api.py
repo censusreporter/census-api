@@ -1277,14 +1277,18 @@ def table_details(table_id):
 })
 @crossdomain(origin='*')
 def table_geo_comparison_rowcount(table_id):
-    year = request.qwargs.year
+    years = request.qwargs.year.split(',')
     child_summary_level = request.qwargs.sumlevel
     parent_geoid = request.qwargs.within
     parent_sumlevel = parent_geoid[:3]
 
     data = OrderedDict()
+    
+    releases = []
+    for year in years:
+        releases += [name for name in allowed_acs if year in name]
+    releases = sorted(releases)
 
-    releases = sorted([name for name in ACS_NAMES if year in name])
     for acs in releases:
         g.cur.execute("SET search_path=%s,public;", [acs])
         release = OrderedDict()
