@@ -1051,8 +1051,7 @@ def geo_search():
         where = "ST_Intersects(the_geom, ST_SetSRID(ST_Point(%s, %s),4326))"
         where_args = [lon, lat]
     elif q:
-        q += "%"
-        where = "lower(name) LIKE lower(%s)"
+        where = "plainto_tsquery(%s) @@ fulltext_col"
         where_args = [q]
     else:
         abort(400, "Must provide either a lat/lon OR a query term.")
