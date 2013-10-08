@@ -1071,16 +1071,19 @@ def geo_search():
             WHERE %s
             LIMIT 25;""" % where, where_args)
 
-    data = []
-
-    for row in g.cur:
-        row['full_geoid'] = "%s00US%s" % (row['sumlevel'], row['geoid'])
-        row['full_name'] = build_geo_full_name(row)
+    def convert_row(row):
+        data = dict()
+        data['name'] = row['name']
+        data['awater'] = row['awater']
+        data['aland'] = row['aland']
+        data['sumlevel'] = row['sumlevel']
+        data['full_geoid'] = "%s00US%s" % (row['sumlevel'], row['geoid'])
+        data['full_name'] = build_geo_full_name(row)
         if 'geom' in row and row['geom']:
-            row['geom'] = json.loads(row['geom'])
-        data.append(row)
+            data['geom'] = json.loads(row['geom'])
+        return data
 
-    return json.dumps(data)
+    return json.dumps([convert_row(row) for row in g.cur])
 
 
 # Example: /1.0/geo/tiger2012/04000US53
