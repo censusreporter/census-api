@@ -301,7 +301,7 @@ def get_data_fallback(tableID, geoID, acs=None, force_acs=None):
         # first try the designated ACS
         g.cur.execute("SELECT * FROM %s WHERE geoid=%%s;" % (tableID), [geoID])
         data = g.cur.fetchone()
-    
+
         # check to see whether table's first column has any data
         if not data[sorted(data)[0]]:
             # if not, search back through 2011 until we (hopefully) find some
@@ -312,14 +312,14 @@ def get_data_fallback(tableID, geoID, acs=None, force_acs=None):
             for acs_trial in acs_to_search:
                 g.cur.execute("SELECT * FROM %s.%s WHERE geoid=%%s;" % (acs_trial, tableID), [geoID])
                 data = g.cur.fetchone()
-            
+
                 if data[sorted(data)[0]]:
                     acs = acs_trial
                     break
 
     #acs_name = ACS_NAMES.get(acs).get('name')
     return data, acs
-    
+
 
 def geo_profile(acs, geoid):
     g.cur.execute("SET search_path=%s", [acs])
@@ -464,7 +464,7 @@ def geo_profile(acs, geoid):
     # also collapses smaller groups into "Other"
     data, acs = get_data_fallback('B03002', geoid, acs_default)
     acs_name = ACS_NAMES.get(acs).get('name')
-    
+
     total_population = maybe_int(data['b03002001'])
 
     race_dict = OrderedDict()
@@ -1064,13 +1064,11 @@ def geo_search():
         g.cur.execute("""SELECT awater,aland,sumlevel,geoid,name,ST_AsGeoJSON(ST_Simplify(the_geom,0.001)) as geom
             FROM tiger2012.census_names
             WHERE %s
-            ORDER BY sumlevel, aland DESC
             LIMIT 25;""" % where, where_args)
     else:
         g.cur.execute("""SELECT awater,aland,sumlevel,geoid,name
             FROM tiger2012.census_names
             WHERE %s
-            ORDER BY sumlevel, aland DESC
             LIMIT 25;""" % where, where_args)
 
     data = []
@@ -1282,7 +1280,7 @@ def table_geo_comparison_rowcount(table_id):
     parent_sumlevel = parent_geoid[:3]
 
     data = OrderedDict()
-    
+
     releases = []
     for year in years:
         releases += [name for name in allowed_acs if year in name]
