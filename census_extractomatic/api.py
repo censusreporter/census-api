@@ -1343,11 +1343,14 @@ def get_child_geoids_by_gis(parent_geoid, child_summary_level):
         WHERE parent.geoid=%s AND parent.sumlevel=%s;""", [child_summary_level, parent_tiger_geoid, parent_sumlevel])
     child_geoids = ['%s00US%s' % (child_summary_level, r['geoid']) for r in g.cur]
 
-    g.cur.execute("""SELECT geoid,name
-        FROM geoheader
-        WHERE geoid IN %s
-        ORDER BY name""", [tuple(child_geoids)])
-    return g.cur.fetchall()
+    if child_geoids:
+        g.cur.execute("""SELECT geoid,name
+            FROM geoheader
+            WHERE geoid IN %s
+            ORDER BY name""", [tuple(child_geoids)])
+        return g.cur.fetchall()
+    else:
+        return []
 
 
 def get_child_geoids_by_prefix(parent_geoid, child_summary_level):
