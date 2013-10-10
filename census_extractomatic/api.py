@@ -327,8 +327,12 @@ def get_data_fallback(table_ids, geoids, acs=None):
                 data[geoid] = dict([(col, val) for (col, val) in row.iteritems()])
 
             # Check to see if this release has our data
-            if len(data) == len(geoids) and data.items()[0][1].items()[0][1]:
+            data_with_values = filter(lambda geoid_data: geoid_data.values()[0] is not None, data.values())
+            if len(geoids) == len(data) and len(geoids) == len(data_with_values):
                 return data, acs
+            else:
+                # Doesn't contain data for all geoids, so keep going.
+                continue
 
     return None, acs
 
