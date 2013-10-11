@@ -1286,13 +1286,6 @@ def table_geo_comparison_rowcount(table_id):
         releases += [name for name in allowed_acs if year in name]
     releases = sorted(releases)
 
-    if parent_sumlevel == '010':
-        child_geoheaders = get_all_child_geoids(child_summary_level)
-    elif parent_sumlevel in PARENT_CHILD_CONTAINMENT and child_summary_level in PARENT_CHILD_CONTAINMENT[parent_sumlevel]:
-        child_geoheaders = get_child_geoids_by_prefix(parent_geoid, child_summary_level)
-    else:
-        child_geoheaders = get_child_geoids_by_gis(parent_geoid, child_summary_level)
-
     for acs in releases:
         g.cur.execute("SET search_path=%s,public;", [acs])
         release = OrderedDict()
@@ -1305,6 +1298,13 @@ def table_geo_comparison_rowcount(table_id):
             validated_table_id = table_record['table_id']
             release['table_name'] = table_record['table_title']
             release['table_universe'] = table_record['universe']
+
+            if parent_sumlevel == '010':
+                child_geoheaders = get_all_child_geoids(child_summary_level)
+            elif parent_sumlevel in PARENT_CHILD_CONTAINMENT and child_summary_level in PARENT_CHILD_CONTAINMENT[parent_sumlevel]:
+                child_geoheaders = get_child_geoids_by_prefix(parent_geoid, child_summary_level)
+            else:
+                child_geoheaders = get_child_geoids_by_gis(parent_geoid, child_summary_level)
 
             if child_geoheaders:
                 child_geoids = [child['geoid'] for child in child_geoheaders]
