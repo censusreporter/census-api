@@ -1,4 +1,4 @@
-from flask import request, current_app, abort
+from flask import request, abort
 from functools import wraps
 import json
 
@@ -127,7 +127,6 @@ def qwarg_validate(validators):
                             "error": validation.help_text()
                         }
             if errors:
-                current_app.logger.error(json.dumps(errors))
                 abort(400, json.dumps(errors))
             request.qwargs = qwargs
             return f(*args, **kwargs)
