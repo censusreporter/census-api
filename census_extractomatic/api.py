@@ -4,6 +4,7 @@ from __future__ import division
 from flask import Flask
 from flask import abort, request, g
 from flask import make_response, current_app
+from flask import jsonify
 from functools import update_wrapper
 import json
 import psycopg2
@@ -1069,7 +1070,7 @@ def geo_search():
             data['geom'] = json.loads(row['geom'])
         return data
 
-    return json.dumps([convert_row(row) for row in g.cur])
+    return jsonify(results=[convert_row(row) for row in g.cur])
 
 
 # Example: /1.0/geo/tiger2012/04000US53
