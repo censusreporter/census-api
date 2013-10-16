@@ -1014,18 +1014,6 @@ def latest_geo_profile(geoid):
 
 ## GEO LOOKUPS ##
 
-def build_geo_full_name(row):
-    geoid = row['geoid']
-    sumlevel = row['sumlevel']
-    if sumlevel in ('500', '610', '620'):
-        return "%s %s" % (state_fips[geoid[:2]], row['name'])
-    elif sumlevel in ('050', '950', '960', '970', '160'):
-        return "%s, %s" % (row['name'], state_fips[geoid[:2]])
-    elif sumlevel == '860':
-        return "Zip Code: %s" % row['name']
-    else:
-        return row['name']
-
 # Example: /1.0/geo/search?q=spok
 # Example: /1.0/geo/search?q=spok&sumlevs=050,160
 @app.route("/1.0/geo/search")
@@ -1048,7 +1036,8 @@ def geo_search():
         where = "ST_Intersects(the_geom, ST_SetSRID(ST_Point(%s, %s),4326))"
         where_args = [lon, lat]
     elif q:
-        where = "plainto_tsquery(%s) @@ fulltext_col"
+        where = "lower(census_name_lookup.prefix_match_name) LIKE lower(%s)"
+        q += '%'
         where_args = [q]
     else:
         abort(400, "Must provide either a lat/lon OR a query term.")
@@ -1058,24 +1047,24 @@ def geo_search():
         where_args.append(tuple(sumlevs))
 
     if with_geom:
-        g.cur.execute("""SELECT awater,aland,sumlevel,geoid,name,ST_AsGeoJSON(ST_Simplify(the_geom,0.001)) as geom
+        g.cur.execute("""SELECT sumlevel,geoid,display_name,full_geoid,ST_AsGeoJSON(ST_Simplify(the_geom,0.001)) as geom
             FROM tiger2012.census_names
+            JOIN tiger2012.census_name_lookup USING (sumlevel, geoid)
             WHERE %s
+            ORDER BY sumlevel
             LIMIT 25;""" % where, where_args)
     else:
-        g.cur.execute("""SELECT awater,aland,sumlevel,geoid,name
-            FROM tiger2012.census_names
+        g.cur.execute("""SELECT sumlevel,geoid,display_name,full_geoid
+            FROM tiger2012.census_name_lookup
             WHERE %s
+            ORDER BY sumlevel
             LIMIT 25;""" % where, where_args)
 
     def convert_row(row):
         data = dict()
-        data['name'] = row['name']
-        data['awater'] = row['awater']
-        data['aland'] = row['aland']
         data['sumlevel'] = row['sumlevel']
-        data['full_geoid'] = "%s00US%s" % (row['sumlevel'], row['geoid'])
-        data['full_name'] = build_geo_full_name(row)
+        data['full_geoid'] = row['full_geoid']
+        data['full_name'] = row['display_name']
         if 'geom' in row and row['geom']:
             data['geom'] = json.loads(row['geom'])
         return data
