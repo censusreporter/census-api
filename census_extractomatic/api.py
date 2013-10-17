@@ -11,6 +11,7 @@ import psycopg2
 import psycopg2.extras
 from collections import OrderedDict
 from datetime import timedelta
+import re
 import os
 import urlparse
 from validation import qwarg_validate, NonemptyString, FloatRange, StringList, Bool, OneOf
@@ -1037,7 +1038,9 @@ def geo_search():
         where = "ST_Intersects(the_geom, ST_SetSRID(ST_Point(%s, %s),4326))"
         where_args = [lon, lat]
     elif q:
-        where = "lower(name) LIKE lower(%s)"
+        q = re.sub(r'\W', ' ', q)
+        q = re.sub(r'\W+', ' ', q)
+        where = "lower(prefix_match_name) LIKE lower(%s)"
         q += '%'
         where_args = [q]
     else:
@@ -1048,24 +1051,24 @@ def geo_search():
         where_args.append(tuple(sumlevs))
 
     if with_geom:
-        sql = """SELECT sumlevel,geoid,name,geoid,ST_AsGeoJSON(ST_Simplify(the_geom,0.001)) as geom
-            FROM tiger2012.census_names
+        sql = """SELECT sumlevel,geoid,display_name,full_geoid,ST_AsGeoJSON(ST_Simplify(the_geom,0.001)) as geom
+            FROM tiger2012.census_name_lookup
             WHERE %s
-            ORDER BY sumlevel
+            ORDER BY priority
             LIMIT 25;""" % (where)
     else:
-        sql = """SELECT sumlevel,geoid,name,geoid
-            FROM tiger2012.census_names
+        sql = """SELECT sumlevel,geoid,display_name,full_geoid
+            FROM tiger2012.census_name_lookup
             WHERE %s
-            ORDER BY sumlevel
+            ORDER BY priority
             LIMIT 25;""" % (where)
     g.cur.execute(sql, where_args)
 
     def convert_row(row):
         data = dict()
         data['sumlevel'] = row['sumlevel']
-        data['full_geoid'] = '%s00US%s' % (row['sumlevel'], row['geoid'])
-        data['full_name'] = row['name']
+        data['full_geoid'] = row['full_geoid']
+        data['full_name'] = row['display_name']
         if 'geom' in row and row['geom']:
             data['geom'] = json.loads(row['geom'])
         return data
