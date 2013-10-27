@@ -342,7 +342,18 @@ def get_data_fallback(table_ids, geoids, acs=None):
 def compute_profile_item_levels(geoid):
     levels = {'this': geoid}
 
-    # TODO Figuring out the county, state, national stuff should go in here.
+    geoid_parts = geoid.split('US')
+    if len(geoid_parts) is not 2:
+        raise Exception('Invalid geoid')
+
+    sumlevel = geoid_parts[0][:3]
+    id_part = geoid_parts[1]
+
+    if sumlevel in ('050', '060', '140', '150', '160', '500', '610', '620', '795', '950', '960', '970'):
+        levels['state'] = '04000US' + id_part[:2]
+
+    if sumlevel in ('060', '140', '150'):
+        levels['county'] = '05000US' + id_part[:5]
 
     levels['nation'] = '01000US'
 
