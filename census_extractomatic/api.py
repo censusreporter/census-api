@@ -1062,16 +1062,16 @@ def geo_search():
         where_args.append(tuple(sumlevs))
 
     if with_geom:
-        sql = """SELECT sumlevel,geoid,display_name,full_geoid,ST_AsGeoJSON(ST_Simplify(the_geom,0.001)) as geom
+        sql = """SELECT DISTINCT geoid,sumlevel,population,display_name,full_geoid,priority,ST_AsGeoJSON(ST_Simplify(the_geom,0.001)) as geom
             FROM tiger2012.census_name_lookup
             WHERE %s
-            ORDER BY population DESC NULLS LAST
+            ORDER BY priority, population DESC NULLS LAST
             LIMIT 25;""" % (where)
     else:
-        sql = """SELECT sumlevel,geoid,display_name,full_geoid
+        sql = """SELECT DISTINCT geoid,sumlevel,population,display_name,full_geoid,priority
             FROM tiger2012.census_name_lookup
             WHERE %s
-            ORDER BY population DESC NULLS LAST
+            ORDER BY priority, population DESC NULLS LAST
             LIMIT 25;""" % (where)
     g.cur.execute(sql, where_args)
 
