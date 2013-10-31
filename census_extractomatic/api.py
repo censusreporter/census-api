@@ -1065,13 +1065,13 @@ def geo_search():
         sql = """SELECT sumlevel,geoid,display_name,full_geoid,ST_AsGeoJSON(ST_Simplify(the_geom,0.001)) as geom
             FROM tiger2012.census_name_lookup
             WHERE %s
-            ORDER BY priority
+            ORDER BY population DESC NULLS LAST
             LIMIT 25;""" % (where)
     else:
         sql = """SELECT sumlevel,geoid,display_name,full_geoid
             FROM tiger2012.census_name_lookup
             WHERE %s
-            ORDER BY priority
+            ORDER BY population DESC NULLS LAST
             LIMIT 25;""" % (where)
     g.cur.execute(sql, where_args)
 
