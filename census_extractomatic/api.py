@@ -6,9 +6,9 @@ from flask import abort, request, g
 from flask import make_response, current_app
 from flask import jsonify
 from functools import update_wrapper
-import json
 import psycopg2
 import psycopg2.extras
+import simplejson as json
 from collections import OrderedDict
 import decimal
 from datetime import timedelta
