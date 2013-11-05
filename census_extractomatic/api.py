@@ -356,7 +356,8 @@ def compute_profile_item_levels(geoid):
     if sumlevel in ('060', '140', '150'):
         levels['county'] = '05000US' + id_part[:5]
 
-    levels['nation'] = '01000US'
+    if sumlevel != '010':
+        levels['nation'] = '01000US'
 
     return levels
 
