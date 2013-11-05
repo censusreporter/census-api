@@ -10,6 +10,7 @@ import json
 import psycopg2
 import psycopg2.extras
 from collections import OrderedDict
+import decimal
 from datetime import timedelta
 import re
 import os
@@ -375,12 +376,14 @@ def geo_profile(acs, geoid):
 
     doc['geography']['census_release'] = ACS_NAMES.get(acs_default).get('name')
 
-    g.cur.execute("SELECT * FROM geoheader WHERE geoid=%s;", [geoid])
-    data = g.cur.fetchone()
-    doc['geography'].update(dict(name=data['name'],
-                                 pretty_name=None,
-                                 sumlevel=data['sumlevel'],
-                                 land_area=None))
+    g.cur.execute("""SELECT DISTINCT full_geoid,sumlevel,display_name,simple_name,aland
+                     FROM tiger2012.census_name_lookup
+                     WHERE full_geoid=%s;""", [geoid])
+    lookup_data = g.cur.fetchone()
+    doc['geography'].update(dict(full_name=lookup_data['display_name'],
+                                 short_name=lookup_data['simple_name'],
+                                 sumlevel=lookup_data['sumlevel'],
+                                 land_area=lookup_data['aland']))
 
     # Demographics: Age
     # multiple data points, suitable for visualization
@@ -1002,7 +1005,11 @@ def geo_profile(acs, geoid):
     veterans_dict['percentage'] = build_item('b21001', 'Civilian population 18 years and over', 'Population with veteran status', acs_name, data, item_levels,
                                         lambda data: maybe_percent(maybe_int(data['b21001002']), data['b21001001']))
 
-    return json.dumps(doc)
+    def default(obj):
+        if type(obj) == decimal.Decimal:
+            return int(obj)
+
+    return json.dumps(doc, default=default)
 
 
 @app.route("/1.0/<acs>/<geoid>/profile")
