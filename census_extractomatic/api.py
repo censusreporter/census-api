@@ -853,41 +853,41 @@ def geo_profile(acs, geoid):
     doc['social']['educational_attainment'] = attainment_dict
 
     attainment_dict['percent_high_school_grad_or_higher'] = build_item('b15002', 'Population 25 years and over', 'High school grad or higher', acs_name, data, item_levels,
-                                        lambda data: maybe_percent((sum(data, 'b15002011', 'b15002012', 'b15002013', 'b15002014', 'b15002015', 'b15002016', 'b15002017', 'b15002018') +
-                                                                    sum(data, 'b15002028', 'b15002029', 'b15002030', 'b15002031', 'b15002032', 'b15002033', 'b15002034', 'b15002035')),
+                                        lambda data: maybe_percent((sum(data, 'b15002011', 'b15002012', 'b15002013', 'b15002014', 'b15002015', 'b15002016', 'b15002017', 'b15002018',
+                                                                              'b15002028', 'b15002029', 'b15002030', 'b15002031', 'b15002032', 'b15002033', 'b15002034', 'b15002035')),
                                                                    maybe_int(data['b15002001'])))
 
     attainment_dict['percent_bachelor_degree_or_higher'] = build_item('b15002', 'Population 25 years and over', 'Bachelor\'s degree or higher', acs_name, data, item_levels,
-                                        lambda data: maybe_percent((sum(data, 'b15002015', 'b15002016', 'b15002017', 'b15002018') +
-                                                                    sum(data, 'b15002032', 'b15002033', 'b15002034', 'b15002035')),
+                                        lambda data: maybe_percent((sum(data, 'b15002015', 'b15002016', 'b15002017', 'b15002018',
+                                                                              'b15002032', 'b15002033', 'b15002034', 'b15002035')),
                                                                    maybe_int(data['b15002001'])))
 
     attainment_distribution_dict = OrderedDict()
     doc['social']['educational_attainment_distribution'] = attainment_distribution_dict
 
     attainment_distribution_dict['non_high_school_grad'] = build_item('b15002', 'Population 25 years and over', 'No degree', acs_name, data, item_levels,
-                                        lambda data: maybe_percent((sum(data, 'b15002003', 'b15002004', 'b15002005', 'b15002006', 'b15002007', 'b15002008', 'b15002009', 'b15002010') +
-                                                                    sum(data, 'b15002020', 'b15002021', 'b15002022', 'b15002023', 'b15002024', 'b15002025', 'b15002026', 'b15002027')),
+                                        lambda data: maybe_percent((sum(data, 'b15002003', 'b15002004', 'b15002005', 'b15002006', 'b15002007', 'b15002008', 'b15002009', 'b15002010',
+                                                                              'b15002020', 'b15002021', 'b15002022', 'b15002023', 'b15002024', 'b15002025', 'b15002026', 'b15002027')),
                                                                    maybe_int(data['b15002001'])))
 
     attainment_distribution_dict['high_school_grad'] = build_item('b15002', 'Population 25 years and over', 'High school', acs_name, data, item_levels,
-                                        lambda data: maybe_percent((sum(data, 'b15002011') +
-                                                                    sum(data, 'b15002028')),
+                                        lambda data: maybe_percent((sum(data, 'b15002011',
+                                                                              'b15002028')),
                                                                    maybe_int(data['b15002001'])))
 
     attainment_distribution_dict['some_college'] = build_item('b15002', 'Population 25 years and over', 'Some college', acs_name, data, item_levels,
-                                        lambda data: maybe_percent((sum(data, 'b15002012', 'b15002013', 'b15002014') +
-                                                                    sum(data, 'b15002029', 'b15002030', 'b15002031')),
+                                        lambda data: maybe_percent((sum(data, 'b15002012', 'b15002013', 'b15002014',
+                                                                              'b15002029', 'b15002030', 'b15002031')),
                                                                    maybe_int(data['b15002001'])))
 
     attainment_distribution_dict['bachelor_degree'] = build_item('b15002', 'Population 25 years and over', 'Bachelor\'s', acs_name, data, item_levels,
-                                        lambda data: maybe_percent((sum(data, 'b15002015') +
-                                                                    sum(data, 'b15002032')),
+                                        lambda data: maybe_percent((sum(data, 'b15002015',
+                                                                              'b15002032')),
                                                                    maybe_int(data['b15002001'])))
 
     attainment_distribution_dict['post_grad_degree'] = build_item('b15002', 'Population 25 years and over', 'Post-grad', acs_name, data, item_levels,
-                                        lambda data: maybe_percent((sum(data, 'b15002016', 'b15002017', 'b15002018') +
-                                                                    sum(data, 'b15002033', 'b15002034', 'b15002035')),
+                                        lambda data: maybe_percent((sum(data, 'b15002016', 'b15002017', 'b15002018',
+                                                                              'b15002033', 'b15002034', 'b15002035')),
                                                                    maybe_int(data['b15002001'])))
 
     # Social: Place of Birth
