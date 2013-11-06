@@ -1130,8 +1130,9 @@ def geo_lookup(geoid):
     intptlat = result.pop('intptlat')
     result['intptlat'] = round(float(intptlat), 7)
 
-    if 'geom' in result:
-        result['geom'] = json.loads(result['geom'])
+    geom = result.get('geom')
+    if geom:
+        result['geom'] = json.loads(geom)
 
     return json.dumps(result)
 
