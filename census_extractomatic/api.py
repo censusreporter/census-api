@@ -648,6 +648,59 @@ def geo_profile(acs, geoid):
     female_marital_status_dict['widowed'] = build_item('b12002', 'Population 15 years and over', 'Widowed', acs_name, data, item_levels,
                                         lambda data: maybe_percent(data['b12002158'], data['b12002095']))
 
+    marital_status_grouped = OrderedDict()
+    doc['families']['marital_status_grouped'] = marital_status_grouped
+    
+    # repeating data temporarily to develop grouped column chart format
+    marital_status_grouped['never_married'] = OrderedDict()
+    marital_status_grouped['never_married']['metadata'] = {
+        'universe': 'Population 15 years and over',
+        'acs_release': acs_name,
+        'table_id': 'b12002',
+        'name': 'Never married'
+    }
+    marital_status_grouped['never_married']['male'] = build_item('b12002', 'Population 15 years and over', 'Male', acs_name, data, item_levels,
+                                        lambda data: maybe_percent(data['b12002003'], data['b12002002']))
+    marital_status_grouped['never_married']['female'] = build_item('b12002', 'Population 15 years and over', 'Female', acs_name, data, item_levels,
+                                        lambda data: maybe_percent(data['b12002096'], data['b12002095']))
+
+    marital_status_grouped['married'] = OrderedDict()
+    marital_status_grouped['married']['metadata'] = {
+        'universe': 'Population 15 years and over',
+        'acs_release': acs_name,
+        'table_id': 'b12002',
+        'name': 'Now married'
+    }
+    marital_status_grouped['married']['male'] = build_item('b12002', 'Population 15 years and over', 'Male', acs_name, data, item_levels,
+                                        lambda data: maybe_percent(data['b12002018'], data['b12002002']))
+    marital_status_grouped['married']['female'] = build_item('b12002', 'Population 15 years and over', 'Female', acs_name, data, item_levels,
+                                        lambda data: maybe_percent(data['b12002111'], data['b12002095']))
+
+    marital_status_grouped['divorced'] = OrderedDict()
+    marital_status_grouped['divorced']['metadata'] = {
+        'universe': 'Population 15 years and over',
+        'acs_release': acs_name,
+        'table_id': 'b12002',
+        'name': 'Divorced'
+    }
+    marital_status_grouped['divorced']['male'] = build_item('b12002', 'Population 15 years and over', 'Male', acs_name, data, item_levels,
+                                        lambda data: maybe_percent(data['b12002080'], data['b12002002']))
+    marital_status_grouped['divorced']['female'] = build_item('b12002', 'Population 15 years and over', 'Female', acs_name, data, item_levels,
+                                        lambda data: maybe_percent(data['b12002173'], data['b12002095']))
+
+    marital_status_grouped['widowed'] = OrderedDict()
+    marital_status_grouped['widowed']['metadata'] = {
+        'universe': 'Population 15 years and over',
+        'acs_release': acs_name,
+        'table_id': 'b12002',
+        'name': 'Widowed'
+    }
+    marital_status_grouped['widowed']['male'] = build_item('b12002', 'Population 15 years and over', 'Male', acs_name, data, item_levels,
+                                        lambda data: maybe_percent(data['b12002065'], data['b12002002']))
+    marital_status_grouped['widowed']['female'] = build_item('b12002', 'Population 15 years and over', 'Female', acs_name, data, item_levels,
+                                        lambda data: maybe_percent(data['b12002158'], data['b12002095']))
+
+
     # Families: Family Types with Children
     data, acs = get_data_fallback('B09002', item_levels.values())
     acs_name = ACS_NAMES.get(acs).get('name')
