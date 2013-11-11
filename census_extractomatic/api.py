@@ -368,7 +368,7 @@ def geo_profile(acs, geoid):
 
     item_levels = compute_profile_item_levels(geoid)
 
-    doc = OrderedDict([('geography', dict()),
+    doc = OrderedDict([('geography', OrderedDict()),
                        ('demographics', dict()),
                        ('economics', dict()),
                        ('families', dict()),
@@ -377,21 +377,29 @@ def geo_profile(acs, geoid):
 
     doc['geography']['census_release'] = ACS_NAMES.get(acs_default).get('name')
 
-    g.cur.execute("""SELECT DISTINCT full_geoid,sumlevel,display_name,simple_name,aland
-                     FROM tiger2012.census_name_lookup
-                     WHERE full_geoid=%s;""", [geoid])
-    lookup_data = g.cur.fetchone()
-    doc['geography'].update(dict(full_name=lookup_data['display_name'],
-                                 short_name=lookup_data['simple_name'],
-                                 sumlevel=lookup_data['sumlevel'],
-                                 land_area=lookup_data['aland']))
-
     # Demographics: Age
     # multiple data points, suitable for visualization
     data, acs = get_data_fallback('B01001', item_levels.values())
     acs_name = ACS_NAMES.get(acs).get('name')
 
-    doc['geography']['total_population'] = maybe_int(data[geoid]['b01001001'])
+    g.cur.execute("""SELECT DISTINCT full_geoid,sumlevel,display_name,simple_name,aland
+                     FROM tiger2012.census_name_lookup
+                     WHERE full_geoid IN %s;""", [tuple(item_levels.values())])
+
+    def convert_geography_data(row):
+        return dict(full_name=row['display_name'],
+                    short_name=row['simple_name'],
+                    sumlevel=row['sumlevel'],
+                    land_area=row['aland'],
+                    full_geoid=row['full_geoid'])
+
+    lookup_data = {}
+    for row in g.cur:
+        lookup_data[row['full_geoid']] = row
+
+    for (name, the_geoid) in item_levels.iteritems():
+        doc['geography'][name] = convert_geography_data(lookup_data[the_geoid])
+        doc['geography'][name]['total_population'] = maybe_int(data[the_geoid]['b01001001'])
 
     age_dict = dict()
     doc['demographics']['age'] = age_dict
@@ -633,7 +641,7 @@ def geo_profile(acs, geoid):
 
     marital_status_grouped = OrderedDict()
     doc['families']['marital_status_grouped'] = marital_status_grouped
-    
+
     # repeating data temporarily to develop grouped column chart format
     marital_status_grouped['never_married'] = OrderedDict()
     marital_status_grouped['never_married']['metadata'] = {
