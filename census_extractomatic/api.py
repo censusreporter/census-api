@@ -644,9 +644,9 @@ def geo_profile(acs, geoid):
 
     # repeating data temporarily to develop grouped column chart format
     marital_status_grouped['never_married'] = OrderedDict()
+    marital_status_grouped['never_married']['acs_release'] = acs_name
     marital_status_grouped['never_married']['metadata'] = {
         'universe': 'Population 15 years and over',
-        'acs_release': acs_name,
         'table_id': 'b12001',
         'name': 'Never married'
     }
@@ -656,9 +656,9 @@ def geo_profile(acs, geoid):
                                         lambda data: maybe_percent(data['b12001012'], data['b12001011']))
 
     marital_status_grouped['married'] = OrderedDict()
+    marital_status_grouped['married']['acs_release'] = acs_name
     marital_status_grouped['married']['metadata'] = {
         'universe': 'Population 15 years and over',
-        'acs_release': acs_name,
         'table_id': 'b12001',
         'name': 'Now married'
     }
@@ -668,9 +668,9 @@ def geo_profile(acs, geoid):
                                         lambda data: maybe_percent(data['b12001013'], data['b12001011']))
 
     marital_status_grouped['divorced'] = OrderedDict()
+    marital_status_grouped['divorced']['acs_release'] = acs_name
     marital_status_grouped['divorced']['metadata'] = {
         'universe': 'Population 15 years and over',
-        'acs_release': acs_name,
         'table_id': 'b12001',
         'name': 'Divorced'
     }
@@ -680,9 +680,9 @@ def geo_profile(acs, geoid):
                                         lambda data: maybe_percent(data['b12001019'], data['b12001011']))
 
     marital_status_grouped['widowed'] = OrderedDict()
+    marital_status_grouped['widowed']['acs_release'] = acs_name
     marital_status_grouped['widowed']['metadata'] = {
         'universe': 'Population 15 years and over',
-        'acs_release': acs_name,
         'table_id': 'b12001',
         'name': 'Widowed'
     }
