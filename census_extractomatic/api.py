@@ -941,7 +941,7 @@ def geo_profile(acs, geoid):
     value_distribution['under_100'] = build_item('b25075', 'Owner-occupied housing units', 'Under $100K', acs_name, data, item_levels,
         'b25075002 b25075003 + b25075004 + b25075005 + b25075006 + b25075007 + b25075008 + b25075009 + b25075010 + b25075011 + b25075012 + b25075013 + b25075014 + b25075001 / %')
     value_distribution['100_to_200'] = build_item('b25075', 'Owner-occupied housing units', '$100K - $200K', acs_name, data, item_levels,
-        'b25075015 25075016 + 25075017 + 25075018 + b25075001 / %')
+        'b25075015 b25075016 + b25075017 + b25075018 + b25075001 / %')
     value_distribution['200_to_300'] = build_item('b25075', 'Owner-occupied housing units', '$200K - $300K', acs_name, data, item_levels,
         'b25075019 b25075020 + b25075001 / %')
     value_distribution['300_to_400'] = build_item('b25075', 'Owner-occupied housing units', '$300K - $400K', acs_name, data, item_levels,
@@ -979,7 +979,7 @@ def geo_profile(acs, geoid):
         'b15002011 b15002028 + b15002001 / %')
 
     attainment_distribution_dict['some_college'] = build_item('b15002', 'Population 25 years and over', 'Some college', acs_name, data, item_levels,
-        'b15002012 b15002013 + 15002014 + 15002029 + 15002030 + 15002031 + b15002001 / %')
+        'b15002012 b15002013 + b15002014 + b15002029 + b15002030 + b15002031 + b15002001 / %')
 
     attainment_distribution_dict['bachelor_degree'] = build_item('b15002', 'Population 25 years and over', 'Bachelor\'s', acs_name, data, item_levels,
         'b15002015 b15002032 + b15002001 / %')
