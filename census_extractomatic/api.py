@@ -797,7 +797,7 @@ def geo_profile(acs, geoid):
         'b13016007 b13016007 b13016015 + / %%')
     birth_rate_by_age_dict['40_to_44'] = build_item('b13016', 'Women 15 to 50 years', '40-44', acs_name, data, item_levels,
         'b13016008 b13016008 b13016016 + / %%')
-    birth_rate_by_age_dict['45_to_49'] = build_item('b13016', 'Women 15 to 50 years', '45-49', acs_name, data, item_levels,
+    birth_rate_by_age_dict['45_to_50'] = build_item('b13016', 'Women 15 to 50 years', '45-50', acs_name, data, item_levels,
         'b13016009 b13016009 b13016017 + / %%')
 
     # Families: Number of Households, Persons per Household, Household type distribution
