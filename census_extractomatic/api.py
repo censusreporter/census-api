@@ -1199,35 +1199,28 @@ def geo_lookup(geoid):
     if len(geoid_parts) is not 2:
         abort(400, 'Invalid geoid')
 
-    sumlevel_part = geoid_parts[0][:3]
-    id_part = geoid_parts[1]
-
     if request.qwargs.geom:
-        g.cur.execute("""SELECT awater,aland,name,intptlat,intptlon,ST_AsGeoJSON(ST_Simplify(the_geom,0.001)) as geom
-            FROM tiger2012.census_names
-            WHERE sumlevel=%s AND geoid=%s
-            LIMIT 1""", [sumlevel_part, id_part])
+        g.cur.execute("""SELECT display_name,simple_name,sumlevel,full_geoid,population,aland,awater,
+            ST_AsGeoJSON(ST_Simplify(the_geom,ST_Perimeter(the_geom) / 1700)) as geom
+            FROM tiger2012.census_name_lookup
+            WHERE full_geoid=%s
+            LIMIT 1""", [geoid])
     else:
-        g.cur.execute("""SELECT awater,aland,name,intptlat,intptlon
-            FROM tiger2012.census_names
-            WHERE sumlevel=%s AND geoid=%s
-            LIMIT 1""", [sumlevel_part, id_part])
+        g.cur.execute("""SELECT display_name,simple_name,sumlevel,full_geoid,population,aland,awater
+            FROM tiger2012.census_name_lookup
+            WHERE full_geoid=%s
+            LIMIT 1""", [geoid])
 
     result = g.cur.fetchone()
 
     if not result:
         abort(404, 'Unknown geoid')
 
-    intptlon = result.pop('intptlon')
-    result['intptlon'] = round(float(intptlon), 7)
-    intptlat = result.pop('intptlat')
-    result['intptlat'] = round(float(intptlat), 7)
-
-    geom = result.get('geom')
+    geom = result.pop('geom', None)
     if geom:
-        result['geom'] = json.loads(geom)
+        geom = json.loads(geom)
 
-    return json.dumps(result)
+    return jsonify(type="Feature", properties=result, geometry=geom)
 
 
 ## TABLE LOOKUPS ##
