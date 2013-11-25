@@ -199,55 +199,8 @@ def crossdomain(origin=None, methods=None, headers=None,
         return update_wrapper(wrapped_function, f)
     return decorator
 
-
-def sum(data, *columns):
-    def reduce_fn(x, y):
-        if x and y:
-            return x + y
-        elif x and not y:
-            return x
-        elif y and not x:
-            return y
-        else:
-            return None
-
-    return reduce(reduce_fn, map(lambda col: data[col], columns))
-
-
-def dif(minuend, subtrahend):
-    if minuend and subtrahend:
-        return minuend - subtrahend
-    else:
-        return None
-
-
 def maybe_int(i):
     return int(i) if i else i
-
-
-def maybe_float(i, decimals=1):
-    return round(float(i), decimals) if i else i
-
-
-def div(numerator, denominator):
-    if numerator and denominator:
-        return numerator / denominator
-    else:
-        return None
-
-
-def maybe_percent(numerator, denominator, decimals=1):
-    if not numerator or not denominator:
-        return None
-
-    return round(numerator / denominator * 100, decimals)
-
-
-def maybe_rate(numerator, denominator, decimals=1):
-    if not numerator or not denominator:
-        return None
-
-    return round(numerator / denominator * 1000, decimals)
 
 def percentify(val):
     return round(val * 100, 1)
@@ -281,6 +234,8 @@ moe_ops = {
 def value_rpn_calc(data, rpn_string):
     stack = []
     moe_stack = []
+    numerator = None
+    numerator_moe = None
 
     for token in rpn_string.split():
         if token in ops:
@@ -296,8 +251,11 @@ def value_rpn_calc(data, rpn_string):
                 a_moe = moe_stack.pop()
 
                 if token == '/':
+                    # Broken out because MOE ratio needs both MOE and estimates
                     c = ops[token](a, b)
                     c_moe = moe_ratio(a, b, a_moe, b_moe)
+                    numerator = a
+                    numerator_moe = a_moe
                 else:
                     c = ops[token](a, b)
                     c_moe = moe_ops[token](a_moe, b_moe)
@@ -310,20 +268,29 @@ def value_rpn_calc(data, rpn_string):
         stack.append(c)
         moe_stack.append(c_moe)
 
-    return (stack.pop(), moe_stack.pop())
+    return (stack.pop(), moe_stack.pop(), numerator, numerator_moe)
 
 def build_item(table_id, universe, name, acs_release, data, parents, rpn_string):
-    val = dict(table_id=table_id,
-        universe=universe,
-        name=name,
-        acs_release=acs_release,
-        values=dict(),
-        error=dict(),)
+    val = OrderedDict([('table_id', table_id),
+        ('universe', universe),
+        ('name', name),
+        ('acs_release', acs_release),
+        ('values', dict()),
+        ('error', dict()),
+        ('numerators', None),
+        ('numerator_errors', None)])
 
     for (label, geoid) in parents.iteritems():
-        (value, error) = value_rpn_calc(data[geoid], rpn_string)
+        (value, error, numerator, numerator_moe) = value_rpn_calc(data[geoid], rpn_string)
         val['values'][label] = value
         val['error'][label] = error
+
+        if numerator and numerator_moe:
+            if val['numerators'] == None:
+                val['numerators'] = dict()
+                val['numerator_errors'] = dict()
+            val['numerators'][label] = numerator
+            val['numerator_errors'][label] = round(numerator_moe, 1)
 
     return val
 
@@ -666,8 +633,8 @@ def geo_profile(acs, geoid):
     employment_dict = dict()
     doc['economics']['employment'] = employment_dict
 
-    # employment_dict['mean_travel_time'] = build_item('b08006, b08013', 'Workers 16 years and over who did not work at home', 'Mean travel time to work', acs_name, data, item_levels,
-    #                                     lambda data: maybe_float(div(maybe_int(data['b08013001']), dif(maybe_int(data['b08006001']), maybe_int(data['b08006017'])))))
+    employment_dict['mean_travel_time'] = build_item('b08006, b08013', 'Workers 16 years and over who did not work at home', 'Mean travel time to work', acs_name, data, item_levels,
+        'b08013001 b08006001 b08006017 - /')
 
     data, acs = get_data_fallback('B08006', item_levels.values())
     acs_name = ACS_NAMES.get(acs).get('name')
@@ -810,8 +777,8 @@ def geo_profile(acs, geoid):
     households_dict['number_of_households'] = build_item('b11001', 'Households', 'Number of households', acs_name, data, item_levels,
         'b11001001')
 
-    # households_dict['persons_per_household'] = build_item('b11001,b11002', 'Households', 'Persons per household', acs_name, data, item_levels,
-    #                                     lambda data: maybe_float(div(maybe_int(data['b11002001']), maybe_int(data['b11001001']))))
+    households_dict['persons_per_household'] = build_item('b11001,b11002', 'Households', 'Persons per household', acs_name, data, item_levels,
+        'b11002001 b11001001 /')
 
     households_distribution_dict = OrderedDict()
     households_dict['distribution'] = households_distribution_dict
