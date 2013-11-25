@@ -244,18 +244,29 @@ def value_rpn_calc(data, rpn_string):
 
             if token in ('%', '%%'):
                 # Single-argument operators
-                c = ops[token](b)
-                c_moe = moe_ops[token](b_moe)
+                if b is None:
+                    c = None
+                    c_moe = None
+                else:
+                    c = ops[token](b)
+                    c_moe = moe_ops[token](b_moe)
             else:
                 a = stack.pop()
                 a_moe = moe_stack.pop()
 
-                if token == '/':
+                if a is None or b is None:
+                    c = None
+                    c_moe = None
+                elif token == '/':
                     # Broken out because MOE ratio needs both MOE and estimates
-                    c = ops[token](a, b)
-                    c_moe = moe_ratio(a, b, a_moe, b_moe)
-                    numerator = a
-                    numerator_moe = a_moe
+                    try:
+                        c = ops[token](a, b)
+                        c_moe = moe_ratio(a, b, a_moe, b_moe)
+                        numerator = a
+                        numerator_moe = round(a_moe, 1)
+                    except ZeroDivisionError:
+                        c = None
+                        c_moe = None
                 else:
                     c = ops[token](a, b)
                     c_moe = moe_ops[token](a_moe, b_moe)
@@ -277,20 +288,24 @@ def build_item(table_id, universe, name, acs_release, data, parents, rpn_string)
         ('acs_release', acs_release),
         ('values', dict()),
         ('error', dict()),
-        ('numerators', None),
-        ('numerator_errors', None)])
+        ('numerators', dict()),
+        ('numerator_errors', dict())])
 
     for (label, geoid) in parents.iteritems():
-        (value, error, numerator, numerator_moe) = value_rpn_calc(data[geoid], rpn_string)
+        data_for_geoid = data.get(geoid) if data else {}
+
+        value = None
+        error = None
+        numerator = None
+        numerator_moe = None
+
+        if data_for_geoid:
+            (value, error, numerator, numerator_moe) = value_rpn_calc(data_for_geoid, rpn_string)
+
         val['values'][label] = value
         val['error'][label] = error
-
-        if numerator and numerator_moe:
-            if val['numerators'] == None:
-                val['numerators'] = dict()
-                val['numerator_errors'] = dict()
-            val['numerators'][label] = numerator
-            val['numerator_errors'][label] = round(numerator_moe, 1)
+        val['numerators'][label] = numerator
+        val['numerator_errors'][label] = numerator_moe
 
     return val
 
