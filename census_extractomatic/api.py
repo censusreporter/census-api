@@ -203,10 +203,10 @@ def maybe_int(i):
     return int(i) if i else i
 
 def percentify(val):
-    return round(val * 100, 1)
+    return val * 100
 
 def rateify(val):
-    return round(val * 1000, 1)
+    return val * 1000
 
 def moe_add(moe_a, moe_b):
     # From http://www.census.gov/acs/www/Downloads/handbooks/ACSGeneralHandbook.pdf
@@ -279,7 +279,10 @@ def value_rpn_calc(data, rpn_string):
         stack.append(c)
         moe_stack.append(c_moe)
 
-    return (stack.pop(), moe_stack.pop(), numerator, numerator_moe)
+    value = stack.pop()
+    error = moe_stack.pop()
+
+    return (value, error, numerator, numerator_moe)
 
 def build_item(table_id, universe, name, acs_release, data, parents, rpn_string):
     val = OrderedDict([('table_id', table_id),
@@ -301,6 +304,14 @@ def build_item(table_id, universe, name, acs_release, data, parents, rpn_string)
 
         if data_for_geoid:
             (value, error, numerator, numerator_moe) = value_rpn_calc(data_for_geoid, rpn_string)
+
+        if value is not None:
+            value = round(value, 1)
+            error = round(error, 1)
+
+        if numerator is not None:
+            numerator = round(numerator, 1)
+            numerator_moe = round(numerator_moe, 1)
 
         val['values'][label] = value
         val['error'][label] = error
