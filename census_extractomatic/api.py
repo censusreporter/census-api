@@ -284,11 +284,8 @@ def value_rpn_calc(data, rpn_string):
 
     return (value, error, numerator, numerator_moe)
 
-def build_item(table_id, universe, name, acs_release, data, parents, rpn_string):
-    val = OrderedDict([('table_id', table_id),
-        ('universe', universe),
-        ('name', name),
-        ('acs_release', acs_release),
+def build_item(name, data, parents, rpn_string):
+    val = OrderedDict([('name', name),
         ('values', dict()),
         ('error', dict()),
         ('numerators', dict()),
@@ -320,6 +317,12 @@ def build_item(table_id, universe, name, acs_release, data, parents, rpn_string)
 
     return val
 
+def add_metadata(dictionary, table_id, universe, acs_release):
+    val = dict(table_id=table_id,
+        universe=universe,
+        acs_release=acs_release,)
+
+    dictionary['metadata'] = val
 
 def find_geoid(geoid, acs=None):
     "Find the best acs to use for a given geoid or None if the geoid is not found."
@@ -465,11 +468,13 @@ def geo_profile(acs, geoid):
 
     age_dict = dict()
     doc['demographics']['age'] = age_dict
-    age_dict['percent_under_18'] = build_item('b01001', 'Total population', 'Under 18', acs_name, data, item_levels,
+    age_dict['percent_under_18'] = build_item('Under 18', data, item_levels,
         'b01001003 b01001004 + b01001005 + b01001006 + b01001027 + b01001028 + b01001029 + b01001030 + b01001001 / %')
+    add_metadata(age_dict['percent_under_18'], 'b01001', 'Total population', acs_name)
 
-    age_dict['percent_over_65'] = build_item('b01001', 'Total population', '65 and over', acs_name, data, item_levels,
+    age_dict['percent_over_65'] = build_item('65 and over', data, item_levels,
         'b01001020 b01001021 + b01001023 + b01001024 + b01001025 + b01001044 + b01001045 + b01001046 + b01001047 + b01001048 + b01001049 + b01001001 / %')
+    add_metadata(age_dict['percent_over_65'], 'b01001', 'Total population', acs_name)
 
     pop_dict = dict()
     age_dict['population_by_age'] = pop_dict
@@ -477,93 +482,99 @@ def geo_profile(acs, geoid):
     population_by_age_male = OrderedDict()
     population_by_age_female = OrderedDict()
     pop_dict['total'] = population_by_age_total
+    add_metadata(pop_dict['total'], 'b01001', 'Total population', acs_name)
     pop_dict['male'] = population_by_age_male
+    add_metadata(pop_dict['male'], 'b01001', 'Total population', acs_name)
     pop_dict['female'] = population_by_age_female
+    add_metadata(pop_dict['female'], 'b01001', 'Total population', acs_name)
 
-    population_by_age_male['0-9'] = build_item('b01001', 'Total population', '0-9', acs_name, data, item_levels,
+    population_by_age_male['0-9'] = build_item('0-9', data, item_levels,
         'b01001003 b01001004 + b01001002 / %')
-    population_by_age_female['0-9'] = build_item('b01001', 'Total population', '0-9', acs_name, data, item_levels,
+    population_by_age_female['0-9'] = build_item('0-9', data, item_levels,
         'b01001027 b01001028 + b01001026 / %')
-    population_by_age_total['0-9'] = build_item('b01001', 'Total population', '0-9', acs_name, data, item_levels,
+    population_by_age_total['0-9'] = build_item('0-9', data, item_levels,
         'b01001003 b01001004 + b01001027 + b01001028 + b01001001 / %')
 
-    population_by_age_male['10-19'] = build_item('b01001', 'Total population', '10-19', acs_name, data, item_levels,
+    population_by_age_male['10-19'] = build_item('10-19', data, item_levels,
         'b01001005 b01001006 + b01001007 + b01001002 / %')
-    population_by_age_female['10-19'] = build_item('b01001', 'Total population', '10-19', acs_name, data, item_levels,
+    population_by_age_female['10-19'] = build_item('10-19', data, item_levels,
         'b01001029 b01001030 + b01001031 + b01001026 / %')
-    population_by_age_total['10-19'] = build_item('b01001', 'Total population', '10-19', acs_name, data, item_levels,
+    population_by_age_total['10-19'] = build_item('10-19', data, item_levels,
         'b01001005 b01001006 + b01001007 + b01001029 + b01001030 + b01001031 + b01001001 / %')
 
-    population_by_age_male['20-29'] = build_item('b01001', 'Total population', '20-29', acs_name, data, item_levels,
+    population_by_age_male['20-29'] = build_item('20-29', data, item_levels,
         'b01001008 b01001009 + b01001010 + b01001011 + b01001002 / %')
-    population_by_age_female['20-29'] = build_item('b01001', 'Total population', '20-29', acs_name, data, item_levels,
+    population_by_age_female['20-29'] = build_item('20-29', data, item_levels,
         'b01001032 b01001033 + b01001034 + b01001035 + b01001026 / %')
-    population_by_age_total['20-29'] = build_item('b01001', 'Total population', '20-29', acs_name, data, item_levels,
+    population_by_age_total['20-29'] = build_item('20-29', data, item_levels,
         'b01001008 b01001009 + b01001010 + b01001011 + b01001032 + b01001033 + b01001034 + b01001035 + b01001001 / %')
 
-    population_by_age_male['30-39'] = build_item('b01001', 'Total population', '30-39', acs_name, data, item_levels,
+    population_by_age_male['30-39'] = build_item('30-39', data, item_levels,
         'b01001012 b01001013 + b01001002 / %')
-    population_by_age_female['30-39'] = build_item('b01001', 'Total population', '30-39', acs_name, data, item_levels,
+    population_by_age_female['30-39'] = build_item('30-39', data, item_levels,
         'b01001036 b01001037 + b01001026 / %')
-    population_by_age_total['30-39'] = build_item('b01001', 'Total population', '30-39', acs_name, data, item_levels,
+    population_by_age_total['30-39'] = build_item('30-39', data, item_levels,
         'b01001012 b01001013 + b01001036 + b01001037 + b01001001 / %')
 
-    population_by_age_male['40-49'] = build_item('b01001', 'Total population', '40-49', acs_name, data, item_levels,
+    population_by_age_male['40-49'] = build_item('40-49', data, item_levels,
         'b01001014 b01001015 + b01001002 / %')
-    population_by_age_female['40-49'] = build_item('b01001', 'Total population', '40-49', acs_name, data, item_levels,
+    population_by_age_female['40-49'] = build_item('40-49', data, item_levels,
         'b01001038 b01001039 + b01001026 / %')
-    population_by_age_total['40-49'] = build_item('b01001', 'Total population', '40-49', acs_name, data, item_levels,
+    population_by_age_total['40-49'] = build_item('40-49', data, item_levels,
         'b01001014 b01001015 + b01001038 + b01001039 + b01001001 / %')
 
-    population_by_age_male['50-59'] = build_item('b01001', 'Total population', '50-59', acs_name, data, item_levels,
+    population_by_age_male['50-59'] = build_item('50-59', data, item_levels,
         'b01001016 b01001017 + b01001002 / %')
-    population_by_age_female['50-59'] = build_item('b01001', 'Total population', '50-59', acs_name, data, item_levels,
+    population_by_age_female['50-59'] = build_item('50-59', data, item_levels,
         'b01001040 b01001041 + b01001026 / %')
-    population_by_age_total['50-59'] = build_item('b01001', 'Total population', '50-59', acs_name, data, item_levels,
+    population_by_age_total['50-59'] = build_item('50-59', data, item_levels,
         'b01001016 b01001017 + b01001040 + b01001041 + b01001001 / %')
 
-    population_by_age_male['60-69'] = build_item('b01001', 'Total population', '60-69', acs_name, data, item_levels,
+    population_by_age_male['60-69'] = build_item('60-69', data, item_levels,
         'b01001018 b01001019 + b01001020 + b01001021 + b01001002 / %')
-    population_by_age_female['60-69'] = build_item('b01001', 'Total population', '60-69', acs_name, data, item_levels,
+    population_by_age_female['60-69'] = build_item('60-69', data, item_levels,
         'b01001042 b01001043 + b01001044 + b01001045 + b01001026 / %')
-    population_by_age_total['60-69'] = build_item('b01001', 'Total population', '60-69', acs_name, data, item_levels,
+    population_by_age_total['60-69'] = build_item('60-69', data, item_levels,
         'b01001018 b01001019 + b01001020 + b01001021 + b01001042 + b01001043 + b01001044 + b01001045 + b01001001 / %')
 
-    population_by_age_male['70-79'] = build_item('b01001', 'Total population', '70-79', acs_name, data, item_levels,
+    population_by_age_male['70-79'] = build_item('70-79', data, item_levels,
         'b01001022 b01001023 + b01001002 / %')
-    population_by_age_female['70-79'] = build_item('b01001', 'Total population', '70-79', acs_name, data, item_levels,
+    population_by_age_female['70-79'] = build_item('70-79', data, item_levels,
         'b01001046 b01001047 + b01001026 / %')
-    population_by_age_total['70-79'] = build_item('b01001', 'Total population', '70-79', acs_name, data, item_levels,
+    population_by_age_total['70-79'] = build_item('70-79', data, item_levels,
         'b01001022 b01001023 + b01001046 + b01001047 + b01001001 / %')
 
-    population_by_age_male['80+'] = build_item('b01001', 'Total population', '80+', acs_name, data, item_levels,
+    population_by_age_male['80+'] = build_item('80+', data, item_levels,
         'b01001024 b01001025 + b01001002 / %')
-    population_by_age_female['80+'] = build_item('b01001', 'Total population', '80+', acs_name, data, item_levels,
+    population_by_age_female['80+'] = build_item('80+', data, item_levels,
         'b01001048 b01001049 + b01001026 / %')
-    population_by_age_total['80+'] = build_item('b01001', 'Total population', '80+', acs_name, data, item_levels,
+    population_by_age_total['80+'] = build_item('80+', data, item_levels,
         'b01001024 b01001025 + b01001048 + b01001049 + b01001001 / %')
 
     # Demographics: Sex
     # multiple data points, suitable for visualization
-    sex_dict = dict()
+    sex_dict = OrderedDict()
     doc['demographics']['sex'] = sex_dict
-    sex_dict['percent_male'] = build_item('b01001', 'Total population', 'Male', acs_name, data, item_levels,
+    add_metadata(sex_dict, 'b01001', 'Total population', acs_name)
+    sex_dict['percent_male'] = build_item('Male', data, item_levels,
         'b01001002 b01001001 / %')
-
-    sex_dict['percent_female'] = build_item('b01001', 'Total population', 'Female', acs_name, data, item_levels,
+    sex_dict['percent_female'] = build_item('Female', data, item_levels,
         'b01001026 b01001001 / %')
 
     data, acs = get_data_fallback('B01002', item_levels.values())
     acs_name = ACS_NAMES.get(acs).get('name')
 
-    age_dict['median_age'] = build_item('b01002', 'Total population', 'Median age', acs_name, data, item_levels,
+    median_age_dict = dict()
+    age_dict['median_age'] = median_age_dict
+    median_age_dict['total'] = build_item('Median age', data, item_levels,
         'b01002001')
-
-    age_dict['median_age_male'] = build_item('b01002', 'Total population', 'Median age male', acs_name, data, item_levels,
+    add_metadata(median_age_dict['total'], 'b01001', 'Total population', acs_name)
+    median_age_dict['male'] = build_item('Median age male', data, item_levels,
         'b01002002')
-
-    age_dict['median_age_female'] = build_item('b01002', 'Total population', 'Median age female', acs_name, data, item_levels,
+    add_metadata(median_age_dict['male'], 'b01001', 'Total population', acs_name)
+    median_age_dict['female'] = build_item('Median age female', data, item_levels,
         'b01002003')
+    add_metadata(median_age_dict['female'], 'b01001', 'Total population', acs_name)
 
     # Demographics: Race
     # multiple data points, suitable for visualization
@@ -574,19 +585,21 @@ def geo_profile(acs, geoid):
 
     race_dict = OrderedDict()
     doc['demographics']['race'] = race_dict
-    race_dict['percent_white'] = build_item('b03002', 'Total population', 'White', acs_name, data, item_levels,
+    add_metadata(race_dict, 'b03002', 'Total population', acs_name)
+
+    race_dict['percent_white'] = build_item('White', data, item_levels,
         'b03002003 b03002001 / %')
 
-    race_dict['percent_black'] = build_item('b03002', 'Total population', 'Black', acs_name, data, item_levels,
+    race_dict['percent_black'] = build_item('Black', data, item_levels,
         'b03002004 b03002001 / %')
 
-    race_dict['percent_asian'] = build_item('b03002', 'Total population', 'Asian', acs_name, data, item_levels,
+    race_dict['percent_asian'] = build_item('Asian', data, item_levels,
         'b03002006 b03002001 / %')
 
-    race_dict['percent_hispanic'] = build_item('b03002', 'Total population', 'Hispanic', acs_name, data, item_levels,
+    race_dict['percent_hispanic'] = build_item('Hispanic', data, item_levels,
         'b03002012 b03002001 / %')
 
-    race_dict['percent_other'] = build_item('b03002', 'Total population', 'Other', acs_name, data, item_levels,
+    race_dict['percent_other'] = build_item('Other', data, item_levels,
         'b03002005 b03002007 + b03002008 + b03002009 + b03002001 / %')
 
     # Economics: Per-Capita Income
@@ -597,16 +610,18 @@ def geo_profile(acs, geoid):
     income_dict = dict()
     doc['economics']['income'] = income_dict
 
-    income_dict['per_capita_income_in_the_last_12_months'] = build_item('b19301', 'Total population', 'Per capita income', acs_name, data, item_levels,
+    income_dict['per_capita_income_in_the_last_12_months'] = build_item('Per capita income', data, item_levels,
         'b19301001')
+    add_metadata(income_dict['per_capita_income_in_the_last_12_months'], 'b19301', 'Total population', acs_name)
 
     # Economics: Median Household Income
     # single data point
     data, acs = get_data_fallback('B19013', item_levels.values())
     acs_name = ACS_NAMES.get(acs).get('name')
 
-    income_dict['median_household_income'] = build_item('b19013', 'Households', 'Median household income', acs_name, data, item_levels,
+    income_dict['median_household_income'] = build_item('Median household income', data, item_levels,
         'b19013001')
+    add_metadata(income_dict['median_household_income'], 'b19013', 'Households', acs_name)
 
     # Economics: Household Income Distribution
     # multiple data points, suitable for visualization
@@ -615,14 +630,15 @@ def geo_profile(acs, geoid):
 
     income_distribution = OrderedDict()
     income_dict['household_distribution'] = income_distribution
+    add_metadata(income_dict['household_distribution'], 'b19001', 'Households', acs_name)
 
-    income_distribution['under_50'] = build_item('b19001', 'Households', 'Under $50K', acs_name, data, item_levels,
+    income_distribution['under_50'] = build_item('Under $50K', data, item_levels,
         'b19001002 b19001003 + b19001004 + b19001005 + b19001006 + b19001007 + b19001008 + b19001009 + b19001010 + b19001001 / %')
-    income_distribution['50_to_100'] = build_item('b19001', 'Households', '$50K - $100K', acs_name, data, item_levels,
+    income_distribution['50_to_100'] = build_item('$50K - $100K', data, item_levels,
         'b19001011 b19001012 + b19001013 + b19001001 / %')
-    income_distribution['100_to_200'] = build_item('b19001', 'Households', '$100K - $200K', acs_name, data, item_levels,
+    income_distribution['100_to_200'] = build_item('$100K - $200K', data, item_levels,
         'b19001014 b19001015 + b19001016 + b19001001 / %')
-    income_distribution['over_200'] = build_item('b19001', 'Households', 'Over $200K', acs_name, data, item_levels,
+    income_distribution['over_200'] = build_item('Over $200K', data, item_levels,
         'b19001017 b19001001 / %')
 
     # Economics: Poverty Rate
@@ -633,22 +649,25 @@ def geo_profile(acs, geoid):
     poverty_dict = dict()
     doc['economics']['poverty'] = poverty_dict
 
-    poverty_dict['percent_below_poverty_line'] = build_item('b17001', 'Population for whom poverty status is determined', 'Persons below poverty line', acs_name, data, item_levels,
+    poverty_dict['percent_below_poverty_line'] = build_item('Persons below poverty line', data, item_levels,
         'b17001002 b17001001 / %')
+    add_metadata(poverty_dict['percent_below_poverty_line'], 'b17001', 'Population for whom poverty status is determined', acs_name)
 
     poverty_children = OrderedDict()
     poverty_seniors = OrderedDict()
     poverty_dict['children'] = poverty_children
+    add_metadata(poverty_dict['children'], 'b17001', 'Population for whom poverty status is determined', acs_name)
     poverty_dict['seniors'] = poverty_seniors
+    add_metadata(poverty_dict['seniors'], 'b17001', 'Population for whom poverty status is determined', acs_name)
 
-    poverty_children['below'] = build_item('b17001', 'Population for whom poverty status is determined', 'Poverty', acs_name, data, item_levels,
+    poverty_children['below'] = build_item('Poverty', data, item_levels,
         'b17001004 b17001005 + b17001006 + b17001007 + b17001008 + b17001009 + b17001018 + b17001019 + b17001020 + b17001021 + b17001022 + b17001023 + b17001004 b17001005 + b17001006 + b17001007 + b17001008 + b17001009 + b17001018 + b17001019 + b17001020 + b17001021 + b17001022 + b17001023 + b17001033 + b17001034 + b17001035 + b17001036 + b17001037 + b17001038 + b17001047 + b17001048 + b17001049 + b17001050 + b17001051 + b17001052 + / %')
-    poverty_children['above'] = build_item('b17001', 'Population for whom poverty status is determined', 'Non-poverty', acs_name, data, item_levels,
+    poverty_children['above'] = build_item('Non-poverty', data, item_levels,
         'b17001033 b17001034 + b17001035 + b17001036 + b17001037 + b17001038 + b17001047 + b17001048 + b17001049 + b17001050 + b17001051 + b17001052 + b17001004 b17001005 + b17001006 + b17001007 + b17001008 + b17001009 + b17001018 + b17001019 + b17001020 + b17001021 + b17001022 + b17001023 + b17001033 + b17001034 + b17001035 + b17001036 + b17001037 + b17001038 + b17001047 + b17001048 + b17001049 + b17001050 + b17001051 + b17001052 + / %')
 
-    poverty_seniors['below'] = build_item('b17001', 'Population for whom poverty status is determined', 'Poverty', acs_name, data, item_levels,
+    poverty_seniors['below'] = build_item('Poverty', data, item_levels,
         'b17001015 b17001016 + b17001029 + b17001030 + b17001015 b17001016 + b17001029 + b17001030 + b17001044 + b17001045 + b17001058 + b17001059 + / %')
-    poverty_seniors['above'] = build_item('b17001', 'Population for whom poverty status is determined', 'Non-poverty', acs_name, data, item_levels,
+    poverty_seniors['above'] = build_item('Non-poverty', data, item_levels,
         'b17001044 b17001045 + b17001058 + b17001059 + b17001015 b17001016 + b17001029 + b17001030 + b17001044 + b17001045 + b17001058 + b17001059 + / %')
 
     # Economics: Mean Travel Time to Work, Means of Transportation to Work
@@ -659,28 +678,30 @@ def geo_profile(acs, geoid):
     employment_dict = dict()
     doc['economics']['employment'] = employment_dict
 
-    employment_dict['mean_travel_time'] = build_item('b08006, b08013', 'Workers 16 years and over who did not work at home', 'Mean travel time to work', acs_name, data, item_levels,
+    employment_dict['mean_travel_time'] = build_item('Mean travel time to work', data, item_levels,
         'b08013001 b08006001 b08006017 - /')
+    add_metadata(employment_dict['mean_travel_time'], 'b08006, b08013', 'Workers 16 years and over who did not work at home', acs_name)
 
     data, acs = get_data_fallback('B08006', item_levels.values())
     acs_name = ACS_NAMES.get(acs).get('name')
 
     transportation_dict = OrderedDict()
     employment_dict['transportation_distribution'] = transportation_dict
+    add_metadata(employment_dict['transportation_distribution'], 'b08006', 'Workers 16 years and over', acs_name)
 
-    transportation_dict['drove_alone'] = build_item('b08006', 'Workers 16 years and over', 'Drove alone', acs_name, data, item_levels,
+    transportation_dict['drove_alone'] = build_item('Drove alone', data, item_levels,
         'b08006003 b08006001 / %')
-    transportation_dict['carpooled'] = build_item('b08006', 'Workers 16 years and over', 'Carpooled', acs_name, data, item_levels,
+    transportation_dict['carpooled'] = build_item('Carpooled', data, item_levels,
         'b08006004 b08006001 / %')
-    transportation_dict['public_transit'] = build_item('b08006', 'Workers 16 years and over', 'Public transit', acs_name, data, item_levels,
+    transportation_dict['public_transit'] = build_item('Public transit', data, item_levels,
         'b08006008 b08006001 / %')
-    transportation_dict['bicycle'] = build_item('b08006', 'Workers 16 years and over', 'Bicycle', acs_name, data, item_levels,
+    transportation_dict['bicycle'] = build_item('Bicycle', data, item_levels,
         'b08006014 b08006001 / %')
-    transportation_dict['walked'] = build_item('b08006', 'Workers 16 years and over', 'Walked', acs_name, data, item_levels,
+    transportation_dict['walked'] = build_item('Walked', data, item_levels,
         'b08006015 b08006001 / %')
-    transportation_dict['other'] = build_item('b08006', 'Workers 16 years and over', 'Other', acs_name, data, item_levels,
+    transportation_dict['other'] = build_item('Other', data, item_levels,
         'b08006016 b08006001 / %')
-    transportation_dict['worked_at_home'] = build_item('b08006', 'Workers 16 years and over', 'Worked at home', acs_name, data, item_levels,
+    transportation_dict['worked_at_home'] = build_item('Worked at home', data, item_levels,
         'b08006017 b08006001 / %')
 
     # Families: Marital Status by Sex
@@ -689,14 +710,16 @@ def geo_profile(acs, geoid):
 
     marital_status = OrderedDict()
     doc['families']['marital_status'] = marital_status
+    add_metadata(marital_status, 'b12001', 'Population 15 years and over', acs_name)
 
-    marital_status['married'] = build_item('b12001', 'Population 15 years and over', 'Married', acs_name, data, item_levels,
+    marital_status['married'] = build_item('Married', data, item_levels,
         'b12001004 b12001013 + b12001001 / %')
-    marital_status['single'] = build_item('b12001', 'Population 15 years and over', 'Single', acs_name, data, item_levels,
+    marital_status['single'] = build_item('Single', data, item_levels,
         'b12001003 b12001009 + b12001010 + b12001012 + b12001018 + b12001019 + b12001001 / %')
 
     marital_status_grouped = OrderedDict()
     doc['families']['marital_status_grouped'] = marital_status_grouped
+    add_metadata(marital_status_grouped, 'b12001', 'Population 15 years and over', acs_name)
 
     # repeating data temporarily to develop grouped column chart format
     marital_status_grouped['never_married'] = OrderedDict()
@@ -706,9 +729,9 @@ def geo_profile(acs, geoid):
         'table_id': 'b12001',
         'name': 'Never married'
     }
-    marital_status_grouped['never_married']['male'] = build_item('b12001', 'Population 15 years and over', 'Male', acs_name, data, item_levels,
+    marital_status_grouped['never_married']['male'] = build_item('Male', data, item_levels,
         'b12001003 b12001002 / %')
-    marital_status_grouped['never_married']['female'] = build_item('b12001', 'Population 15 years and over', 'Female', acs_name, data, item_levels,
+    marital_status_grouped['never_married']['female'] = build_item('Female', data, item_levels,
         'b12001012 b12001011 / %')
 
     marital_status_grouped['married'] = OrderedDict()
@@ -718,9 +741,9 @@ def geo_profile(acs, geoid):
         'table_id': 'b12001',
         'name': 'Now married'
     }
-    marital_status_grouped['married']['male'] = build_item('b12001', 'Population 15 years and over', 'Male', acs_name, data, item_levels,
+    marital_status_grouped['married']['male'] = build_item('Male', data, item_levels,
         'b12001004 b12001002 / %')
-    marital_status_grouped['married']['female'] = build_item('b12001', 'Population 15 years and over', 'Female', acs_name, data, item_levels,
+    marital_status_grouped['married']['female'] = build_item('Female', data, item_levels,
         'b12001013 b12001011 / %')
 
     marital_status_grouped['divorced'] = OrderedDict()
@@ -730,9 +753,9 @@ def geo_profile(acs, geoid):
         'table_id': 'b12001',
         'name': 'Divorced'
     }
-    marital_status_grouped['divorced']['male'] = build_item('b12001', 'Population 15 years and over', 'Male', acs_name, data, item_levels,
+    marital_status_grouped['divorced']['male'] = build_item('Male', data, item_levels,
         'b12001010 b12001002 / %')
-    marital_status_grouped['divorced']['female'] = build_item('b12001', 'Population 15 years and over', 'Female', acs_name, data, item_levels,
+    marital_status_grouped['divorced']['female'] = build_item('Female', data, item_levels,
         'b12001019 b12001011 / %')
 
     marital_status_grouped['widowed'] = OrderedDict()
@@ -742,9 +765,9 @@ def geo_profile(acs, geoid):
         'table_id': 'b12001',
         'name': 'Widowed'
     }
-    marital_status_grouped['widowed']['male'] = build_item('b12001', 'Population 15 years and over', 'Male', acs_name, data, item_levels,
+    marital_status_grouped['widowed']['male'] = build_item('Male', data, item_levels,
         'b12001009 b12001002 / %')
-    marital_status_grouped['widowed']['female'] = build_item('b12001', 'Population 15 years and over', 'Female', acs_name, data, item_levels,
+    marital_status_grouped['widowed']['female'] = build_item('Female', data, item_levels,
         'b12001018 b12001011 / %')
 
 
@@ -757,12 +780,13 @@ def geo_profile(acs, geoid):
 
     children_family_type_dict = OrderedDict()
     family_types['children'] = children_family_type_dict
+    add_metadata(children_family_type_dict, 'b09002', 'Own children under 18 years', acs_name)
 
-    children_family_type_dict['married_couple'] = build_item('b09002', 'Own children under 18 years', 'Married couple', acs_name, data, item_levels,
+    children_family_type_dict['married_couple'] = build_item('Married couple', data, item_levels,
         'b09002002 b09002001 / %')
-    children_family_type_dict['male_householder'] = build_item('b09002', 'Own children under 18 years', 'Male householder', acs_name, data, item_levels,
+    children_family_type_dict['male_householder'] = build_item('Male householder', data, item_levels,
         'b09002009 b09002001 / %')
-    children_family_type_dict['female_householder'] = build_item('b09002', 'Own children under 18 years', 'Female householder', acs_name, data, item_levels,
+    children_family_type_dict['female_householder'] = build_item('Female householder', data, item_levels,
         'b09002015 b09002001 / %')
 
     # Families: Birth Rate by Women's Age
@@ -772,25 +796,27 @@ def geo_profile(acs, geoid):
     birth_rate = dict()
     doc['families']['birth_rate'] = birth_rate
 
-    birth_rate['total'] = build_item('b13016', 'Women 15 to 50 years', 'Births per 1,000 women', acs_name, data, item_levels,
+    birth_rate['total'] = build_item('Births per 1,000 women', data, item_levels,
         'b13016002 b13016001 / %%')
+    add_metadata(birth_rate['total'], 'b13016', 'Women 15 to 50 years', acs_name)
 
     birth_rate_by_age_dict = OrderedDict()
     birth_rate['by_age'] = birth_rate_by_age_dict
+    add_metadata(birth_rate['by_age'], 'b13016', 'Women 15 to 50 years', acs_name)
 
-    birth_rate_by_age_dict['15_to_19'] = build_item('b13016', 'Women 15 to 50 years', '15-19', acs_name, data, item_levels,
+    birth_rate_by_age_dict['15_to_19'] = build_item('15-19', data, item_levels,
         'b13016003 b13016003 b13016011 + / %%')
-    birth_rate_by_age_dict['20_to_24'] = build_item('b13016', 'Women 15 to 50 years', '20-24', acs_name, data, item_levels,
+    birth_rate_by_age_dict['20_to_24'] = build_item('20-24', data, item_levels,
         'b13016004 b13016004 b13016012 + / %%')
-    birth_rate_by_age_dict['25_to_29'] = build_item('b13016', 'Women 15 to 50 years', '25-29', acs_name, data, item_levels,
+    birth_rate_by_age_dict['25_to_29'] = build_item('25-29', data, item_levels,
         'b13016005 b13016005 b13016013 + / %%')
-    birth_rate_by_age_dict['30_to_34'] = build_item('b13016', 'Women 15 to 50 years', '30-35', acs_name, data, item_levels,
+    birth_rate_by_age_dict['30_to_34'] = build_item('30-35', data, item_levels,
         'b13016006 b13016006 b13016014 + / %%')
-    birth_rate_by_age_dict['35_to_39'] = build_item('b13016', 'Women 15 to 50 years', '35-39', acs_name, data, item_levels,
+    birth_rate_by_age_dict['35_to_39'] = build_item('35-39', data, item_levels,
         'b13016007 b13016007 b13016015 + / %%')
-    birth_rate_by_age_dict['40_to_44'] = build_item('b13016', 'Women 15 to 50 years', '40-44', acs_name, data, item_levels,
+    birth_rate_by_age_dict['40_to_44'] = build_item('40-44', data, item_levels,
         'b13016008 b13016008 b13016016 + / %%')
-    birth_rate_by_age_dict['45_to_50'] = build_item('b13016', 'Women 15 to 50 years', '45-50', acs_name, data, item_levels,
+    birth_rate_by_age_dict['45_to_50'] = build_item('45-50', data, item_levels,
         'b13016009 b13016009 b13016017 + / %%')
 
     # Families: Number of Households, Persons per Household, Household type distribution
@@ -800,25 +826,28 @@ def geo_profile(acs, geoid):
     households_dict = dict()
     doc['families']['households'] = households_dict
 
-    households_dict['number_of_households'] = build_item('b11001', 'Households', 'Number of households', acs_name, data, item_levels,
+    households_dict['number_of_households'] = build_item('Number of households', data, item_levels,
         'b11001001')
+    add_metadata(households_dict['number_of_households'], 'b11001', 'Households', acs_name)
 
-    households_dict['persons_per_household'] = build_item('b11001,b11002', 'Households', 'Persons per household', acs_name, data, item_levels,
+    households_dict['persons_per_household'] = build_item('Persons per household', data, item_levels,
         'b11002001 b11001001 /')
+    add_metadata(households_dict['persons_per_household'], 'b11001,b11002', 'Households', acs_name)
 
     households_distribution_dict = OrderedDict()
     households_dict['distribution'] = households_distribution_dict
+    add_metadata(households_dict['distribution'], 'b11001', 'Households', acs_name)
 
-    households_distribution_dict['married_couples'] = build_item('b11001', 'Households', 'Married couples', acs_name, data, item_levels,
+    households_distribution_dict['married_couples'] = build_item('Married couples', data, item_levels,
         'b11002003 b11002001 / %')
 
-    households_distribution_dict['male_householder'] = build_item('b11001', 'Households', 'Male householder', acs_name, data, item_levels,
+    households_distribution_dict['male_householder'] = build_item('Male householder', data, item_levels,
         'b11002006 b11002001 / %')
 
-    households_distribution_dict['female_householder'] = build_item('b11001', 'Households', 'Female householder', acs_name, data, item_levels,
+    households_distribution_dict['female_householder'] = build_item('Female householder', data, item_levels,
         'b11002009 b11002001 / %')
 
-    households_distribution_dict['nonfamily'] = build_item('b11001', 'Households', 'Non-family', acs_name, data, item_levels,
+    households_distribution_dict['nonfamily'] = build_item('Non-family', data, item_levels,
         'b11002012 b11002001 / %')
 
 
@@ -829,15 +858,17 @@ def geo_profile(acs, geoid):
     units_dict = dict()
     doc['housing']['units'] = units_dict
 
-    units_dict['number'] = build_item('b25002', 'Housing units', 'Number of housing units', acs_name, data, item_levels,
+    units_dict['number'] = build_item('Number of housing units', data, item_levels,
         'b25002001')
+    add_metadata(units_dict['number'], 'b25002', 'Housing units', acs_name)
 
     occupancy_distribution_dict = OrderedDict()
     units_dict['occupancy_distribution'] = occupancy_distribution_dict
+    add_metadata(units_dict['occupancy_distribution'], 'b25002', 'Housing units', acs_name)
 
-    occupancy_distribution_dict['occupied'] = build_item('b25002', 'Housing units', 'Occupied', acs_name, data, item_levels,
+    occupancy_distribution_dict['occupied'] = build_item('Occupied', data, item_levels,
         'b25002002 b25002001 / %')
-    occupancy_distribution_dict['vacant'] = build_item('b25002', 'Housing units', 'Vacant', acs_name, data, item_levels,
+    occupancy_distribution_dict['vacant'] = build_item('Vacant', data, item_levels,
         'b25002003 b25002001 / %')
 
     # Housing: Structure Distribution
@@ -846,14 +877,15 @@ def geo_profile(acs, geoid):
 
     structure_distribution_dict = OrderedDict()
     units_dict['structure_distribution'] = structure_distribution_dict
+    add_metadata(units_dict['structure_distribution'], 'b25024', 'Housing units', acs_name)
 
-    structure_distribution_dict['single_unit'] = build_item('b25024', 'Housing units', 'Single unit', acs_name, data, item_levels,
+    structure_distribution_dict['single_unit'] = build_item('Single unit', data, item_levels,
         'b25024002 b25024003 + b25024001 / %')
-    structure_distribution_dict['multi_unit'] = build_item('b25024', 'Housing units', 'Multi-unit', acs_name, data, item_levels,
+    structure_distribution_dict['multi_unit'] = build_item('Multi-unit', data, item_levels,
         'b25024004 b25024005 + b25024006 + b25024007 + b25024008 + b25024009 + b25024001 / %')
-    structure_distribution_dict['mobile_home'] = build_item('b25024', 'Housing units', 'Mobile home', acs_name, data, item_levels,
+    structure_distribution_dict['mobile_home'] = build_item('Mobile home', data, item_levels,
         'b25024010 b25024001 / %')
-    structure_distribution_dict['vehicle'] = build_item('b25024', 'Housing units', 'Boat, RV, van, etc.', acs_name, data, item_levels,
+    structure_distribution_dict['vehicle'] = build_item('Boat, RV, van, etc.', data, item_levels,
         'b25024011 b25024001 / %')
 
     # Housing: Tenure
@@ -865,9 +897,11 @@ def geo_profile(acs, geoid):
 
     ownership_distribution_dict = OrderedDict()
     ownership_dict['distribution'] = ownership_distribution_dict
-    ownership_distribution_dict['owner'] = build_item('b25003', 'Occupied housing units', 'Owner occupied', acs_name, data, item_levels,
+    add_metadata(ownership_dict['distribution'], 'b25003', 'Occupied housing units', acs_name)
+
+    ownership_distribution_dict['owner'] = build_item('Owner occupied', data, item_levels,
         'b25003002 b25003001 / %')
-    ownership_distribution_dict['renter'] = build_item('b25003', 'Occupied housing units', 'Renter occupied', acs_name, data, item_levels,
+    ownership_distribution_dict['renter'] = build_item('Renter occupied', data, item_levels,
         'b25003003 b25003001 / %')
 
     data, acs = get_data_fallback('B25026', item_levels.values())
@@ -875,18 +909,19 @@ def geo_profile(acs, geoid):
 
     length_of_tenure_dict = OrderedDict()
     doc['housing']['length_of_tenure'] = length_of_tenure_dict
+    add_metadata(length_of_tenure_dict, 'b25026', 'Total population in occupied housing units', acs_name)
 
-    length_of_tenure_dict['before_1970'] = build_item('b25026', 'Total population in occupied housing units', 'Before 1970', acs_name, data, item_levels,
+    length_of_tenure_dict['before_1970'] = build_item('Before 1970', data, item_levels,
         'b25026008 b25026015 + b25026001 / %')
-    length_of_tenure_dict['1970s'] = build_item('b25026', 'Total population in occupied housing units', '1970s', acs_name, data, item_levels,
+    length_of_tenure_dict['1970s'] = build_item('1970s', data, item_levels,
         'b25026007 b25026014 + b25026001 / %')
-    length_of_tenure_dict['1980s'] = build_item('b25026', 'Total population in occupied housing units', '1980s', acs_name, data, item_levels,
+    length_of_tenure_dict['1980s'] = build_item('1980s', data, item_levels,
         'b25026006 b25026013 + b25026001 / %')
-    length_of_tenure_dict['1990s'] = build_item('b25026', 'Total population in occupied housing units', '1990s', acs_name, data, item_levels,
+    length_of_tenure_dict['1990s'] = build_item('1990s', data, item_levels,
         'b25026005 b25026012 + b25026001 / %')
-    length_of_tenure_dict['2000_to_2004'] = build_item('b25026', 'Total population in occupied housing units', '2000-2004', acs_name, data, item_levels,
+    length_of_tenure_dict['2000_to_2004'] = build_item('2000-2004', data, item_levels,
         'b25026004 b25026011 + b25026001 / %')
-    length_of_tenure_dict['since_2005'] = build_item('b25026', 'Total population in occupied housing units', 'Since 2005', acs_name, data, item_levels,
+    length_of_tenure_dict['since_2005'] = build_item('Since 2005', data, item_levels,
         'b25026003 b25026010 + b25026001 / %')
 
     # Housing: Mobility
@@ -896,54 +931,56 @@ def geo_profile(acs, geoid):
     migration_dict = dict()
     doc['housing']['migration'] = migration_dict
 
-    migration_dict['same_house_year_ago'] = build_item('b07003', 'Population 1 year and over in the United States', 'Same house year ago', acs_name, data, item_levels,
-        'b07003004 b07003001 / %')
-    migration_dict['moved_since_previous_year'] = build_item('b07003', 'Population 1 year and over in the United States', 'Moved since previous year', acs_name, data, item_levels,
+    migration_dict['moved_since_previous_year'] = build_item('Moved since previous year', data, item_levels,
         'b07003007 b07003010 + b07003013 + b07003016 + b07003001 / %')
+    add_metadata(migration_dict['moved_since_previous_year'], 'b07003', 'Population 1 year and over in the United States', acs_name)
 
     migration_distribution_dict = OrderedDict()
     doc['housing']['migration_distribution'] = migration_distribution_dict
+    add_metadata(migration_distribution_dict, 'b07003', 'Population 1 year and over in the United States', acs_name)
 
-    migration_distribution_dict['same_house_year_ago'] = build_item('b07003', 'Population 1 year and over in the United States', 'Same house year ago', acs_name, data, item_levels,
+    migration_distribution_dict['same_house_year_ago'] = build_item('Same house year ago', data, item_levels,
         'b07003004 b07003001 / %')
-    migration_distribution_dict['moved_same_county'] = build_item('b07003', 'Population 1 year and over in the United States', 'From same county', acs_name, data, item_levels,
+    migration_distribution_dict['moved_same_county'] = build_item('From same county', data, item_levels,
         'b07003007 b07003001 / %')
-    migration_distribution_dict['moved_different_county'] = build_item('b07003', 'Population 1 year and over in the United States', 'From different county', acs_name, data, item_levels,
+    migration_distribution_dict['moved_different_county'] = build_item('From different county', data, item_levels,
         'b07003010 b07003001 / %')
-    migration_distribution_dict['moved_different_state'] = build_item('b07003', 'Population 1 year and over in the United States', 'From different state', acs_name, data, item_levels,
+    migration_distribution_dict['moved_different_state'] = build_item('From different state', data, item_levels,
         'b07003013 b07003001 / %')
-    migration_distribution_dict['moved_from_abroad'] = build_item('b07003', 'Population 1 year and over in the United States', 'From abroad', acs_name, data, item_levels,
+    migration_distribution_dict['moved_from_abroad'] = build_item('From abroad', data, item_levels,
         'b07003016 b07003001 / %')
 
     # Housing: Median Value and Distribution of Values
     data, acs = get_data_fallback('B25077', item_levels.values())
     acs_name = ACS_NAMES.get(acs).get('name')
 
-    ownership_dict['median_value'] = build_item('b25077', 'Owner-occupied housing units', 'Median value of owner-occupied housing units', acs_name, data, item_levels,
+    ownership_dict['median_value'] = build_item('Median value of owner-occupied housing units', data, item_levels,
         'b25077001')
+    add_metadata(ownership_dict['median_value'], 'b25077', 'Owner-occupied housing units', acs_name)
 
     data, acs = get_data_fallback('B25075', item_levels.values())
     acs_name = ACS_NAMES.get(acs).get('name')
 
     value_distribution = OrderedDict()
     ownership_dict['value_distribution'] = value_distribution
+    add_metadata(value_distribution, 'b25075', 'Owner-occupied housing units', acs_name)
 
-    ownership_dict['total_value'] = build_item('b25075', 'Owner-occupied housing units', 'Total value of owner-occupied housing units', acs_name, data, item_levels,
+    ownership_dict['total_value'] = build_item('Total value of owner-occupied housing units', data, item_levels,
         'b25075001')
 
-    value_distribution['under_100'] = build_item('b25075', 'Owner-occupied housing units', 'Under $100K', acs_name, data, item_levels,
+    value_distribution['under_100'] = build_item('Under $100K', data, item_levels,
         'b25075002 b25075003 + b25075004 + b25075005 + b25075006 + b25075007 + b25075008 + b25075009 + b25075010 + b25075011 + b25075012 + b25075013 + b25075014 + b25075001 / %')
-    value_distribution['100_to_200'] = build_item('b25075', 'Owner-occupied housing units', '$100K - $200K', acs_name, data, item_levels,
+    value_distribution['100_to_200'] = build_item('$100K - $200K', data, item_levels,
         'b25075015 b25075016 + b25075017 + b25075018 + b25075001 / %')
-    value_distribution['200_to_300'] = build_item('b25075', 'Owner-occupied housing units', '$200K - $300K', acs_name, data, item_levels,
+    value_distribution['200_to_300'] = build_item('$200K - $300K', data, item_levels,
         'b25075019 b25075020 + b25075001 / %')
-    value_distribution['300_to_400'] = build_item('b25075', 'Owner-occupied housing units', '$300K - $400K', acs_name, data, item_levels,
+    value_distribution['300_to_400'] = build_item('$300K - $400K', data, item_levels,
         'b25075021 b25075001 / %')
-    value_distribution['400_to_500'] = build_item('b25075', 'Owner-occupied housing units', '$400K - $500K', acs_name, data, item_levels,
+    value_distribution['400_to_500'] = build_item('$400K - $500K', data, item_levels,
         'b25075022 b25075001 / %')
-    value_distribution['500_to_1000000'] = build_item('b25075', 'Owner-occupied housing units', '$500K - $1M', acs_name, data, item_levels,
+    value_distribution['500_to_1000000'] = build_item('$500K - $1M', data, item_levels,
         'b25075023 b25075024 + b25075001 / %')
-    value_distribution['over_1000000'] = build_item('b25075', 'Owner-occupied housing units', 'Over $1M', acs_name, data, item_levels,
+    value_distribution['over_1000000'] = build_item('Over $1M', data, item_levels,
         'b25075025 b25075001 / %')
 
 
@@ -956,28 +993,31 @@ def geo_profile(acs, geoid):
     attainment_dict = dict()
     doc['social']['educational_attainment'] = attainment_dict
 
-    attainment_dict['percent_high_school_grad_or_higher'] = build_item('b15002', 'Population 25 years and over', 'High school grad or higher', acs_name, data, item_levels,
+    attainment_dict['percent_high_school_grad_or_higher'] = build_item('High school grad or higher', data, item_levels,
         'b15002011 b15002012 + b15002013 + b15002014 + b15002015 + b15002016 + b15002017 + b15002018 + b15002028 + b15002029 + b15002030 + b15002031 + b15002032 + b15002033 + b15002034 + b15002035 + b15002001 / %')
+    add_metadata(attainment_dict['percent_high_school_grad_or_higher'], 'b15002', 'Population 25 years and over', acs_name)
 
-    attainment_dict['percent_bachelor_degree_or_higher'] = build_item('b15002', 'Population 25 years and over', 'Bachelor\'s degree or higher', acs_name, data, item_levels,
+    attainment_dict['percent_bachelor_degree_or_higher'] = build_item('Bachelor\'s degree or higher', data, item_levels,
         'b15002015 b15002016 + b15002017 + b15002018 + b15002032 + b15002033 + b15002034 + b15002035 + b15002001 / %')
+    add_metadata(attainment_dict['percent_bachelor_degree_or_higher'], 'b15002', 'Population 25 years and over', acs_name)
 
     attainment_distribution_dict = OrderedDict()
     doc['social']['educational_attainment_distribution'] = attainment_distribution_dict
+    add_metadata(attainment_distribution_dict, 'b15002', 'Population 25 years and over', acs_name)
 
-    attainment_distribution_dict['non_high_school_grad'] = build_item('b15002', 'Population 25 years and over', 'No degree', acs_name, data, item_levels,
+    attainment_distribution_dict['non_high_school_grad'] = build_item('No degree', data, item_levels,
         'b15002003 b15002004 + b15002005 + b15002006 + b15002007 + b15002008 + b15002009 + b15002010 + b15002020 + b15002021 + b15002022 + b15002023 + b15002024 + b15002025 + b15002026 + b15002027 + b15002001 / %')
 
-    attainment_distribution_dict['high_school_grad'] = build_item('b15002', 'Population 25 years and over', 'High school', acs_name, data, item_levels,
+    attainment_distribution_dict['high_school_grad'] = build_item('High school', data, item_levels,
         'b15002011 b15002028 + b15002001 / %')
 
-    attainment_distribution_dict['some_college'] = build_item('b15002', 'Population 25 years and over', 'Some college', acs_name, data, item_levels,
+    attainment_distribution_dict['some_college'] = build_item('Some college', data, item_levels,
         'b15002012 b15002013 + b15002014 + b15002029 + b15002030 + b15002031 + b15002001 / %')
 
-    attainment_distribution_dict['bachelor_degree'] = build_item('b15002', 'Population 25 years and over', 'Bachelor\'s', acs_name, data, item_levels,
+    attainment_distribution_dict['bachelor_degree'] = build_item('Bachelor\'s', data, item_levels,
         'b15002015 b15002032 + b15002001 / %')
 
-    attainment_distribution_dict['post_grad_degree'] = build_item('b15002', 'Population 25 years and over', 'Post-grad', acs_name, data, item_levels,
+    attainment_distribution_dict['post_grad_degree'] = build_item('Post-grad', data, item_levels,
         'b15002016 b15002017 + b15002018 + b15002033 + b15002034 + b15002035 + b15002001 / %')
 
     # Social: Place of Birth
@@ -987,26 +1027,28 @@ def geo_profile(acs, geoid):
     foreign_dict = dict()
     doc['social']['place_of_birth'] = foreign_dict
 
-    foreign_dict['percent_foreign_born'] = build_item('b05002', 'Total population', 'Foreign-born population', acs_name, data, item_levels,
+    foreign_dict['percent_foreign_born'] = build_item('Foreign-born population', data, item_levels,
         'b05002013 b05002001 / %')
+    add_metadata(foreign_dict['percent_foreign_born'], 'b05002', 'Total population', acs_name)
 
     data, acs = get_data_fallback('B05006', item_levels.values())
     acs_name = ACS_NAMES.get(acs).get('name')
 
     place_of_birth_dict = OrderedDict()
     foreign_dict['distribution'] = place_of_birth_dict
+    add_metadata(place_of_birth_dict, 'b05006', 'Foreign-born population', acs_name)
 
-    place_of_birth_dict['europe'] = build_item('b05006', 'Foreign-born population', 'Europe', acs_name, data, item_levels,
+    place_of_birth_dict['europe'] = build_item('Europe', data, item_levels,
         'b05006002 b05006001 / %')
-    place_of_birth_dict['asia'] = build_item('b05006', 'Foreign-born population', 'Asia', acs_name, data, item_levels,
+    place_of_birth_dict['asia'] = build_item('Asia', data, item_levels,
         'b05006047 b05006001 / %')
-    place_of_birth_dict['africa'] = build_item('b05006', 'Foreign-born population', 'Africa', acs_name, data, item_levels,
+    place_of_birth_dict['africa'] = build_item('Africa', data, item_levels,
         'b05006091 b05006001 / %')
-    place_of_birth_dict['oceania'] = build_item('b05006', 'Foreign-born population', 'Oceania', acs_name, data, item_levels,
+    place_of_birth_dict['oceania'] = build_item('Oceania', data, item_levels,
         'b05006116 b05006001 / %')
-    place_of_birth_dict['latin_america'] = build_item('b05006', 'Foreign-born population', 'Latin America', acs_name, data, item_levels,
+    place_of_birth_dict['latin_america'] = build_item('Latin America', data, item_levels,
         'b05006123 b05006001 / %')
-    place_of_birth_dict['north_america'] = build_item('b05006', 'Foreign-born population', 'North America', acs_name, data, item_levels,
+    place_of_birth_dict['north_america'] = build_item('North America', data, item_levels,
         'b05006159 b05006001 / %')
 
     # Social: Percentage of Non-English Spoken at Home, Language Spoken at Home for Children, Adults
@@ -1016,8 +1058,9 @@ def geo_profile(acs, geoid):
     language_dict = dict()
     doc['social']['language'] = language_dict
 
-    language_dict['percent_non_english_at_home'] = build_item('b16001', 'Population 5 years and over', 'Persons with language other than English spoken at home', acs_name, data, item_levels,
+    language_dict['percent_non_english_at_home'] = build_item('Persons with language other than English spoken at home', data, item_levels,
         'b16001001 b16001002 - b16001001 / %')
+    add_metadata(language_dict['percent_non_english_at_home'], 'b16001', 'Population 5 years and over', acs_name)
 
 
     data, acs = get_data_fallback('B16007', item_levels.values())
@@ -1026,31 +1069,33 @@ def geo_profile(acs, geoid):
     language_children = OrderedDict()
     language_adults = OrderedDict()
     language_dict['children'] = language_children
+    add_metadata(language_dict['children'], 'b16007', 'Population 5 years and over', acs_name)
     language_dict['adults'] = language_adults
+    add_metadata(language_dict['adults'], 'b16007', 'Population 5 years and over', acs_name)
 
-    language_children['english'] = build_item('b16007', 'Population 5 years and over', 'English only', acs_name, data, item_levels,
+    language_children['english'] = build_item('English only', data, item_levels,
         'b16007003 b16007002 / %')
-    language_adults['english'] = build_item('b16007', 'Population 5 years and over', 'English only', acs_name, data, item_levels,
+    language_adults['english'] = build_item('English only', data, item_levels,
         'b16007009 b16007015 + b16007008 b16007014 + / %')
 
-    language_children['spanish'] = build_item('b16007', 'Population 5 years and over', 'Spanish', acs_name, data, item_levels,
+    language_children['spanish'] = build_item('Spanish', data, item_levels,
         'b16007004 b16007002 / %')
-    language_adults['spanish'] = build_item('b16007', 'Population 5 years and over', 'Spanish', acs_name, data, item_levels,
+    language_adults['spanish'] = build_item('Spanish', data, item_levels,
         'b16007010 b16007016 + b16007008 b16007014 + / %')
 
-    language_children['indoeuropean'] = build_item('b16007', 'Population 5 years and over', 'Indo-European', acs_name, data, item_levels,
+    language_children['indoeuropean'] = build_item('Indo-European', data, item_levels,
         'b16007005 b16007002 / %')
-    language_adults['indoeuropean'] = build_item('b16007', 'Population 5 years and over', 'Indo-European', acs_name, data, item_levels,
+    language_adults['indoeuropean'] = build_item('Indo-European', data, item_levels,
         'b16007011 b16007017 + b16007008 b16007014 + / %')
 
-    language_children['asian_islander'] = build_item('b16007', 'Population 5 years and over', 'Asian/Islander', acs_name, data, item_levels,
+    language_children['asian_islander'] = build_item('Asian/Islander', data, item_levels,
         'b16007006 b16007002 / %')
-    language_adults['asian_islander'] = build_item('b16007', 'Population 5 years and over', 'Asian/Islander', acs_name, data, item_levels,
+    language_adults['asian_islander'] = build_item('Asian/Islander', data, item_levels,
         'b16007012 b16007018 + b16007008 b16007014 + / %')
 
-    language_children['other'] = build_item('b16007', 'Population 5 years and over', 'Other', acs_name, data, item_levels,
+    language_children['other'] = build_item('Other', data, item_levels,
         'b16007007 b16007002 / %')
-    language_adults['other'] = build_item('b16007', 'Population 5 years and over', 'Other', acs_name, data, item_levels,
+    language_adults['other'] = build_item('Other', data, item_levels,
         'b16007013 b16007019 + b16007008 b16007014 + / %')
 
 
@@ -1063,16 +1108,17 @@ def geo_profile(acs, geoid):
 
     veterans_service_dict = OrderedDict()
     veterans_dict['wartime_service'] = veterans_service_dict
+    add_metadata(veterans_service_dict, 'b21002', 'Civilian veterans 18 years and over', acs_name)
 
-    veterans_service_dict['wwii'] = build_item('b21002', 'Civilian veterans 18 years and over', 'WWII', acs_name, data, item_levels,
+    veterans_service_dict['wwii'] = build_item('WWII', data, item_levels,
         'b21002009 b21002011 + b21002012 +')
-    veterans_service_dict['korea'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Korea', acs_name, data, item_levels,
+    veterans_service_dict['korea'] = build_item('Korea', data, item_levels,
         'b21002008 b21002009 + b21002010 + b21002011 +')
-    veterans_service_dict['vietnam'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Vietnam', acs_name, data, item_levels,
+    veterans_service_dict['vietnam'] = build_item('Vietnam', data, item_levels,
         'b21002004 b21002006 + b21002007 + b21002008 + b21002009 +')
-    veterans_service_dict['gulf_1990s'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Gulf (1990s)', acs_name, data, item_levels,
+    veterans_service_dict['gulf_1990s'] = build_item('Gulf (1990s)', data, item_levels,
         'b21002003 b21002004 + b21002005 + b21002006 +')
-    veterans_service_dict['gulf_2001'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Gulf (2001-)', acs_name, data, item_levels,
+    veterans_service_dict['gulf_2001'] = build_item('Gulf (2001-)', data, item_levels,
         'b21002002 b21002003 + b21002004 +')
 
     data, acs = get_data_fallback('B21001', item_levels.values())
@@ -1081,16 +1127,20 @@ def geo_profile(acs, geoid):
     veterans_sex_dict = OrderedDict()
     veterans_dict['sex'] = veterans_sex_dict
 
-    veterans_sex_dict['male'] = build_item('b21001', 'Civilian population 18 years and over', 'Male', acs_name, data, item_levels,
+    veterans_sex_dict['male'] = build_item('Male', data, item_levels,
         'b21001005')
-    veterans_sex_dict['female'] = build_item('b21001', 'Civilian population 18 years and over', 'Female', acs_name, data, item_levels,
+    add_metadata(veterans_sex_dict['male'], 'b21001', 'Civilian population 18 years and over', acs_name)
+    veterans_sex_dict['female'] = build_item('Female', data, item_levels,
         'b21001023')
+    add_metadata(veterans_sex_dict['female'], 'b21001', 'Civilian population 18 years and over', acs_name)
 
-    veterans_dict['number'] = build_item('b21002', 'Civilian veterans 18 years and over', 'Total veterans', acs_name, data, item_levels,
+    veterans_dict['number'] = build_item('Total veterans', data, item_levels,
         'b21001002')
+    add_metadata(veterans_dict['number'], 'b21001', 'Civilian population 18 years and over', acs_name)
 
-    veterans_dict['percentage'] = build_item('b21001', 'Civilian population 18 years and over', 'Population with veteran status', acs_name, data, item_levels,
+    veterans_dict['percentage'] = build_item('Population with veteran status', data, item_levels,
         'b21001002 b21001001 / %')
+    add_metadata(veterans_dict['percentage'], 'b21001', 'Civilian population 18 years and over', acs_name)
 
     def default(obj):
         if type(obj) == decimal.Decimal:
