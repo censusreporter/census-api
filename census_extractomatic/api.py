@@ -796,7 +796,7 @@ def geo_profile(acs, geoid):
     fertility = dict()
     doc['families']['fertility'] = fertility
 
-    fertility['total'] = build_item('Women who gave birth during past year', data, item_levels,
+    fertility['total'] = build_item('Women 15-50 who gave birth during past year', data, item_levels,
         'b13016002 b13016001 / %')
     add_metadata(fertility['total'], 'b13016', 'Women 15 to 50 years', acs_name)
 
