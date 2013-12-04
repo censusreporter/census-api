@@ -793,31 +793,31 @@ def geo_profile(acs, geoid):
     data, acs = get_data_fallback('B13016', item_levels.values())
     acs_name = ACS_NAMES.get(acs).get('name')
 
-    birth_rate = dict()
-    doc['families']['birth_rate'] = birth_rate
+    fertility = dict()
+    doc['families']['fertility'] = fertility
 
-    birth_rate['total'] = build_item('Births per 1,000 women', data, item_levels,
-        'b13016002 b13016001 / %%')
-    add_metadata(birth_rate['total'], 'b13016', 'Women 15 to 50 years', acs_name)
+    fertility['total'] = build_item('Women who gave birth during past year', data, item_levels,
+        'b13016002 b13016001 / %')
+    add_metadata(fertility['total'], 'b13016', 'Women 15 to 50 years', acs_name)
 
-    birth_rate_by_age_dict = OrderedDict()
-    birth_rate['by_age'] = birth_rate_by_age_dict
-    add_metadata(birth_rate['by_age'], 'b13016', 'Women 15 to 50 years', acs_name)
+    fertility_by_age_dict = OrderedDict()
+    fertility['by_age'] = fertility_by_age_dict
+    add_metadata(fertility['by_age'], 'b13016', 'Women 15 to 50 years', acs_name)
 
-    birth_rate_by_age_dict['15_to_19'] = build_item('15-19', data, item_levels,
-        'b13016003 b13016003 b13016011 + / %%')
-    birth_rate_by_age_dict['20_to_24'] = build_item('20-24', data, item_levels,
-        'b13016004 b13016004 b13016012 + / %%')
-    birth_rate_by_age_dict['25_to_29'] = build_item('25-29', data, item_levels,
-        'b13016005 b13016005 b13016013 + / %%')
-    birth_rate_by_age_dict['30_to_34'] = build_item('30-35', data, item_levels,
-        'b13016006 b13016006 b13016014 + / %%')
-    birth_rate_by_age_dict['35_to_39'] = build_item('35-39', data, item_levels,
-        'b13016007 b13016007 b13016015 + / %%')
-    birth_rate_by_age_dict['40_to_44'] = build_item('40-44', data, item_levels,
-        'b13016008 b13016008 b13016016 + / %%')
-    birth_rate_by_age_dict['45_to_50'] = build_item('45-50', data, item_levels,
-        'b13016009 b13016009 b13016017 + / %%')
+    fertility_by_age_dict['15_to_19'] = build_item('15-19', data, item_levels,
+        'b13016003 b13016003 b13016011 + / %')
+    fertility_by_age_dict['20_to_24'] = build_item('20-24', data, item_levels,
+        'b13016004 b13016004 b13016012 + / %')
+    fertility_by_age_dict['25_to_29'] = build_item('25-29', data, item_levels,
+        'b13016005 b13016005 b13016013 + / %')
+    fertility_by_age_dict['30_to_34'] = build_item('30-35', data, item_levels,
+        'b13016006 b13016006 b13016014 + / %')
+    fertility_by_age_dict['35_to_39'] = build_item('35-39', data, item_levels,
+        'b13016007 b13016007 b13016015 + / %')
+    fertility_by_age_dict['40_to_44'] = build_item('40-44', data, item_levels,
+        'b13016008 b13016008 b13016016 + / %')
+    fertility_by_age_dict['45_to_50'] = build_item('45-50', data, item_levels,
+        'b13016009 b13016009 b13016017 + / %')
 
     # Families: Number of Households, Persons per Household, Household type distribution
     data, acs = get_data_fallback(['B11001', 'B11002'], item_levels.values())
