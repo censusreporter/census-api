@@ -1689,9 +1689,9 @@ def data_compare_geographies_within_parent(acs, table_id):
     child_geodata_map = {}
     if request.qwargs.geom:
         # get the parent geometry and add to API response
-        g.cur.execute("""SELECT ST_AsGeoJSON(ST_Simplify(the_geom,0.001)) as geometry
-            FROM tiger2012.census_names
-            WHERE sumlevel=%s AND geoid=%s;""", [parent_sumlevel, parent_geoid.split('US')[1]])
+        g.cur.execute("""SELECT ST_AsGeoJSON(ST_Simplify(the_geom,0.001), 5) as geometry
+            FROM tiger2012.census_name_lookup
+            WHERE full_geoid=%s;""", [parent_geoid])
         parent_geometry = g.cur.fetchone()
         try:
             parent_geography['geography']['geometry'] = json.loads(parent_geometry['geometry'])
@@ -1700,10 +1700,10 @@ def data_compare_geographies_within_parent(acs, table_id):
             pass
 
         # get the child geometries and store for later
-        g.cur.execute("""SELECT geoid, ST_AsGeoJSON(ST_Simplify(the_geom,0.001)) as geometry
-            FROM tiger2012.census_names
-            WHERE sumlevel=%s AND geoid IN %s
-            ORDER BY geoid;""", [child_summary_level, tuple(child_geoid_list)])
+        g.cur.execute("""SELECT geoid, ST_AsGeoJSON(ST_Simplify(the_geom,0.001), 5) as geometry
+            FROM tiger2012.census_name_lookup
+            WHERE full_geoid IN %s
+            ORDER BY full_geoid;""", [tuple(child_geoid_list)])
         child_geodata = g.cur.fetchall()
         child_geodata_map = dict([(record['geoid'], json.loads(record['geometry'])) for record in child_geodata])
 
