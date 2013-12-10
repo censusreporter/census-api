@@ -1611,17 +1611,15 @@ def data_compare_geographies_within_parent(acs, table_id):
     child_summary_level = request.qwargs.sumlevel
 
     # create the containers we need for our response
-    data = OrderedDict([
-        ('comparison', OrderedDict()),
-        ('table', OrderedDict()),
-        ('parent_geography', OrderedDict()),
-        ('child_geographies', OrderedDict())
-    ])
+    comparison = OrderedDict()
+    table = OrderedDict()
+    parent_geography = OrderedDict()
+    child_geographies = OrderedDict()
 
     # add some basic metadata about the comparison and data table requested.
-    data['comparison']['child_summary_level'] = child_summary_level
-    data['comparison']['child_geography_name'] = SUMLEV_NAMES.get(child_summary_level, {}).get('name')
-    data['comparison']['child_geography_name_plural'] = SUMLEV_NAMES.get(child_summary_level, {}).get('plural')
+    comparison['child_summary_level'] = child_summary_level
+    comparison['child_geography_name'] = SUMLEV_NAMES.get(child_summary_level, {}).get('name')
+    comparison['child_geography_name_plural'] = SUMLEV_NAMES.get(child_summary_level, {}).get('plural')
 
     g.cur.execute("""SELECT tab.table_id,tab.table_title,tab.universe,tab.denominator_column_id,col.column_id,col.column_title,col.indent
         FROM census_column_metadata col
@@ -1644,26 +1642,26 @@ def data_compare_geographies_within_parent(acs, table_id):
             column_map[record['column_id']]['name'] = record['column_title']
             column_map[record['column_id']]['indent'] = record['indent']
 
-    data['table']['census_release'] = ACS_NAMES.get(acs).get('name')
-    data['table']['table_id'] = validated_table_id
-    data['table']['table_name'] = table_record['table_title']
-    data['table']['table_universe'] = table_record['universe']
-    data['table']['denominator_column_id'] = table_record['denominator_column_id']
-    data['table']['columns'] = column_map
+    table['census_release'] = ACS_NAMES.get(acs).get('name')
+    table['table_id'] = validated_table_id
+    table['table_name'] = table_record['table_title']
+    table['table_universe'] = table_record['universe']
+    table['denominator_column_id'] = table_record['denominator_column_id']
+    table['columns'] = column_map
 
     # add some data about the parent geography
     g.cur.execute("SELECT * FROM geoheader WHERE geoid=%s;", [parent_geoid])
-    parent_geography = g.cur.fetchone()
-    parent_sumlevel = '%03d' % parent_geography['sumlevel']
+    parent_geoheader = g.cur.fetchone()
+    parent_sumlevel = '%03d' % parent_geoheader['sumlevel']
 
-    data['parent_geography']['geography'] = OrderedDict()
-    data['parent_geography']['geography']['name'] = parent_geography['name']
-    data['parent_geography']['geography']['summary_level'] = parent_sumlevel
+    parent_geography['geography'] = OrderedDict()
+    parent_geography['geography']['name'] = parent_geoheader['name']
+    parent_geography['geography']['summary_level'] = parent_sumlevel
 
-    data['comparison']['parent_summary_level'] = parent_sumlevel
-    data['comparison']['parent_geography_name'] = SUMLEV_NAMES.get(parent_sumlevel, {}).get('name')
-    data['comparison']['parent_name'] = parent_geography['name']
-    data['comparison']['parent_geoid'] = parent_geoid
+    comparison['parent_summary_level'] = parent_sumlevel
+    comparison['parent_geography_name'] = SUMLEV_NAMES.get(parent_sumlevel, {}).get('name')
+    comparison['parent_name'] = parent_geoheader['name']
+    comparison['parent_geoid'] = parent_geoid
 
     if parent_sumlevel == '010':
         child_geoheaders = get_all_child_geoids(child_summary_level)
@@ -1675,27 +1673,28 @@ def data_compare_geographies_within_parent(acs, table_id):
     # start compiling child data for our response
     child_geoid_list = list()
     for geoheader in child_geoheaders:
+        geoheader_geoid = geoheader['geoid']
+
         # store some mapping to make our next query easier
-        child_geoid_list.append(geoheader['geoid'].split('US')[1])
+        child_geoid_list.append(geoheader_geoid)
 
         # build the child item
-        data['child_geographies'][geoheader['geoid']] = OrderedDict()
-        data['child_geographies'][geoheader['geoid']]['geography'] = OrderedDict()
-        data['child_geographies'][geoheader['geoid']]['geography']['name'] = geoheader['name']
-        data['child_geographies'][geoheader['geoid']]['geography']['summary_level'] = child_summary_level
-        data['child_geographies'][geoheader['geoid']]['data'] = {}
+        child_geographies[geoheader_geoid] = OrderedDict()
+        child_geographies[geoheader_geoid]['geography'] = OrderedDict()
+        child_geographies[geoheader_geoid]['geography']['name'] = geoheader['name']
+        child_geographies[geoheader_geoid]['geography']['summary_level'] = child_summary_level
+        child_geographies[geoheader_geoid]['data'] = {}
 
     # get geographical data if requested
-    geometries = request.qwargs.geom
     child_geodata_map = {}
-    if geometries:
+    if request.qwargs.geom:
         # get the parent geometry and add to API response
         g.cur.execute("""SELECT ST_AsGeoJSON(ST_Simplify(the_geom,0.001)) as geometry
             FROM tiger2012.census_names
             WHERE sumlevel=%s AND geoid=%s;""", [parent_sumlevel, parent_geoid.split('US')[1]])
         parent_geometry = g.cur.fetchone()
         try:
-            data['parent_geography']['geography']['geometry'] = json.loads(parent_geometry['geometry'])
+            parent_geography['geography']['geometry'] = json.loads(parent_geometry['geometry'])
         except:
             # we may not have geometries for all sumlevs
             pass
@@ -1710,40 +1709,44 @@ def data_compare_geographies_within_parent(acs, table_id):
 
     # make the where clause and query the requested census data table
     # get parent data first...
-    g.cur.execute("SELECT * FROM %s WHERE geoid=%%s" % (validated_table_id), [parent_geography['geoid']])
+    g.cur.execute("SELECT * FROM %s_moe WHERE geoid=%%s" % (validated_table_id), [parent_geoheader['geoid']])
     parent_data = g.cur.fetchone()
     parent_data.pop('geoid', None)
     column_data = []
-    for (k, v) in sorted(parent_data.items(), key=lambda tup: tup[0]):
-        column_data.append((k.upper(), v))
-    data['parent_geography']['data'] = OrderedDict(column_data)
+    sorted_data = iter(sorted(parent_data.items(), key=lambda tup: tup[0]))
+    for (k, v) in sorted_data:
+        (moe_k, moe_v) = next(sorted_data)
+        column_data.append((v, moe_v))
+    parent_geography['data'] = (column_data)
 
     if child_geoheaders:
         # ... and then children so we can loop through with cursor
         child_geoids = [child['geoid'] for child in child_geoheaders]
-        g.cur.execute("SELECT * FROM %s WHERE geoid IN %%s" % (validated_table_id), [tuple(child_geoids)])
+        g.cur.execute("SELECT * FROM %s_moe WHERE geoid IN %%s" % (validated_table_id), [tuple(child_geoids)])
         # store the number of rows returned in comparison object
-        data['comparison']['results'] = g.cur.rowcount
+        comparison['results'] = g.cur.rowcount
 
         # grab one row at a time
         for record in g.cur:
             child_geoid = record.pop('geoid')
 
             column_data = []
-            for (k, v) in sorted(record.items(), key=lambda tup: tup[0]):
-                column_data.append((k.upper(), v))
-            data['child_geographies'][child_geoid]['data'] = OrderedDict(column_data)
+            sorted_data = iter(sorted(record.items(), key=lambda tup: tup[0]))
+            for (k, v) in sorted_data:
+                (moe_k, moe_v) = next(sorted_data)
+                column_data.append((v, moe_v))
+            child_geographies[child_geoid]['data'] = (column_data)
 
             if child_geodata_map:
                 try:
-                    data['child_geographies'][child_geoid]['geography']['geometry'] = child_geodata_map[child_geoid.split('US')[1]]
+                    child_geographies[child_geoid]['geography']['geometry'] = child_geodata_map[child_geoid.split('US')[1]]
                 except:
                     # we may not have geometries for all sumlevs
                     pass
     else:
-        data['comparison']['results'] = 0
+        comparison['results'] = 0
 
-    return json.dumps(data, indent=4, separators=(',', ': '))
+    return jsonify(comparison=comparison, table=table, parent_geography=parent_geography, child_geographies=child_geographies)
 
 
 if __name__ == "__main__":
