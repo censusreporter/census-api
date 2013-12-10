@@ -1755,5 +1755,10 @@ def data_compare_geographies_within_parent(acs, table_id):
     return jsonify(comparison=comparison, table=table, parent_geography=parent_geography, child_geographies=child_geographies)
 
 
+@app.route('/healthcheck')
+def healthcheck():
+    return 'OK'
+
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8000, debug=True)
