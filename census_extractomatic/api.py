@@ -1713,11 +1713,14 @@ def data_compare_geographies_within_parent(acs, table_id):
     parent_data = g.cur.fetchone()
     parent_data.pop('geoid', None)
     column_data = []
+    column_moe = []
     sorted_data = iter(sorted(parent_data.items(), key=lambda tup: tup[0]))
     for (k, v) in sorted_data:
         (moe_k, moe_v) = next(sorted_data)
-        column_data.append((v, moe_v))
-    parent_geography['data'] = (column_data)
+        column_data.append((k.upper(), v))
+        column_moe.append((k.upper(), moe_v))
+    parent_geography['data'] = OrderedDict(column_data)
+    parent_geography['error'] = OrderedDict(column_moe)
 
     if child_geoheaders:
         # ... and then children so we can loop through with cursor
@@ -1731,11 +1734,14 @@ def data_compare_geographies_within_parent(acs, table_id):
             child_geoid = record.pop('geoid')
 
             column_data = []
+            column_moe = []
             sorted_data = iter(sorted(record.items(), key=lambda tup: tup[0]))
             for (k, v) in sorted_data:
                 (moe_k, moe_v) = next(sorted_data)
-                column_data.append((v, moe_v))
-            child_geographies[child_geoid]['data'] = (column_data)
+                column_data.append((k.upper(), v))
+                column_moe.append((k.upper(), moe_v))
+            child_geographies[child_geoid]['data'] = OrderedDict(column_data)
+            child_geographies[child_geoid]['error'] = OrderedDict(column_moe)
 
             if child_geodata_map:
                 try:
