@@ -1538,22 +1538,32 @@ def show_specified_data(acs):
             ) for column in columns ]))
         ])
 
+    invalid_table_ids = set(request.qwargs.table_ids) - set(valid_table_ids)
+    if invalid_table_ids:
+        abort(400, "Don't know about tables %s." % ','.join(invalid_table_ids))
+
     # Check to make sure the geos requested are valid
     g.cur.execute("SELECT full_geoid,population,display_name FROM tiger2012.census_name_lookup WHERE full_geoid IN %s;", [tuple(request.qwargs.geo_ids)])
 
+    valid_geo_ids = []
     geo_metadata = OrderedDict()
     for geo in g.cur:
+        valid_geo_ids.append(geo['full_geoid'])
         geo_metadata[geo['full_geoid']] = {
             "name": geo['display_name'],
         }
 
-    # Now fetch the actual data
-    from_stmt = '%s_moe' % (request.qwargs.table_ids[0])
-    if len(request.qwargs.table_ids) > 1:
-        from_stmt += ' '
-        from_stmt += ' '.join(['JOIN %s_moe USING (geoid)' % (table_id) for table_id in request.qwargs.table_ids[1:]])
+    invalid_geo_ids = set(request.qwargs.geo_ids) - set(valid_geo_ids)
+    if invalid_geo_ids:
+        abort(400, "Don't know about geographies %s." % ','.join(invalid_geo_ids))
 
-    where_stmt = g.cur.mogrify('geoid IN %s', [tuple(request.qwargs.geo_ids)])
+    # Now fetch the actual data
+    from_stmt = '%s_moe' % (valid_table_ids[0])
+    if len(valid_table_ids) > 1:
+        from_stmt += ' '
+        from_stmt += ' '.join(['JOIN %s_moe USING (geoid)' % (table_id) for table_id in valid_table_ids[1:]])
+
+    where_stmt = g.cur.mogrify('geoid IN %s', [tuple(valid_geo_ids)])
 
     sql = 'SELECT * FROM %s WHERE %s;' % (from_stmt, where_stmt)
 
