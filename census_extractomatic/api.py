@@ -6,6 +6,7 @@ from flask import abort, request, g
 from flask import make_response, current_app
 from flask import jsonify
 from functools import update_wrapper
+from itertools import groupby
 import psycopg2
 import psycopg2.extras
 import simplejson as json
@@ -1501,6 +1502,78 @@ def get_child_geoids_by_prefix(parent_geoid, child_summary_level):
         ORDER BY name""", [child_geoid_prefix])
     return g.cur.fetchall()
 
+
+# Example: /1.0/data/show/acs2011_5yr?table_ids=B01001,B01003&geo_ids=04000US55,04000US56
+@app.route("/1.0/data/show/<acs>")
+@qwarg_validate({
+    'table_ids': {'valid': StringList(), 'required': True},
+    'geo_ids': {'valid': StringList(), 'required': True},
+})
+def show_specified_data(acs):
+    if acs not in allowed_acs:
+        abort(404, 'ACS %s is not supported.' % acs)
+    g.cur.execute("SET search_path=%s,public;", [acs])
+
+    # Check to make sure the tables requested are valid
+    g.cur.execute("""SELECT tab.table_id,tab.table_title,tab.universe,tab.denominator_column_id,col.column_id,col.column_title,col.indent
+        FROM census_column_metadata col
+        LEFT JOIN census_table_metadata tab USING (table_id)
+        WHERE table_id IN %s
+        ORDER BY column_id;""", [tuple(request.qwargs.table_ids)])
+
+    valid_table_ids = []
+    table_metadata = OrderedDict()
+    for table, columns in groupby(g.cur, lambda x: (x['table_id'], x['table_title'], x['universe'], x['denominator_column_id'])):
+        valid_table_ids.append(table[0])
+        table_metadata[table[0]] = OrderedDict([
+            ("title", table[1]),
+            ("universe", table[2]),
+            ("denominator_column_id", table[3]),
+            ("columns", OrderedDict([(
+                column['column_id'],
+                OrderedDict([
+                    ("name", column['column_title']),
+                    ("indent", column['indent'])
+                ])
+            ) for column in columns ]))
+        ])
+
+    # Check to make sure the geos requested are valid
+    g.cur.execute("SELECT full_geoid,population,display_name FROM tiger2012.census_name_lookup WHERE full_geoid IN %s;", [tuple(request.qwargs.geo_ids)])
+
+    geo_metadata = OrderedDict()
+    for geo in g.cur:
+        geo_metadata[geo['full_geoid']] = {
+            "name": geo['display_name'],
+        }
+
+    # Now fetch the actual data
+    from_stmt = '%s_moe' % (request.qwargs.table_ids[0])
+    if len(request.qwargs.table_ids) > 1:
+        from_stmt += ' '
+        from_stmt += ' '.join(['JOIN %s_moe USING (geoid)' % (table_id) for table_id in request.qwargs.table_ids[1:]])
+
+    where_stmt = g.cur.mogrify('geoid IN %s', [tuple(request.qwargs.geo_ids)])
+
+    sql = 'SELECT * FROM %s WHERE %s;' % (from_stmt, where_stmt)
+
+    g.cur.execute(sql)
+    data = OrderedDict()
+
+    for row in g.cur:
+        geoid = row.pop('geoid')
+        data[geoid] = OrderedDict()
+        data[geoid]['estimate'] = OrderedDict()
+        data[geoid]['error'] = OrderedDict()
+
+        cols_iter = iter(sorted(row.items(), key=lambda tup: tup[0]))
+        for (col_name, value) in cols_iter:
+            (moe_name, moe_value) = next(cols_iter)
+
+            data[geoid]['estimate'][col_name] = value
+            data[geoid]['error'][col_name] = moe_value
+
+    return jsonify(tables=table_metadata, geography=geo_metadata, data=data)
 
 # Example: /1.0/data/compare/acs2011_5yr/B01001?sumlevel=050&within=04000US53
 @app.route("/1.0/data/compare/<acs>/<table_id>")
