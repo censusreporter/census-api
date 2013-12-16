@@ -1671,19 +1671,12 @@ def data_compare_geographies_within_parent(acs, table_id):
         child_geoheaders = get_child_geoids_by_gis(parent_geoid, child_summary_level)
 
     # start compiling child data for our response
-    child_geoid_list = list()
+    child_geoid_list = [geoheader['geoid'] for geoheader in child_geoheaders]
     for geoheader in child_geoheaders:
         geoheader_geoid = geoheader['geoid']
 
         # store some mapping to make our next query easier
         child_geoid_list.append(geoheader_geoid)
-
-        # build the child item
-        child_geographies[geoheader_geoid] = OrderedDict()
-        child_geographies[geoheader_geoid]['geography'] = OrderedDict()
-        child_geographies[geoheader_geoid]['geography']['name'] = geoheader['name']
-        child_geographies[geoheader_geoid]['geography']['summary_level'] = child_summary_level
-        child_geographies[geoheader_geoid]['data'] = {}
 
     # get geographical data if requested
     child_geodata_map = {}
@@ -1726,29 +1719,45 @@ def data_compare_geographies_within_parent(acs, table_id):
         # ... and then children so we can loop through with cursor
         child_geoids = [child['geoid'] for child in child_geoheaders]
         g.cur.execute("SELECT * FROM %s_moe WHERE geoid IN %%s" % (validated_table_id), [tuple(child_geoids)])
-        # store the number of rows returned in comparison object
-        comparison['results'] = g.cur.rowcount
 
         # grab one row at a time
         for record in g.cur:
             child_geoid = record.pop('geoid')
 
+            child_data = OrderedDict()
+            this_geo_has_data = False
+
+            # build the child item
+            child_data['geography'] = OrderedDict()
+            child_data['geography']['name'] = geoheader['name']
+            child_data['geography']['summary_level'] = child_summary_level
+
             column_data = []
             column_moe = []
             sorted_data = iter(sorted(record.items(), key=lambda tup: tup[0]))
             for (k, v) in sorted_data:
+
+                if v is not None and moe_v is not None:
+                    this_geo_has_data =True
+
                 (moe_k, moe_v) = next(sorted_data)
                 column_data.append((k.upper(), v))
                 column_moe.append((k.upper(), moe_v))
-            child_geographies[child_geoid]['data'] = OrderedDict(column_data)
-            child_geographies[child_geoid]['error'] = OrderedDict(column_moe)
+            child_data['data'] = OrderedDict(column_data)
+            child_data['error'] = OrderedDict(column_moe)
 
             if child_geodata_map:
                 try:
-                    child_geographies[child_geoid]['geography']['geometry'] = child_geodata_map[child_geoid.split('US')[1]]
+                    child_data['geography']['geometry'] = child_geodata_map[child_geoid.split('US')[1]]
                 except:
                     # we may not have geometries for all sumlevs
                     pass
+
+            if this_geo_has_data:
+                child_geographies[child_geoid] = child_data
+
+            # TODO Do we really need this?
+            comparison['results'] = len(child_geographies)
     else:
         comparison['results'] = 0
 
