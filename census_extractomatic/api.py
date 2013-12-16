@@ -1672,11 +1672,7 @@ def data_compare_geographies_within_parent(acs, table_id):
 
     # start compiling child data for our response
     child_geoid_list = [geoheader['geoid'] for geoheader in child_geoheaders]
-    for geoheader in child_geoheaders:
-        geoheader_geoid = geoheader['geoid']
-
-        # store some mapping to make our next query easier
-        child_geoid_list.append(geoheader_geoid)
+    child_geoid_names = dict([(geoheader['geoid'], geoheader['name']) for geoheader in child_geoheaders])
 
     # get geographical data if requested
     child_geodata_map = {}
@@ -1729,7 +1725,7 @@ def data_compare_geographies_within_parent(acs, table_id):
 
             # build the child item
             child_data['geography'] = OrderedDict()
-            child_data['geography']['name'] = geoheader['name']
+            child_data['geography']['name'] = child_geoid_names[child_geoid]
             child_data['geography']['summary_level'] = child_summary_level
 
             column_data = []
