@@ -1573,15 +1573,17 @@ def show_specified_data(acs):
     for row in g.cur:
         geoid = row.pop('geoid')
         data[geoid] = OrderedDict()
-        data[geoid]['estimate'] = OrderedDict()
-        data[geoid]['error'] = OrderedDict()
 
         cols_iter = iter(sorted(row.items(), key=lambda tup: tup[0]))
-        for (col_name, value) in cols_iter:
-            (moe_name, moe_value) = next(cols_iter)
+        for table_id, data_iter in groupby(cols_iter, lambda x: x[0][:-3]):
+            data[geoid][table_id] = OrderedDict()
+            data[geoid][table_id]['estimate'] = OrderedDict()
+            data[geoid][table_id]['error'] = OrderedDict()
+            for (col_name, value) in data_iter:
+                (moe_name, moe_value) = next(cols_iter)
 
-            data[geoid]['estimate'][col_name] = value
-            data[geoid]['error'][col_name] = moe_value
+                data[geoid][table_id]['estimate'][col_name] = value
+                data[geoid][table_id]['error'][col_name] = moe_value
 
     return jsonify(tables=table_metadata, geography=geo_metadata, data=data)
 
