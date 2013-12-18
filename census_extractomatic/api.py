@@ -1523,9 +1523,7 @@ def show_specified_data(acs):
 
     for acs in acs_to_try:
         try:
-            errors = []
             g.cur.execute("SET search_path=%s,public;", [acs])
-            print "Trying ACS %s" % acs
 
             # Check to make sure the tables requested are valid
             g.cur.execute("""SELECT tab.table_id,tab.table_title,tab.universe,tab.denominator_column_id,col.column_id,col.column_title,col.indent
