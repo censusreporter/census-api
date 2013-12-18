@@ -1513,6 +1513,7 @@ class ShowDataException(Exception):
     'table_ids': {'valid': StringList(), 'required': True},
     'geo_ids': {'valid': StringList(), 'required': True},
 })
+@crossdomain(origin='*')
 def show_specified_data(acs):
     if acs in allowed_acs:
         acs_to_try = [acs]
