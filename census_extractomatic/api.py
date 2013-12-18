@@ -34,9 +34,9 @@ if not app.debug:
 allowed_acs = [
     'acs2012_1yr',
     'acs2012_3yr',
+    'acs2011_5yr',
     'acs2011_1yr',
     'acs2011_3yr',
-    'acs2011_5yr',
     'acs2010_1yr',
     'acs2010_3yr',
     'acs2010_5yr',
@@ -1503,6 +1503,10 @@ def get_child_geoids_by_prefix(parent_geoid, child_summary_level):
     return g.cur.fetchall()
 
 
+class ShowDataException(Exception):
+    pass
+
+
 # Example: /1.0/data/show/acs2011_5yr?table_ids=B01001,B01003&geo_ids=04000US55,04000US56
 @app.route("/1.0/data/show/<acs>")
 @qwarg_validate({
@@ -1510,82 +1514,103 @@ def get_child_geoids_by_prefix(parent_geoid, child_summary_level):
     'geo_ids': {'valid': StringList(), 'required': True},
 })
 def show_specified_data(acs):
-    if acs not in allowed_acs:
+    if acs in allowed_acs:
+        acs_to_try = [acs]
+    elif acs == 'latest':
+        acs_to_try = allowed_acs[:3]
+    else:
         abort(404, 'ACS %s is not supported.' % acs)
-    g.cur.execute("SET search_path=%s,public;", [acs])
 
-    # Check to make sure the tables requested are valid
-    g.cur.execute("""SELECT tab.table_id,tab.table_title,tab.universe,tab.denominator_column_id,col.column_id,col.column_title,col.indent
-        FROM census_column_metadata col
-        LEFT JOIN census_table_metadata tab USING (table_id)
-        WHERE table_id IN %s
-        ORDER BY column_id;""", [tuple(request.qwargs.table_ids)])
+    for acs in acs_to_try:
+        try:
+            errors = []
+            g.cur.execute("SET search_path=%s,public;", [acs])
+            print "Trying ACS %s" % acs
 
-    valid_table_ids = []
-    table_metadata = OrderedDict()
-    for table, columns in groupby(g.cur, lambda x: (x['table_id'], x['table_title'], x['universe'], x['denominator_column_id'])):
-        valid_table_ids.append(table[0])
-        table_metadata[table[0]] = OrderedDict([
-            ("title", table[1]),
-            ("universe", table[2]),
-            ("denominator_column_id", table[3]),
-            ("columns", OrderedDict([(
-                column['column_id'],
-                OrderedDict([
-                    ("name", column['column_title']),
-                    ("indent", column['indent'])
+            # Check to make sure the tables requested are valid
+            g.cur.execute("""SELECT tab.table_id,tab.table_title,tab.universe,tab.denominator_column_id,col.column_id,col.column_title,col.indent
+                FROM census_column_metadata col
+                LEFT JOIN census_table_metadata tab USING (table_id)
+                WHERE table_id IN %s
+                ORDER BY column_id;""", [tuple(request.qwargs.table_ids)])
+
+            valid_table_ids = []
+            table_metadata = OrderedDict()
+            for table, columns in groupby(g.cur, lambda x: (x['table_id'], x['table_title'], x['universe'], x['denominator_column_id'])):
+                valid_table_ids.append(table[0])
+                table_metadata[table[0]] = OrderedDict([
+                    ("title", table[1]),
+                    ("universe", table[2]),
+                    ("denominator_column_id", table[3]),
+                    ("columns", OrderedDict([(
+                        column['column_id'],
+                        OrderedDict([
+                            ("name", column['column_title']),
+                            ("indent", column['indent'])
+                        ])
+                    ) for column in columns ]))
                 ])
-            ) for column in columns ]))
-        ])
 
-    invalid_table_ids = set(request.qwargs.table_ids) - set(valid_table_ids)
-    if invalid_table_ids:
-        abort(400, "Don't know about tables %s." % ','.join(invalid_table_ids))
+            invalid_table_ids = set(request.qwargs.table_ids) - set(valid_table_ids)
+            if invalid_table_ids:
+                raise ShowDataException("Don't know about tables %s." % ','.join(invalid_table_ids))
 
-    # Check to make sure the geos requested are valid
-    g.cur.execute("SELECT full_geoid,population,display_name FROM tiger2012.census_name_lookup WHERE full_geoid IN %s;", [tuple(request.qwargs.geo_ids)])
+            # Check to make sure the geos requested are valid
+            g.cur.execute("SELECT full_geoid,population,display_name FROM tiger2012.census_name_lookup WHERE full_geoid IN %s;", [tuple(request.qwargs.geo_ids)])
 
-    valid_geo_ids = []
-    geo_metadata = OrderedDict()
-    for geo in g.cur:
-        valid_geo_ids.append(geo['full_geoid'])
-        geo_metadata[geo['full_geoid']] = {
-            "name": geo['display_name'],
-        }
+            valid_geo_ids = []
+            geo_metadata = OrderedDict()
+            for geo in g.cur:
+                valid_geo_ids.append(geo['full_geoid'])
+                geo_metadata[geo['full_geoid']] = {
+                    "name": geo['display_name'],
+                }
 
-    invalid_geo_ids = set(request.qwargs.geo_ids) - set(valid_geo_ids)
-    if invalid_geo_ids:
-        abort(400, "Don't know about geographies %s." % ','.join(invalid_geo_ids))
+            invalid_geo_ids = set(request.qwargs.geo_ids) - set(valid_geo_ids)
+            if invalid_geo_ids:
+                raise ShowDataException("Don't know about geographies %s." % ','.join(invalid_geo_ids))
 
-    # Now fetch the actual data
-    from_stmt = '%s_moe' % (valid_table_ids[0])
-    if len(valid_table_ids) > 1:
-        from_stmt += ' '
-        from_stmt += ' '.join(['JOIN %s_moe USING (geoid)' % (table_id) for table_id in valid_table_ids[1:]])
+            # Now fetch the actual data
+            from_stmt = '%s_moe' % (valid_table_ids[0])
+            if len(valid_table_ids) > 1:
+                from_stmt += ' '
+                from_stmt += ' '.join(['JOIN %s_moe USING (geoid)' % (table_id) for table_id in valid_table_ids[1:]])
 
-    where_stmt = g.cur.mogrify('geoid IN %s', [tuple(valid_geo_ids)])
+            where_stmt = g.cur.mogrify('geoid IN %s', [tuple(valid_geo_ids)])
 
-    sql = 'SELECT * FROM %s WHERE %s;' % (from_stmt, where_stmt)
+            sql = 'SELECT * FROM %s WHERE %s;' % (from_stmt, where_stmt)
 
-    g.cur.execute(sql)
-    data = OrderedDict()
+            g.cur.execute(sql)
+            data = OrderedDict()
 
-    for row in g.cur:
-        geoid = row.pop('geoid')
-        data[geoid] = OrderedDict()
+            if g.cur.rowcount != len(valid_geo_ids):
+                raise ShowDataException("Skipping %s because it only returned %s geos when we wanted %s." % (acs, g.cur.rowcount, len(valid_geo_ids)))
 
-        cols_iter = iter(sorted(row.items(), key=lambda tup: tup[0]))
-        for table_id, data_iter in groupby(cols_iter, lambda x: x[0][:-3]):
-            data[geoid][table_id] = OrderedDict()
-            data[geoid][table_id]['estimate'] = OrderedDict()
-            data[geoid][table_id]['error'] = OrderedDict()
-            for (col_name, value) in data_iter:
-                (moe_name, moe_value) = next(cols_iter)
+            for row in g.cur:
+                geoid = row.pop('geoid')
+                data[geoid] = OrderedDict()
 
-                data[geoid][table_id]['estimate'][col_name] = value
-                data[geoid][table_id]['error'][col_name] = moe_value
+                cols_iter = iter(sorted(row.items(), key=lambda tup: tup[0]))
+                for table_id, data_iter in groupby(cols_iter, lambda x: x[0][:-3]):
+                    data[geoid][table_id] = OrderedDict()
+                    data[geoid][table_id]['estimate'] = OrderedDict()
+                    data[geoid][table_id]['error'] = OrderedDict()
+                    for (col_name, value) in data_iter:
+                        (moe_name, moe_value) = next(cols_iter)
 
-    return jsonify(tables=table_metadata, geography=geo_metadata, data=data)
+                        if value is None:
+                            continue
+
+                        data[geoid][table_id]['estimate'][col_name] = value
+                        data[geoid][table_id]['error'][col_name] = moe_value
+
+                    if not data[geoid][table_id]:
+                        raise ShowDataException("No data for table %s, geo %s in ACS %s." % (table_id, geoid, acs))
+
+            return jsonify(tables=table_metadata, geography=geo_metadata, data=data, release={'id': acs, 'years': ACS_NAMES[acs]['years'], 'name': ACS_NAMES[acs]['name']})
+        except ShowDataException, e:
+            continue
+    abort(400, str(e))
 
 # Example: /1.0/data/compare/acs2011_5yr/B01001?sumlevel=050&within=04000US53
 @app.route("/1.0/data/compare/<acs>/<table_id>")
