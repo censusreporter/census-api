@@ -1584,7 +1584,8 @@ def show_specified_data(acs):
             data = OrderedDict()
 
             if g.cur.rowcount != len(valid_geo_ids):
-                raise ShowDataException("Skipping %s because it only returned %s geos when we wanted %s." % (acs, g.cur.rowcount, len(valid_geo_ids)))
+                returned_geo_ids = set([row['geoid'] for row in g.cur])
+                raise ShowDataException("%s did not know about geo_ids %s." % (acs, ','.join(set(valid_geo_ids) - returned_geo_ids)))
 
             for row in g.cur:
                 geoid = row.pop('geoid')
