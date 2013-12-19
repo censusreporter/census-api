@@ -1591,11 +1591,12 @@ def show_specified_data(acs):
                 data[geoid] = OrderedDict()
 
                 cols_iter = iter(sorted(row.items(), key=lambda tup: tup[0]))
-                for table_id, data_iter in groupby(cols_iter, lambda x: x[0][:-3]):
+                for table_id, data_iter in groupby(cols_iter, lambda x: x[0][:-3].upper()):
                     data[geoid][table_id] = OrderedDict()
                     data[geoid][table_id]['estimate'] = OrderedDict()
                     data[geoid][table_id]['error'] = OrderedDict()
                     for (col_name, value) in data_iter:
+                        col_name = col_name.upper()
                         (moe_name, moe_value) = next(cols_iter)
 
                         if value is None:
