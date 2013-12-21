@@ -1279,7 +1279,7 @@ def format_table_search_result(obj, obj_type):
 # Example: /1.0/table/search?topics=housing,poverty
 @app.route("/1.0/table/search")
 @qwarg_validate({
-    'acs': {'valid': OneOf(allowed_acs), 'default': 'acs2011_1yr'},
+    'acs': {'valid': OneOf(allowed_acs), 'default': 'acs2012_1yr'},
     'q':   {'valid': NonemptyString()},
     'topics': {'valid': StringList()}
 })
@@ -1342,10 +1342,10 @@ def table_search():
     return json.dumps(data)
 
 
-# Example: /1.0/table/B01001?release=acs2011_1yr
+# Example: /1.0/table/B01001?release=acs2012_1yr
 @app.route("/1.0/table/<table_id>")
 @qwarg_validate({
-    'acs': {'valid': OneOf(allowed_acs), 'default': 'acs2011_1yr'}
+    'acs': {'valid': OneOf(allowed_acs), 'default': 'acs2012_1yr'}
 })
 @crossdomain(origin='*')
 def table_details(table_id):
@@ -1485,7 +1485,7 @@ class ShowDataException(Exception):
     pass
 
 
-# Example: /1.0/data/show/acs2011_5yr?table_ids=B01001,B01003&geo_ids=04000US55,04000US56
+# Example: /1.0/data/show/acs2012_5yr?table_ids=B01001,B01003&geo_ids=04000US55,04000US56
 @app.route("/1.0/data/show/<acs>")
 @qwarg_validate({
     'table_ids': {'valid': StringList(), 'required': True},
@@ -1591,7 +1591,7 @@ def show_specified_data(acs):
             continue
     abort(400, str(e))
 
-# Example: /1.0/data/compare/acs2011_5yr/B01001?sumlevel=050&within=04000US53
+# Example: /1.0/data/compare/acs2012_5yr/B01001?sumlevel=050&within=04000US53
 @app.route("/1.0/data/compare/<acs>/<table_id>")
 @qwarg_validate({
     'within': {'valid': NonemptyString(), 'required': True},
