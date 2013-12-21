@@ -3,8 +3,8 @@ class Config(object):
 
 
 class Production(Config):
-    DATABASE_URI = 'postgresql://census:censuspassword@localhost/postgres'
+    DATABASE_URI = 'postgresql://census:censuspassword@localhost/census'
 
 
 class Development(Config):
-    DATABASE_URI = 'postgresql://census:censuspassword@staging.censusreporter.org/postgres'
+    DATABASE_URI = 'postgresql://census:censuspassword@staging.censusreporter.org/census'
