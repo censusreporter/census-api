@@ -1210,6 +1210,44 @@ def geo_search():
     return jsonify(results=[convert_row(row) for row in g.cur])
 
 
+def num2deg(xtile, ytile, zoom):
+  n = 2.0 ** zoom
+  lon_deg = xtile / n * 360.0 - 180.0
+  lat_rad = math.atan(math.sinh(math.pi * (1 - 2 * ytile / n)))
+  lat_deg = math.degrees(lat_rad)
+  return (lat_deg, lon_deg)
+
+
+# Example: /1.0/geo/tiger2012/tiles/160/12/1444/2424.json
+@app.route("/1.0/geo/tiger2012/tiles/<sumlevel>/<int:zoom>/<int:x>/<int:y>.json")
+@crossdomain(origin='*')
+def geo_tiles(sumlevel, zoom, x, y):
+    (miny, minx) = num2deg(x, y, zoom)
+    (maxy, maxx) = num2deg(x + 1, y + 1, zoom)
+
+    g.cur.execute("""SELECT
+                ST_AsGeoJSON(ST_Simplify(
+                    ST_Intersection(ST_Buffer(ST_MakeEnvelope(%s, %s, %s, %s, 4326), 0.01, 'endcap=square'), the_geom),
+                    ST_Perimeter(the_geom) / 1000), 6) as geom,
+                full_geoid,
+                display_name
+            FROM tiger2012.census_name_lookup
+            WHERE sumlevel=%s AND ST_Intersects(ST_MakeEnvelope(%s, %s, %s, %s, 4326), the_geom)""",
+            [minx, miny, maxx, maxy, sumlevel, minx, miny, maxx, maxy])
+
+    results = []
+    for row in g.cur:
+        results.append({
+            "type": "Feature",
+            "properties": {
+                "geoid": row['full_geoid'],
+                "name": row['display_name']
+            },
+            "geometry": json.loads(row['geom'])
+        })
+
+    return jsonify(type="FeatureCollection", features=results)
+
 # Example: /1.0/geo/tiger2012/04000US53
 @app.route("/1.0/geo/tiger2012/<geoid>")
 @qwarg_validate({
