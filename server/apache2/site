@@ -5,6 +5,8 @@
     WSGIDaemonProcess %(domainname)s user=www-data group=www-data threads=5 python-path=%(project_path)s:%(venv_path)s
     WSGIScriptAlias / %(wsgi_path)s
 
+    AddOutputFilterByType DEFLATE application/json
+
     <Directory %(project_path)s>
         WSGIProcessGroup %(domainname)s
         WSGIApplicationGroup %%{GLOBAL}
