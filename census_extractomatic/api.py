@@ -1492,11 +1492,10 @@ def get_all_child_geoids(child_summary_level):
 def get_child_geoids_by_gis(parent_geoid, child_summary_level):
     parent_sumlevel = parent_geoid[0:3]
     child_geoids = []
-    parent_tiger_geoid = parent_geoid.split('US')[1]
     g.cur.execute("""SELECT child.full_geoid
         FROM tiger2012.census_name_lookup parent
         JOIN tiger2012.census_name_lookup child ON ST_Intersects(parent.the_geom, child.the_geom) AND child.sumlevel=%s
-        WHERE parent.full_geoid=%s AND parent.sumlevel=%s;""", [child_summary_level, parent_tiger_geoid, parent_sumlevel])
+        WHERE parent.full_geoid=%s AND parent.sumlevel=%s;""", [child_summary_level, parent_geoid, parent_sumlevel])
     child_geoids = [r['full_geoid'] for r in g.cur]
 
     if child_geoids:
