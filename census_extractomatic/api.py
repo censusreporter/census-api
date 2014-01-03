@@ -572,14 +572,27 @@ def geo_profile(acs, geoid):
     race_dict['percent_black'] = build_item('Black', data, item_levels,
         'b03002004 b03002001 / %')
 
+    race_dict['percent_native'] = build_item('Native', data, item_levels,
+        'b03002005 b03002001 / %')
+
     race_dict['percent_asian'] = build_item('Asian', data, item_levels,
         'b03002006 b03002001 / %')
 
-    race_dict['percent_hispanic'] = build_item('Hispanic', data, item_levels,
-        'b03002012 b03002001 / %')
+    race_dict['percent_islander'] = build_item('Islander', data, item_levels,
+        'b03002007 b03002001 / %')
 
     race_dict['percent_other'] = build_item('Other', data, item_levels,
-        'b03002005 b03002007 + b03002008 + b03002009 + b03002001 / %')
+        'b03002008 b03002001 / %')
+
+    race_dict['percent_two_or_more'] = build_item('Two+', data, item_levels,
+        'b03002009 b03002001 / %')
+
+#    # collapsed version of "other"
+#    race_dict['percent_other'] = build_item('Other', data, item_levels,
+#        'b03002005 b03002007 + b03002008 + b03002009 + b03002001 / %')
+
+    race_dict['percent_hispanic'] = build_item('Hispanic', data, item_levels,
+        'b03002012 b03002001 / %')
 
     # Economics: Per-Capita Income
     # single data point
