@@ -447,16 +447,20 @@ def geo_profile(acs, geoid):
 
     age_dict = dict()
     doc['demographics']['age'] = age_dict
-    age_dict['percent_under_18'] = build_item('Under 18', data, item_levels,
-        'b01001003 b01001004 + b01001005 + b01001006 + b01001027 + b01001028 + b01001029 + b01001030 + b01001001 / %')
-    add_metadata(age_dict['percent_under_18'], 'b01001', 'Total population', acs_name)
 
-    age_dict['percent_over_65'] = build_item('65 and over', data, item_levels,
-        'b01001020 b01001021 + b01001023 + b01001024 + b01001025 + b01001044 + b01001045 + b01001046 + b01001047 + b01001048 + b01001049 + b01001001 / %')
-    add_metadata(age_dict['percent_over_65'], 'b01001', 'Total population', acs_name)
+    cat_dict = OrderedDict()
+    age_dict['distribution_by_category'] = cat_dict
+    add_metadata(age_dict['distribution_by_category'], 'b01001', 'Total population', acs_name)
+
+    cat_dict['percent_under_18'] = build_item('Under 18', data, item_levels,
+        'b01001003 b01001004 + b01001005 + b01001006 + b01001027 + b01001028 + b01001029 + b01001030 + b01001001 / %')
+    cat_dict['percent_18_to_64'] = build_item('18 to 64', data, item_levels,
+        'b01001007 b01001008 + b01001009 + b01001010 + b01001011 + b01001012 + b01001013 + b01001014 + b01001015 + b01001016 + b01001017 + b01001018 + b01001019 + b01001031 + b01001032 + b01001033 + b01001034 + b01001035 + b01001036 + b01001037 + b01001038 + b01001039 + b01001040 + b01001041 + b01001042 + b01001043 + b01001001 / %')
+    cat_dict['percent_over_65'] = build_item('65 and over', data, item_levels,
+        'b01001020 b01001021 + b01001022 + b01001023 + b01001024 + b01001025 + b01001044 + b01001045 + b01001046 + b01001047 + b01001048 + b01001049 + b01001001 / %')
 
     pop_dict = dict()
-    age_dict['population_by_age'] = pop_dict
+    age_dict['distribution_by_decade'] = pop_dict
     population_by_age_total = OrderedDict()
     population_by_age_male = OrderedDict()
     population_by_age_female = OrderedDict()
@@ -1814,4 +1818,4 @@ def healthcheck():
 
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=8000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
