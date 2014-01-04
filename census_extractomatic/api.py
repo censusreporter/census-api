@@ -281,13 +281,14 @@ def build_item(name, data, parents, rpn_string):
         if data_for_geoid:
             (value, error, numerator, numerator_moe) = value_rpn_calc(data_for_geoid, rpn_string)
 
+        # provide 2 decimals of precision, let client decide how much to use
         if value is not None:
-            value = round(value, 1)
-            error = round(error, 1)
+            value = round(value, 2)
+            error = round(error, 2)
 
         if numerator is not None:
-            numerator = round(numerator, 1)
-            numerator_moe = round(numerator_moe, 1)
+            numerator = round(numerator, 2)
+            numerator_moe = round(numerator_moe, 2)
 
         val['values'][label] = value
         val['error'][label] = error
