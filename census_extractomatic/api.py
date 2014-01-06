@@ -1038,15 +1038,15 @@ def geo_profile(acs, geoid):
     place_of_birth_dict['europe'] = build_item('Europe', data, item_levels,
         'b05006002 b05006001 / %')
     place_of_birth_dict['asia'] = build_item('Asia', data, item_levels,
-        'b05006047 b05006001 / %')
+        'b05006046 b05006001 / %')
     place_of_birth_dict['africa'] = build_item('Africa', data, item_levels,
-        'b05006091 b05006001 / %')
+        'b05006090 b05006001 / %')
     place_of_birth_dict['oceania'] = build_item('Oceania', data, item_levels,
-        'b05006116 b05006001 / %')
+        'b05006115 b05006001 / %')
     place_of_birth_dict['latin_america'] = build_item('Latin America', data, item_levels,
-        'b05006123 b05006001 / %')
+        'b05006122 b05006001 / %')
     place_of_birth_dict['north_america'] = build_item('North America', data, item_levels,
-        'b05006159 b05006001 / %')
+        'b05006158 b05006001 / %')
 
     # Social: Percentage of Non-English Spoken at Home, Language Spoken at Home for Children, Adults
     data, acs = get_data_fallback('B16001', item_levels.values())
