@@ -1301,6 +1301,25 @@ def geo_lookup(geoid):
     return jsonify(type="Feature", properties=result, geometry=geom)
 
 
+# Example: /1.0/geo/tiger2012/04000US53/parents
+@app.route("/1.0/geo/tiger2012/<geoid>/parents")
+def geo_parent(geoid):
+    parents = compute_profile_item_levels(geoid)
+    parents.pop('this')
+
+    def build_item(p):
+        return {
+            "display_name": p['display_name'],
+            "sumlevel": p['sumlevel'],
+            "geoid": p['full_geoid'],
+        }
+
+    g.cur.execute("SELECT display_name,sumlevel,full_geoid FROM tiger2012.census_name_lookup WHERE full_geoid IN %s ORDER BY sumlevel DESC", [tuple(parents.values())])
+    parent_list = [build_item(p) for p in g.cur]
+
+    return jsonify(parents=parent_list)
+
+
 ## TABLE LOOKUPS ##
 
 def format_table_search_result(obj, obj_type):
