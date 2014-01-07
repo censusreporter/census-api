@@ -1303,6 +1303,7 @@ def geo_lookup(geoid):
 
 # Example: /1.0/geo/tiger2012/04000US53/parents
 @app.route("/1.0/geo/tiger2012/<geoid>/parents")
+@crossdomain(origin='*')
 def geo_parent(geoid):
     parents = compute_profile_item_levels(geoid)
     parents.pop('this')
