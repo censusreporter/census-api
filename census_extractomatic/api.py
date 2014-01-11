@@ -445,12 +445,17 @@ def geo_profile(acs, geoid):
                     full_geoid=row['full_geoid'])
 
     lookup_data = {}
+    doc['geography']['parents'] = OrderedDict()
     for row in g.cur:
         lookup_data[row['full_geoid']] = row
 
     for (name, the_geoid) in item_levels.iteritems():
-        doc['geography'][name] = convert_geography_data(lookup_data[the_geoid])
-        doc['geography'][name]['total_population'] = maybe_int(data[the_geoid]['b01001001'])
+        if name == 'this':
+            doc['geography'][name] = convert_geography_data(lookup_data[the_geoid])
+            doc['geography'][name]['total_population'] = maybe_int(data[the_geoid]['b01001001'])
+        else:
+            doc['geography']['parents'][name] = convert_geography_data(lookup_data[the_geoid])
+            doc['geography']['parents'][name]['total_population'] = maybe_int(data[the_geoid]['b01001001'])
 
     age_dict = dict()
     doc['demographics']['age'] = age_dict
