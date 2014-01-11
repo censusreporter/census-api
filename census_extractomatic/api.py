@@ -386,7 +386,9 @@ def get_data_fallback(table_ids, geoids, acs=None):
 
 
 def compute_profile_item_levels(geoid):
-    levels = {'this': geoid}
+    levels = OrderedDict()
+
+    levels['this'] = geoid
 
     geoid_parts = geoid.split('US')
     if len(geoid_parts) is not 2:
@@ -395,20 +397,21 @@ def compute_profile_item_levels(geoid):
     sumlevel = geoid_parts[0][:3]
     id_part = geoid_parts[1]
 
-    if sumlevel in ('050', '060', '140', '150', '160', '500', '610', '620', '795', '950', '960', '970'):
-        levels['state'] = '04000US' + id_part[:2]
-
-    if sumlevel in ('060', '140', '150'):
-        levels['county'] = '05000US' + id_part[:5]
-
-    if sumlevel != '010':
-        levels['nation'] = '01000US'
-
     if sumlevel in ('140', '150', '160', '310', '700', '860', '950', '960', '970'):
         g.cur.execute("SELECT * FROM tiger2012.census_geo_containment WHERE child_geoid=%s ORDER BY percent_covered ASC", [geoid])
         for row in g.cur:
             parent_sumlevel_name = SUMLEV_NAMES.get(row['parent_geoid'][:3])['name']
+            print row['parent_geoid'][:3]
             levels[parent_sumlevel_name] = row['parent_geoid']
+
+    if sumlevel in ('060', '140', '150'):
+        levels['county'] = '05000US' + id_part[:5]
+
+    if sumlevel in ('050', '060', '140', '150', '160', '500', '610', '620', '795', '950', '960', '970'):
+        levels['state'] = '04000US' + id_part[:2]
+
+    if sumlevel != '010':
+        levels['nation'] = '01000US'
 
     return levels
 
