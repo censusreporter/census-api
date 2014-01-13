@@ -178,6 +178,14 @@ def crossdomain(origin=None, methods=None, headers=None,
         return update_wrapper(wrapped_function, f)
     return decorator
 
+@app.errorhandler(404)
+@app.errorhandler(400)
+@app.errorhandler(500)
+def jsonify_error_handler(error):
+    resp = jsonify(error=error.description)
+    resp.status_code = error.code
+    return resp
+
 def maybe_int(i):
     return int(i) if i else i
 
