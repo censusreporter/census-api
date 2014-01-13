@@ -1502,6 +1502,7 @@ def table_geo_comparison_rowcount(table_id):
         release = OrderedDict()
         release['release_name'] = ACS_NAMES[acs]['name']
         release['release_slug'] = acs
+        release['results'] = 0
 
         g.cur.execute("SELECT * FROM census_table_metadata WHERE table_id=%s;", [table_id])
         table_record = g.cur.fetchone()
@@ -1522,8 +1523,6 @@ def table_geo_comparison_rowcount(table_id):
                 g.cur.execute("SELECT COUNT(*) FROM %s.%s WHERE geoid IN %%s" % (acs, validated_table_id), [tuple(child_geoids)])
                 acs_rowcount = g.cur.fetchone()
                 release['results'] = acs_rowcount['count']
-            else:
-                release['results'] = 0
 
         data[acs] = release
 
