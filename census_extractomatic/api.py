@@ -278,7 +278,9 @@ def build_item(name, data, parents, rpn_string):
         ('numerators', dict()),
         ('numerator_errors', dict())])
 
-    for (label, geoid) in parents.iteritems():
+    for parent in parents:
+        label = parent['relation']
+        geoid = parent['geoid']
         data_for_geoid = data.get(geoid) if data else {}
 
         value = None
@@ -394,32 +396,52 @@ def get_data_fallback(table_ids, geoids, acs=None):
 
 
 def compute_profile_item_levels(geoid):
-    levels = OrderedDict()
-
-    levels['this'] = geoid
+    levels = []
 
     geoid_parts = geoid.split('US')
     if len(geoid_parts) is not 2:
         raise Exception('Invalid geoid')
 
+    levels.append({
+        'relation': 'this',
+        'geoid': geoid,
+        'coverage': 100.0,
+    })
+
     sumlevel = geoid_parts[0][:3]
     id_part = geoid_parts[1]
 
     if sumlevel in ('140', '150', '160', '310', '700', '860', '950', '960', '970'):
-        g.cur.execute("SELECT * FROM tiger2012.census_geo_containment WHERE child_geoid=%s ORDER BY percent_covered ASC", [geoid])
+        g.cur.execute("""SELECT * FROM tiger2012.census_geo_containment WHERE child_geoid=%s ORDER BY percent_covered ASC""", [geoid])
         for row in g.cur:
             parent_sumlevel_name = SUMLEV_NAMES.get(row['parent_geoid'][:3])['name']
-            #print row['parent_geoid'][:3]
-            levels[parent_sumlevel_name] = row['parent_geoid']
+
+            levels.append({
+                'relation': parent_sumlevel_name,
+                'geoid': row['parent_geoid'],
+                'coverage': row['percent_covered'],
+            })
 
     if sumlevel in ('060', '140', '150'):
-        levels['county'] = '05000US' + id_part[:5]
+        levels.append({
+            'relation': 'county',
+            'geoid': '05000US' + id_part[:5],
+            'coverage': 100.0,
+        })
 
     if sumlevel in ('050', '060', '140', '150', '160', '500', '610', '620', '795', '950', '960', '970'):
-        levels['state'] = '04000US' + id_part[:2]
+        levels.append({
+            'relation': 'state',
+            'geoid': '04000US' + id_part[:2],
+            'coverage': 100.0,
+        })
 
     if sumlevel != '010':
-        levels['nation'] = '01000US'
+        levels.append({
+            'relation': 'nation',
+            'geoid': '01000US',
+            'coverage': 100.0,
+        })
 
     return levels
 
@@ -429,6 +451,7 @@ def geo_profile(acs, geoid):
     acs_default = acs
 
     item_levels = compute_profile_item_levels(geoid)
+    comparison_geoids = [level['geoid'] for level in item_levels]
 
     doc = OrderedDict([('geography', OrderedDict()),
                        ('demographics', dict()),
@@ -441,12 +464,12 @@ def geo_profile(acs, geoid):
 
     # Demographics: Age
     # multiple data points, suitable for visualization
-    data, acs = get_data_fallback('B01001', item_levels.values())
+    data, acs = get_data_fallback('B01001', comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     g.cur.execute("""SELECT DISTINCT full_geoid,sumlevel,display_name,simple_name,aland
                      FROM tiger2012.census_name_lookup
-                     WHERE full_geoid IN %s;""", [tuple(item_levels.values())])
+                     WHERE full_geoid IN %s;""", [tuple(comparison_geoids)])
 
     def convert_geography_data(row):
         return dict(full_name=row['display_name'],
@@ -460,7 +483,9 @@ def geo_profile(acs, geoid):
     for row in g.cur:
         lookup_data[row['full_geoid']] = row
 
-    for (name, the_geoid) in item_levels.iteritems():
+    for item_level in item_levels:
+        name = item_level['relation']
+        the_geoid = item_level['geoid']
         if name == 'this':
             doc['geography'][name] = convert_geography_data(lookup_data[the_geoid])
             doc['geography'][name]['total_population'] = maybe_int(data[the_geoid]['b01001001'])
@@ -567,7 +592,7 @@ def geo_profile(acs, geoid):
     sex_dict['percent_female'] = build_item('Female', data, item_levels,
         'b01001026 b01001001 / %')
 
-    data, acs = get_data_fallback('B01002', item_levels.values())
+    data, acs = get_data_fallback('B01002', comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     median_age_dict = dict()
@@ -586,7 +611,7 @@ def geo_profile(acs, geoid):
     # multiple data points, suitable for visualization
     # uses Table B03002 (HISPANIC OR LATINO ORIGIN BY RACE), pulling race numbers from "Not Hispanic or Latino" columns
     # also collapses smaller groups into "Other"
-    data, acs = get_data_fallback('B03002', item_levels.values())
+    data, acs = get_data_fallback('B03002', comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     race_dict = OrderedDict()
@@ -623,7 +648,7 @@ def geo_profile(acs, geoid):
 
     # Economics: Per-Capita Income
     # single data point
-    data, acs = get_data_fallback('B19301', item_levels.values())
+    data, acs = get_data_fallback('B19301', comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     income_dict = dict()
@@ -635,7 +660,7 @@ def geo_profile(acs, geoid):
 
     # Economics: Median Household Income
     # single data point
-    data, acs = get_data_fallback('B19013', item_levels.values())
+    data, acs = get_data_fallback('B19013', comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     income_dict['median_household_income'] = build_item('Median household income', data, item_levels,
@@ -644,7 +669,7 @@ def geo_profile(acs, geoid):
 
     # Economics: Household Income Distribution
     # multiple data points, suitable for visualization
-    data, acs = get_data_fallback('B19001', item_levels.values())
+    data, acs = get_data_fallback('B19001', comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     income_distribution = OrderedDict()
@@ -662,7 +687,7 @@ def geo_profile(acs, geoid):
 
     # Economics: Poverty Rate
     # provides separate dicts for children and seniors, with multiple data points, suitable for visualization
-    data, acs = get_data_fallback('B17001', item_levels.values())
+    data, acs = get_data_fallback('B17001', comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     poverty_dict = dict()
@@ -691,7 +716,7 @@ def geo_profile(acs, geoid):
 
     # Economics: Mean Travel Time to Work, Means of Transportation to Work
     # uses two different tables for calculation, so make sure they draw from same ACS release
-    data, acs = get_data_fallback(['B08006', 'B08013'], item_levels.values())
+    data, acs = get_data_fallback(['B08006', 'B08013'], comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     employment_dict = dict()
@@ -701,7 +726,7 @@ def geo_profile(acs, geoid):
         'b08013001 b08006001 b08006017 - /')
     add_metadata(employment_dict['mean_travel_time'], 'b08006, b08013', 'Workers 16 years and over who did not work at home', acs_name)
 
-    data, acs = get_data_fallback('B08006', item_levels.values())
+    data, acs = get_data_fallback('B08006', comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     transportation_dict = OrderedDict()
@@ -724,7 +749,7 @@ def geo_profile(acs, geoid):
         'b08006017 b08006001 / %')
 
     # Families: Marital Status by Sex
-    data, acs = get_data_fallback('B12001', item_levels.values())
+    data, acs = get_data_fallback('B12001', comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     marital_status = OrderedDict()
@@ -791,7 +816,7 @@ def geo_profile(acs, geoid):
 
 
     # Families: Family Types with Children
-    data, acs = get_data_fallback('B09002', item_levels.values())
+    data, acs = get_data_fallback('B09002', comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     family_types = dict()
@@ -809,7 +834,7 @@ def geo_profile(acs, geoid):
         'b09002015 b09002001 / %')
 
     # Families: Birth Rate by Women's Age
-    data, acs = get_data_fallback('B13016', item_levels.values())
+    data, acs = get_data_fallback('B13016', comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     fertility = dict()
@@ -839,7 +864,7 @@ def geo_profile(acs, geoid):
         'b13016009 b13016009 b13016017 + / %')
 
     # Families: Number of Households, Persons per Household, Household type distribution
-    data, acs = get_data_fallback(['B11001', 'B11002'], item_levels.values())
+    data, acs = get_data_fallback(['B11001', 'B11002'], comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     households_dict = dict()
@@ -871,7 +896,7 @@ def geo_profile(acs, geoid):
 
 
     # Housing: Number of Housing Units, Occupancy Distribution, Vacancy Distribution
-    data, acs = get_data_fallback('B25002', item_levels.values())
+    data, acs = get_data_fallback('B25002', comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     units_dict = dict()
@@ -891,7 +916,7 @@ def geo_profile(acs, geoid):
         'b25002003 b25002001 / %')
 
     # Housing: Structure Distribution
-    data, acs = get_data_fallback('B25024', item_levels.values())
+    data, acs = get_data_fallback('B25024', comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     structure_distribution_dict = OrderedDict()
@@ -908,7 +933,7 @@ def geo_profile(acs, geoid):
         'b25024011 b25024001 / %')
 
     # Housing: Tenure
-    data, acs = get_data_fallback('B25003', item_levels.values())
+    data, acs = get_data_fallback('B25003', comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     ownership_dict = dict()
@@ -923,7 +948,7 @@ def geo_profile(acs, geoid):
     ownership_distribution_dict['renter'] = build_item('Renter occupied', data, item_levels,
         'b25003003 b25003001 / %')
 
-    data, acs = get_data_fallback('B25026', item_levels.values())
+    data, acs = get_data_fallback('B25026', comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     length_of_tenure_dict = OrderedDict()
@@ -944,7 +969,7 @@ def geo_profile(acs, geoid):
         'b25026003 b25026010 + b25026001 / %')
 
     # Housing: Mobility
-    data, acs = get_data_fallback('B07003', item_levels.values())
+    data, acs = get_data_fallback('B07003', comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     migration_dict = dict()
@@ -970,14 +995,14 @@ def geo_profile(acs, geoid):
         'b07003016 b07003001 / %')
 
     # Housing: Median Value and Distribution of Values
-    data, acs = get_data_fallback('B25077', item_levels.values())
+    data, acs = get_data_fallback('B25077', comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     ownership_dict['median_value'] = build_item('Median value of owner-occupied housing units', data, item_levels,
         'b25077001')
     add_metadata(ownership_dict['median_value'], 'b25077', 'Owner-occupied housing units', acs_name)
 
-    data, acs = get_data_fallback('B25075', item_levels.values())
+    data, acs = get_data_fallback('B25075', comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     value_distribution = OrderedDict()
@@ -1006,7 +1031,7 @@ def geo_profile(acs, geoid):
     # Social: Educational Attainment
     # Two aggregated data points for "high school and higher," "college degree and higher"
     # and distribution dict for chart
-    data, acs = get_data_fallback('B15002', item_levels.values())
+    data, acs = get_data_fallback('B15002', comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     attainment_dict = dict()
@@ -1040,7 +1065,7 @@ def geo_profile(acs, geoid):
         'b15002016 b15002017 + b15002018 + b15002033 + b15002034 + b15002035 + b15002001 / %')
 
     # Social: Place of Birth
-    data, acs = get_data_fallback('B05002', item_levels.values())
+    data, acs = get_data_fallback('B05002', comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     foreign_dict = dict()
@@ -1050,7 +1075,7 @@ def geo_profile(acs, geoid):
         'b05002013 b05002001 / %')
     add_metadata(foreign_dict['percent_foreign_born'], 'b05002', 'Total population', acs_name)
 
-    data, acs = get_data_fallback('B05006', item_levels.values())
+    data, acs = get_data_fallback('B05006', comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     place_of_birth_dict = OrderedDict()
@@ -1071,7 +1096,7 @@ def geo_profile(acs, geoid):
         'b05006158 b05006001 / %')
 
     # Social: Percentage of Non-English Spoken at Home, Language Spoken at Home for Children, Adults
-    data, acs = get_data_fallback('B16001', item_levels.values())
+    data, acs = get_data_fallback('B16001', comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     language_dict = dict()
@@ -1082,7 +1107,7 @@ def geo_profile(acs, geoid):
     add_metadata(language_dict['percent_non_english_at_home'], 'b16001', 'Population 5 years and over', acs_name)
 
 
-    data, acs = get_data_fallback('B16007', item_levels.values())
+    data, acs = get_data_fallback('B16007', comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     language_children = OrderedDict()
@@ -1119,7 +1144,7 @@ def geo_profile(acs, geoid):
 
 
     # Social: Number of Veterans, Wartime Service, Sex of Veterans
-    data, acs = get_data_fallback('B21002', item_levels.values())
+    data, acs = get_data_fallback('B21002', comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     veterans_dict = dict()
@@ -1140,7 +1165,7 @@ def geo_profile(acs, geoid):
     veterans_service_dict['gulf_2001'] = build_item('Gulf (2001-)', data, item_levels,
         'b21002002 b21002003 + b21002004 +')
 
-    data, acs = get_data_fallback('B21001', item_levels.values())
+    data, acs = get_data_fallback('B21001', comparison_geoids)
     acs_name = ACS_NAMES.get(acs).get('name')
 
     veterans_sex_dict = OrderedDict()
@@ -1333,20 +1358,23 @@ def geo_lookup(geoid):
 @app.route("/1.0/geo/tiger2012/<geoid>/parents")
 @crossdomain(origin='*')
 def geo_parent(geoid):
-    parents = compute_profile_item_levels(geoid)
-    parents.pop('this')
+    parents = filter(lambda i: i['relation']!='this', compute_profile_item_levels(geoid))
+    parent_geoids = [p['geoid'] for p in parents]
 
     def build_item(p):
-        return {
+        return (p['full_geoid'], {
             "display_name": p['display_name'],
             "sumlevel": p['sumlevel'],
             "geoid": p['full_geoid'],
-        }
+        })
 
-    g.cur.execute("SELECT display_name,sumlevel,full_geoid FROM tiger2012.census_name_lookup WHERE full_geoid IN %s ORDER BY sumlevel DESC", [tuple(parents.values())])
-    parent_list = [build_item(p) for p in g.cur]
+    g.cur.execute("SELECT display_name,sumlevel,full_geoid FROM tiger2012.census_name_lookup WHERE full_geoid IN %s ORDER BY sumlevel DESC", [tuple(parent_geoids)])
+    parent_list = dict([build_item(p) for p in g.cur])
 
-    return jsonify(parents=parent_list)
+    for parent in parents:
+        parent.update(parent_list[parent['geoid']])
+
+    return jsonify(parents=parents)
 
 
 ## TABLE LOOKUPS ##
