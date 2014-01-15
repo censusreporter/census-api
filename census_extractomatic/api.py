@@ -1167,25 +1167,31 @@ def geo_profile(acs, geoid):
 
     return json.dumps(doc, default=default)
 
-
+def get_acs_name(acs_slug):
+    if acs_slug in ACS_NAMES:
+        acs_name = ACS_NAMES[acs_slug]['name']
+    else:
+        acs_name = acs_slug
+    return acs_name
+    
 @app.route("/1.0/<acs>/<geoid>/profile")
 def acs_geo_profile(acs, geoid):
-    acs, geoid = find_geoid(geoid, acs)
+    valid_acs, valid_geoid = find_geoid(geoid, acs)
 
-    if not acs:
-        abort(404, 'That ACS doesn\'t know about have that geoid.')
+    if not valid_acs:
+        abort(404, 'GeoID %s isn\'t included in the %s release.' % (geoid, get_acs_name(acs)))
 
-    return geo_profile(acs, geoid)
+    return geo_profile(valid_acs, valid_geoid)
 
 
 @app.route("/1.0/latest/<geoid>/profile")
 def latest_geo_profile(geoid):
-    acs, geoid = find_geoid(geoid)
+    valid_acs, valid_geoid = find_geoid(geoid)
 
-    if not acs:
-        abort(404, 'None of the ACS I know about have that geoid.')
+    if not valid_acs:
+        abort(404, 'None of the supported ACS releases include GeoID %s.' % (geoid))
 
-    return geo_profile(acs, geoid)
+    return geo_profile(valid_acs, valid_geoid)
 
 
 ## GEO LOOKUPS ##
@@ -1297,7 +1303,7 @@ def geo_tiles(sumlevel, zoom, x, y):
 def geo_lookup(geoid):
     geoid_parts = geoid.split('US')
     if len(geoid_parts) is not 2:
-        abort(400, 'Invalid geoid')
+        abort(400, 'Invalid GeoID')
 
     if request.qwargs.geom:
         g.cur.execute("""SELECT display_name,simple_name,sumlevel,full_geoid,population,aland,awater,
@@ -1314,7 +1320,7 @@ def geo_lookup(geoid):
     result = g.cur.fetchone()
 
     if not result:
-        abort(404, 'Unknown geoid')
+        abort(404, 'Unknown GeoID')
 
     geom = result.pop('geom', None)
     if geom:
@@ -1455,7 +1461,7 @@ def table_details(table_id):
     row = g.cur.fetchone()
 
     if not row:
-        abort(404, "Table %s not found." % table_id)
+        abort(404, "Table %s not found." % table_id.upper())
 
     data = OrderedDict([
         ("table_id", row['table_id']),
@@ -1594,7 +1600,7 @@ def show_specified_data(acs):
     elif acs == 'latest':
         acs_to_try = allowed_acs[:3]
     else:
-        abort(404, 'ACS %s is not supported.' % acs)
+        abort(404, 'The %s release isn\'t supported.' % get_acs_name(acs))
 
     for acs in acs_to_try:
         try:
@@ -1626,7 +1632,7 @@ def show_specified_data(acs):
 
             invalid_table_ids = set(request.qwargs.table_ids) - set(valid_table_ids)
             if invalid_table_ids:
-                raise ShowDataException("Don't know about tables %s." % ','.join(invalid_table_ids))
+                raise ShowDataException("The %s release doesn't include table(s) %s." % (get_acs_name(acs), ','.join(invalid_table_ids)))
 
             # Check to make sure the geos requested are valid
             g.cur.execute("SELECT full_geoid,population,display_name FROM tiger2012.census_name_lookup WHERE full_geoid IN %s;", [tuple(request.qwargs.geo_ids)])
@@ -1641,7 +1647,7 @@ def show_specified_data(acs):
 
             invalid_geo_ids = set(request.qwargs.geo_ids) - set(valid_geo_ids)
             if invalid_geo_ids:
-                raise ShowDataException("Don't know about geographies %s." % ','.join(invalid_geo_ids))
+                raise ShowDataException("The %s release doesn't include GeoID(s) %s." % (get_acs_name(acs), ','.join(invalid_geo_ids)))
 
             # Now fetch the actual data
             from_stmt = '%s_moe' % (valid_table_ids[0])
@@ -1658,7 +1664,7 @@ def show_specified_data(acs):
 
             if g.cur.rowcount != len(valid_geo_ids):
                 returned_geo_ids = set([row['geoid'] for row in g.cur])
-                raise ShowDataException("%s did not know about geo_ids %s." % (acs, ','.join(set(valid_geo_ids) - returned_geo_ids)))
+                raise ShowDataException("The %s release doesn't include GeoID(s) %s." % (get_acs_name(acs), ','.join(set(valid_geo_ids) - returned_geo_ids)))
 
             for row in g.cur:
                 geoid = row.pop('geoid')
@@ -1698,7 +1704,7 @@ def show_specified_data(acs):
 def data_compare_geographies_within_parent(acs, table_id):
     # make sure we support the requested ACS release
     if acs not in allowed_acs:
-        abort(404, 'ACS %s is not supported.' % acs)
+        abort(404, 'The %s release isn\'t supported.' % get_acs_name(acs))
     g.cur.execute("SET search_path=%s,public;", [acs])
 
     parent_geoid = request.qwargs.within
@@ -1723,7 +1729,7 @@ def data_compare_geographies_within_parent(acs, table_id):
     table_metadata = g.cur.fetchall()
 
     if not table_metadata:
-        abort(404, 'Table id %s is not available in %s.' % (table_id, acs))
+        abort(404, 'Table %s isn\'t available in the %s release.' % (table_id.upper(), get_acs_name(acs)))
 
     validated_table_id = table_metadata[0]['table_id']
 
