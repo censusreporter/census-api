@@ -1198,7 +1198,7 @@ def get_acs_name(acs_slug):
     else:
         acs_name = acs_slug
     return acs_name
-    
+
 @app.route("/1.0/<acs>/<geoid>/profile")
 def acs_geo_profile(acs, geoid):
     valid_acs, valid_geoid = find_geoid(geoid, acs)
@@ -1553,12 +1553,7 @@ def table_geo_comparison_rowcount(table_id):
             release['table_name'] = table_record['table_title']
             release['table_universe'] = table_record['universe']
 
-            if parent_sumlevel == '010':
-                child_geoheaders = get_all_child_geoids(child_summary_level)
-            elif parent_sumlevel in PARENT_CHILD_CONTAINMENT and child_summary_level in PARENT_CHILD_CONTAINMENT[parent_sumlevel]:
-                child_geoheaders = get_child_geoids_by_prefix(parent_geoid, child_summary_level)
-            else:
-                child_geoheaders = get_child_geoids_by_gis(parent_geoid, child_summary_level)
+            child_geoheaders = get_child_geoids(parent_geoid, child_summary_level)
 
             if child_geoheaders:
                 child_geoids = [child['geoid'] for child in child_geoheaders]
@@ -1573,6 +1568,24 @@ def table_geo_comparison_rowcount(table_id):
 
 ## DATA RETRIEVAL ##
 
+# get geoheader data for children at the requested summary level
+def get_child_geoids(parent_geoid, child_summary_level):
+    parent_sumlevel = parent_geoid[0:3]
+    if parent_sumlevel == '010':
+        return get_all_child_geoids(child_summary_level)
+    elif parent_sumlevel in PARENT_CHILD_CONTAINMENT and child_summary_level in PARENT_CHILD_CONTAINMENT[parent_sumlevel]:
+        return get_child_geoids_by_prefix(parent_geoid, child_summary_level)
+    elif parent_sumlevel == '160' and child_summary_level in ('140', '150'):
+        return get_child_geoids_by_coverage(parent_geoid, child_summary_level)
+    elif parent_sumlevel == '310' and child_summary_level in ('160', '860'):
+        return get_child_geoids_by_coverage(parent_geoid, child_summary_level)
+    elif parent_sumlevel == '040' and child_summary_level in ('310', '700', '860'):
+        return get_child_geoids_by_coverage(parent_geoid, child_summary_level)
+    elif parent_sumlevel == '050' and child_summary_level in ('160', '700', '860', '950', '960', '970'):
+        return get_child_geoids_by_coverage(parent_geoid, child_summary_level)
+    else:
+        return get_child_geoids_by_gis(parent_geoid, child_summary_level)
+
 def get_all_child_geoids(child_summary_level):
     g.cur.execute("""SELECT geoid,name
         FROM geoheader
@@ -1581,7 +1594,21 @@ def get_all_child_geoids(child_summary_level):
 
     return g.cur.fetchall()
 
-# get geoheader data for children at the requested summary level
+def get_child_geoids_by_coverage(parent_geoid, child_summary_level):
+    g.cur.execute("""SELECT DISTINCT(child_geoid)
+        FROM tiger2012.census_geo_containment
+        WHERE census_geo_containment.parent_geoid = %s AND census_geo_containment.child_geoid LIKE %s""", [parent_geoid, child_summary_level+'%'])
+    child_geoids = [r['child_geoid'] for r in g.cur]
+
+    if child_geoids:
+        g.cur.execute("""SELECT geoid,name
+            FROM geoheader
+            WHERE geoid IN %s
+            ORDER BY name""", [tuple(child_geoids)])
+        return g.cur.fetchall()
+    else:
+        return []
+
 def get_child_geoids_by_gis(parent_geoid, child_summary_level):
     parent_sumlevel = parent_geoid[0:3]
     child_geoids = []
@@ -1791,12 +1818,7 @@ def data_compare_geographies_within_parent(acs, table_id):
     comparison['parent_name'] = parent_geoheader['name']
     comparison['parent_geoid'] = parent_geoid
 
-    if parent_sumlevel == '010':
-        child_geoheaders = get_all_child_geoids(child_summary_level)
-    elif parent_sumlevel in PARENT_CHILD_CONTAINMENT and child_summary_level in PARENT_CHILD_CONTAINMENT[parent_sumlevel]:
-        child_geoheaders = get_child_geoids_by_prefix(parent_geoid, child_summary_level)
-    else:
-        child_geoheaders = get_child_geoids_by_gis(parent_geoid, child_summary_level)
+    child_geoheaders = get_child_geoids(parent_geoid, child_summary_level)
 
     # start compiling child data for our response
     child_geoid_list = [geoheader['geoid'] for geoheader in child_geoheaders]
