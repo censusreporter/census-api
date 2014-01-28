@@ -1642,6 +1642,7 @@ class ShowDataException(Exception):
 
 
 # Example: /1.0/data/show/acs2012_5yr?table_ids=B01001,B01003&geo_ids=04000US55,04000US56
+# Example: /1.0/data/show/latest?table_ids=B01001&geo_ids=160|04000US17,04000US56
 @app.route("/1.0/data/show/<acs>")
 @qwarg_validate({
     'table_ids': {'valid': StringList(), 'required': True},
@@ -1688,8 +1689,21 @@ def show_specified_data(acs):
             if invalid_table_ids:
                 raise ShowDataException("The %s release doesn't include table(s) %s." % (get_acs_name(acs), ','.join(invalid_table_ids)))
 
+            # Look for geoid "groups" of the form `child_sumlevel|parent_geoid`.
+            # These will expand into a list of geoids like the old comparison endpoint used to
+            geo_ids = []
+            for geoid_str in request.qwargs.geo_ids:
+                geoid_split = geoid_str.split('|')
+                if len(geoid_split) == 2 and len(geoid_split[0]) == 3:
+                    (child_summary_level, parent_geoid) = geoid_split
+                    child_geoids = get_child_geoids(parent_geoid, child_summary_level)
+                    for child_geoid in child_geoids:
+                        geo_ids.append(child_geoid['geoid'])
+                else:
+                    geo_ids.append(geoid_str)
+
             # Check to make sure the geos requested are valid
-            g.cur.execute("SELECT full_geoid,population,display_name FROM tiger2012.census_name_lookup WHERE full_geoid IN %s;", [tuple(request.qwargs.geo_ids)])
+            g.cur.execute("SELECT full_geoid,population,display_name FROM tiger2012.census_name_lookup WHERE full_geoid IN %s;", [tuple(geo_ids)])
 
             valid_geo_ids = []
             geo_metadata = OrderedDict()
@@ -1699,7 +1713,7 @@ def show_specified_data(acs):
                     "name": geo['display_name'],
                 }
 
-            invalid_geo_ids = set(request.qwargs.geo_ids) - set(valid_geo_ids)
+            invalid_geo_ids = set(geo_ids) - set(valid_geo_ids)
             if invalid_geo_ids:
                 raise ShowDataException("The %s release doesn't include GeoID(s) %s." % (get_acs_name(acs), ','.join(invalid_geo_ids)))
 
