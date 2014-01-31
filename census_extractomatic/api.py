@@ -181,6 +181,7 @@ def crossdomain(origin=None, methods=None, headers=None,
 @app.errorhandler(404)
 @app.errorhandler(400)
 @app.errorhandler(500)
+@crossdomain(origin='*')
 def jsonify_error_handler(error):
     resp = jsonify(error=error.description)
     resp.status_code = error.code
