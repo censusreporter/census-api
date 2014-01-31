@@ -1898,21 +1898,26 @@ def download_specified_data(acs):
                     print "do csv"
             elif format_info['type'] == 'ogr':
                 import ogr
+                import osr
                 db_details = urlparse.urlparse(app.config['DATABASE_URI'])
-                host=db_details.hostname
-                user=db_details.username
-                password=db_details.password
-                database=db_details.path[1:]
+                host = db_details.hostname
+                user = db_details.username
+                password = db_details.password
+                database = db_details.path[1:]
                 in_driver = ogr.GetDriverByName("PostgreSQL")
                 conn = in_driver.Open("PG: host=%s dbname=%s user=%s password=%s" % (host, database, user, password))
 
                 if conn is None:
-                    raise ShowDataException("Could not connect to database to generate download.")
+                    raise Exception("Could not connect to database to generate download.")
 
                 driver_name = format_info['driver']
                 out_driver = ogr.GetDriverByName(driver_name)
-                out_data = out_driver.CreateDataSource('%s/%s/%s.%s' % (temp_path, file_ident, file_ident, request.qwargs.format))
-                out_layer = out_data.CreateLayer("multipolygon", None, ogr.wkbMultiPolygon)
+                out_filename = '%s/%s.%s' % (temp_path, file_ident, request.qwargs.format)
+                print "Creating %s" % out_filename
+                out_srs = osr.SpatialReference()
+                out_srs.ImportFromEPSG(4326)
+                out_data = out_driver.CreateDataSource(out_filename)
+                out_layer = out_data.CreateLayer(file_ident, srs=out_srs, geom_type=ogr.wkbMultiPolygon)
                 out_layer.CreateField(ogr.FieldDefn('geoid', ogr.OFTString))
 
                 in_layer = conn.ExecuteSQL(g.cur.mogrify("SELECT the_geom,full_geoid FROM tiger2012.census_name_lookup WHERE full_geoid IN %s", [tuple(valid_geo_ids)]))
