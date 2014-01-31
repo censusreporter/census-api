@@ -17,6 +17,7 @@ import math
 from datetime import timedelta
 import re
 import os
+import tempfile
 import urlparse
 from validation import qwarg_validate, NonemptyString, FloatRange, StringList, Bool, OneOf
 
@@ -135,6 +136,14 @@ state_fips = {
     "69": "Commonwealth of the Northern Mariana Islands",
     "72": "Puerto Rico",
     "78": "United States Virgin Islands"
+}
+
+supported_formats = {
+    'shp':      {"type": "ogr", "driver": "ESRI Shapefile"},
+    'kml':      {"type": "ogr", "driver": "KML"},
+    'geojson':  {"type": "ogr", "driver": "GeoJSON"},
+    'xls':      {"type": "local"},
+    'csv':      {"type": "local"},
 }
 
 def crossdomain(origin=None, methods=None, headers=None,
@@ -1755,6 +1764,168 @@ def show_specified_data(acs):
 
                     if not data[geoid][table_id]['estimate']:
                         raise ShowDataException("No data for table %s, geo %s in ACS %s." % (table_id, geoid, acs))
+
+            return jsonify(tables=table_metadata, geography=geo_metadata, data=data, release={'id': acs, 'years': ACS_NAMES[acs]['years'], 'name': ACS_NAMES[acs]['name']})
+        except ShowDataException, e:
+            continue
+    abort(400, str(e))
+
+
+# Example: /1.0/data/show/acs2012_5yr/download?format=shp&table_ids=B01001,B01003&geo_ids=04000US55,04000US56
+# Example: /1.0/data/show/latest/download?table_ids=B01001&geo_ids=160|04000US17,04000US56
+@app.route("/1.0/data/show/<acs>/download")
+@qwarg_validate({
+    'table_ids': {'valid': StringList(), 'required': True},
+    'geo_ids': {'valid': StringList(), 'required': True},
+    'format': {'valid': OneOf(supported_formats), 'required': True},
+})
+@crossdomain(origin='*')
+def download_specified_data(acs):
+    if acs in allowed_acs:
+        acs_to_try = [acs]
+    elif acs == 'latest':
+        acs_to_try = allowed_acs[:3]
+    else:
+        abort(404, 'The %s release isn\'t supported.' % get_acs_name(acs))
+
+    for acs in acs_to_try:
+        try:
+            g.cur.execute("SET search_path=%s,public;", [acs])
+
+            # Check to make sure the tables requested are valid
+            g.cur.execute("""SELECT tab.table_id,tab.table_title,tab.universe,tab.denominator_column_id,col.column_id,col.column_title,col.indent
+                FROM census_column_metadata col
+                LEFT JOIN census_table_metadata tab USING (table_id)
+                WHERE table_id IN %s
+                ORDER BY column_id;""", [tuple(request.qwargs.table_ids)])
+
+            valid_table_ids = []
+            table_metadata = OrderedDict()
+            for table, columns in groupby(g.cur, lambda x: (x['table_id'], x['table_title'], x['universe'], x['denominator_column_id'])):
+                valid_table_ids.append(table[0])
+                table_metadata[table[0]] = OrderedDict([
+                    ("title", table[1]),
+                    ("universe", table[2]),
+                    ("denominator_column_id", table[3]),
+                    ("columns", OrderedDict([(
+                        column['column_id'],
+                        OrderedDict([
+                            ("name", column['column_title']),
+                            ("indent", column['indent'])
+                        ])
+                    ) for column in columns ]))
+                ])
+
+            invalid_table_ids = set(request.qwargs.table_ids) - set(valid_table_ids)
+            if invalid_table_ids:
+                raise ShowDataException("The %s release doesn't include table(s) %s." % (get_acs_name(acs), ','.join(invalid_table_ids)))
+
+            # Look for geoid "groups" of the form `child_sumlevel|parent_geoid`.
+            # These will expand into a list of geoids like the old comparison endpoint used to
+            geo_ids = []
+            for geoid_str in request.qwargs.geo_ids:
+                geoid_split = geoid_str.split('|')
+                if len(geoid_split) == 2 and len(geoid_split[0]) == 3:
+                    (child_summary_level, parent_geoid) = geoid_split
+                    child_geoids = get_child_geoids(parent_geoid, child_summary_level)
+                    for child_geoid in child_geoids:
+                        geo_ids.append(child_geoid['geoid'])
+                else:
+                    geo_ids.append(geoid_str)
+
+            # Check to make sure the geos requested are valid
+            g.cur.execute("SELECT full_geoid,population,display_name FROM tiger2012.census_name_lookup WHERE full_geoid IN %s;", [tuple(geo_ids)])
+
+            valid_geo_ids = []
+            geo_metadata = OrderedDict()
+            for geo in g.cur:
+                valid_geo_ids.append(geo['full_geoid'])
+                geo_metadata[geo['full_geoid']] = {
+                    "name": geo['display_name'],
+                }
+
+            invalid_geo_ids = set(geo_ids) - set(valid_geo_ids)
+            if invalid_geo_ids:
+                raise ShowDataException("The %s release doesn't include GeoID(s) %s." % (get_acs_name(acs), ','.join(invalid_geo_ids)))
+
+            # Now fetch the actual data
+            from_stmt = '%s_moe' % (valid_table_ids[0])
+            if len(valid_table_ids) > 1:
+                from_stmt += ' '
+                from_stmt += ' '.join(['JOIN %s_moe USING (geoid)' % (table_id) for table_id in valid_table_ids[1:]])
+
+            where_stmt = g.cur.mogrify('geoid IN %s', [tuple(valid_geo_ids)])
+
+            sql = 'SELECT * FROM %s WHERE %s;' % (from_stmt, where_stmt)
+
+            g.cur.execute(sql)
+            data = OrderedDict()
+
+            if g.cur.rowcount != len(valid_geo_ids):
+                returned_geo_ids = set([row['geoid'] for row in g.cur])
+                raise ShowDataException("The %s release doesn't include GeoID(s) %s." % (get_acs_name(acs), ','.join(set(valid_geo_ids) - returned_geo_ids)))
+
+            for row in g.cur:
+                geoid = row.pop('geoid')
+                data[geoid] = OrderedDict()
+
+                cols_iter = iter(sorted(row.items(), key=lambda tup: tup[0]))
+                for table_id, data_iter in groupby(cols_iter, lambda x: x[0][:-3].upper()):
+                    data[geoid][table_id] = OrderedDict()
+                    data[geoid][table_id]['estimate'] = OrderedDict()
+                    data[geoid][table_id]['error'] = OrderedDict()
+                    for (col_name, value) in data_iter:
+                        col_name = col_name.upper()
+                        (moe_name, moe_value) = next(cols_iter)
+
+                        if value is None:
+                            continue
+
+                        data[geoid][table_id]['estimate'][col_name] = value
+                        data[geoid][table_id]['error'][col_name] = moe_value
+
+                    if not data[geoid][table_id]['estimate']:
+                        raise ShowDataException("No data for table %s, geo %s in ACS %s." % (table_id, geoid, acs))
+
+            temp_path = tempfile.mkdtemp()
+            file_ident = "%s_%s_%s" % (acs, valid_table_ids[:1], valid_geo_ids[:1])
+            format_info = supported_formats.get(request.qwargs.format)
+
+            if format_info['type'] == 'local':
+                if request.qwargs.format == 'xls':
+                    print "do xls"
+                elif request.qwargs.format == 'csv':
+                    print "do csv"
+            elif format_info['type'] == 'ogr':
+                import ogr
+                db_details = urlparse.urlparse(app.config['DATABASE_URI'])
+                host=db_details.hostname
+                user=db_details.username
+                password=db_details.password
+                database=db_details.path[1:]
+                in_driver = ogr.GetDriverByName("PostgreSQL")
+                conn = in_driver.Open("PG: host=%s dbname=%s user=%s password=%s" % (host, database, user, password))
+
+                if conn is None:
+                    raise ShowDataException("Could not connect to database to generate download.")
+
+                driver_name = format_info['driver']
+                out_driver = ogr.GetDriverByName(driver_name)
+                out_data = out_driver.CreateDataSource('%s/%s/%s.%s' % (temp_path, file_ident, file_ident, request.qwargs.format))
+                out_layer = out_data.CreateLayer("multipolygon", None, ogr.wkbMultiPolygon)
+                out_layer.CreateField(ogr.FieldDefn('geoid', ogr.OFTString))
+
+                in_layer = conn.ExecuteSQL(g.cur.mogrify("SELECT the_geom,full_geoid FROM tiger2012.census_name_lookup WHERE full_geoid IN %s", [tuple(valid_geo_ids)]))
+
+                in_feat = in_layer.GetNextFeature()
+                while in_feat is not None:
+                    out_feat = ogr.Feature(out_layer.GetLayerDefn())
+                    out_feat.SetGeometry(in_feat.GetGeometryRef())
+                    out_feat.SetField('geoid', in_feat.GetField('full_geoid'))
+                    # TODO Put estimates/moe here
+                    out_layer.CreateFeature(out_feat)
+                    in_feat.Destroy()
+                    in_feat = in_layer.GetNextFeature()
 
             return jsonify(tables=table_metadata, geography=geo_metadata, data=data, release={'id': acs, 'years': ACS_NAMES[acs]['years'], 'name': ACS_NAMES[acs]['name']})
         except ShowDataException, e:
