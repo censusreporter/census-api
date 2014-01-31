@@ -1888,7 +1888,7 @@ def download_specified_data(acs):
                         raise ShowDataException("No data for table %s, geo %s in ACS %s." % (table_id, geoid, acs))
 
             temp_path = tempfile.mkdtemp()
-            file_ident = "%s_%s_%s" % (acs, valid_table_ids[:1], valid_geo_ids[:1])
+            file_ident = "%s_%s_%s" % (acs, next(iter(valid_table_ids)), next(iter(valid_geo_ids)))
             format_info = supported_formats.get(request.qwargs.format)
 
             if format_info['type'] == 'local':
