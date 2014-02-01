@@ -3,7 +3,7 @@ from __future__ import division
 
 from flask import Flask
 from flask import abort, request, g
-from flask import make_response, current_app
+from flask import make_response, current_app, send_file
 from flask import jsonify
 from functools import update_wrapper
 from itertools import groupby
@@ -19,6 +19,7 @@ import re
 import os
 import tempfile
 import urlparse
+import zipfile
 from validation import qwarg_validate, NonemptyString, FloatRange, StringList, Bool, OneOf
 
 
@@ -1889,6 +1890,9 @@ def download_specified_data(acs):
 
             temp_path = tempfile.mkdtemp()
             file_ident = "%s_%s_%s" % (acs, next(iter(valid_table_ids)), next(iter(valid_geo_ids)))
+            inner_path = os.path.join(temp_path, file_ident)
+            os.mkdir(inner_path)
+            out_filename = os.path.join(inner_path, '%s.%s' % (file_ident, request.qwargs.format))
             format_info = supported_formats.get(request.qwargs.format)
 
             if format_info['type'] == 'local':
@@ -1912,27 +1916,59 @@ def download_specified_data(acs):
 
                 driver_name = format_info['driver']
                 out_driver = ogr.GetDriverByName(driver_name)
-                out_filename = '%s/%s.%s' % (temp_path, file_ident, request.qwargs.format)
                 print "Creating %s" % out_filename
                 out_srs = osr.SpatialReference()
                 out_srs.ImportFromEPSG(4326)
                 out_data = out_driver.CreateDataSource(out_filename)
                 out_layer = out_data.CreateLayer(file_ident, srs=out_srs, geom_type=ogr.wkbMultiPolygon)
                 out_layer.CreateField(ogr.FieldDefn('geoid', ogr.OFTString))
+                out_layer.CreateField(ogr.FieldDefn('name', ogr.OFTString))
+                for (table_id, table) in table_metadata.iteritems():
+                    for column in table['columns'].keys():
+                        out_layer.CreateField(ogr.FieldDefn(column, ogr.OFTReal))
+                        out_layer.CreateField(ogr.FieldDefn(column+"e", ogr.OFTReal))
 
-                in_layer = conn.ExecuteSQL(g.cur.mogrify("SELECT the_geom,full_geoid FROM tiger2012.census_name_lookup WHERE full_geoid IN %s", [tuple(valid_geo_ids)]))
+                sql = g.cur.mogrify("""SELECT the_geom,full_geoid,display_name
+                    FROM tiger2012.census_name_lookup
+                    WHERE full_geoid IN %s""", [tuple(valid_geo_ids)])
+                in_layer = conn.ExecuteSQL(sql)
 
                 in_feat = in_layer.GetNextFeature()
                 while in_feat is not None:
                     out_feat = ogr.Feature(out_layer.GetLayerDefn())
                     out_feat.SetGeometry(in_feat.GetGeometryRef())
-                    out_feat.SetField('geoid', in_feat.GetField('full_geoid'))
-                    # TODO Put estimates/moe here
+                    geoid = in_feat.GetField('full_geoid')
+                    out_feat.SetField('geoid', geoid)
+                    out_feat.SetField('name', in_feat.GetField('display_name'))
+                    for (table_id, table) in table_metadata.iteritems():
+                        for column in table['columns'].keys():
+                            estimate = data[geoid][table_id]['estimate'][column]
+                            error = data[geoid][table_id]['error'][column]
+                            out_feat.SetField(column, estimate)
+                            out_feat.SetField(column+"e", error)
+
                     out_layer.CreateFeature(out_feat)
                     in_feat.Destroy()
                     in_feat = in_layer.GetNextFeature()
 
-            return jsonify(tables=table_metadata, geography=geo_metadata, data=data, release={'id': acs, 'years': ACS_NAMES[acs]['years'], 'name': ACS_NAMES[acs]['name']})
+            metadata_dict = {
+                'release': {
+                    'id': acs,
+                    'years': ACS_NAMES[acs]['years'],
+                    'name': ACS_NAMES[acs]['name']
+                },
+                'tables': table_metadata
+            }
+            json.dump(metadata_dict, open(os.path.join(inner_path, 'metadata.json'), 'w'))
+
+            zfile_path = os.path.join(temp_path, file_ident + '.zip')
+            zfile = zipfile.ZipFile(zfile_path, 'w')
+            for root, dirs, files in os.walk(inner_path):
+                for f in files:
+                    zfile.write(os.path.join(root, f))
+            zfile.close()
+
+            return send_file(zfile_path, as_attachment=True, attachment_filename=file_ident + '.zip')
         except ShowDataException, e:
             continue
     abort(400, str(e))
