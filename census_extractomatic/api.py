@@ -17,6 +17,7 @@ import math
 from datetime import timedelta
 import re
 import os
+import shutil
 import tempfile
 import urlparse
 import zipfile
@@ -143,8 +144,8 @@ supported_formats = {
     'shp':      {"type": "ogr", "driver": "ESRI Shapefile"},
     'kml':      {"type": "ogr", "driver": "KML"},
     'geojson':  {"type": "ogr", "driver": "GeoJSON"},
-    'xls':      {"type": "local"},
-    'csv':      {"type": "local"},
+    'xlsx':     {"type": "ogr", "driver": "XLSX"},
+    'csv':      {"type": "ogr", "driver": "CSV"},
 }
 
 def crossdomain(origin=None, methods=None, headers=None,
@@ -1895,12 +1896,7 @@ def download_specified_data(acs):
             out_filename = os.path.join(inner_path, '%s.%s' % (file_ident, request.qwargs.format))
             format_info = supported_formats.get(request.qwargs.format)
 
-            if format_info['type'] == 'local':
-                if request.qwargs.format == 'xls':
-                    print "do xls"
-                elif request.qwargs.format == 'csv':
-                    print "do csv"
-            elif format_info['type'] == 'ogr':
+            if format_info['type'] == 'ogr':
                 import ogr
                 import osr
                 db_details = urlparse.urlparse(app.config['DATABASE_URI'])
@@ -1916,7 +1912,6 @@ def download_specified_data(acs):
 
                 driver_name = format_info['driver']
                 out_driver = ogr.GetDriverByName(driver_name)
-                print "Creating %s" % out_filename
                 out_srs = osr.SpatialReference()
                 out_srs.ImportFromEPSG(4326)
                 out_data = out_driver.CreateDataSource(out_filename)
@@ -1950,6 +1945,7 @@ def download_specified_data(acs):
                     out_layer.CreateFeature(out_feat)
                     in_feat.Destroy()
                     in_feat = in_layer.GetNextFeature()
+                out_data.Destroy()
 
             metadata_dict = {
                 'release': {
@@ -1962,13 +1958,17 @@ def download_specified_data(acs):
             json.dump(metadata_dict, open(os.path.join(inner_path, 'metadata.json'), 'w'))
 
             zfile_path = os.path.join(temp_path, file_ident + '.zip')
-            zfile = zipfile.ZipFile(zfile_path, 'w')
+            zfile = zipfile.ZipFile(zfile_path, 'w', zipfile.ZIP_DEFLATED)
             for root, dirs, files in os.walk(inner_path):
                 for f in files:
-                    zfile.write(os.path.join(root, f))
+                    zfile.write(os.path.join(root, f), os.path.join(file_ident, f))
             zfile.close()
 
-            return send_file(zfile_path, as_attachment=True, attachment_filename=file_ident + '.zip')
+            resp = send_file(zfile_path, as_attachment=True, attachment_filename=file_ident + '.zip')
+
+            shutil.rmtree(temp_path)
+
+            return resp
         except ShowDataException, e:
             continue
     abort(400, str(e))
