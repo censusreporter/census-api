@@ -15,8 +15,9 @@ def deploy(branch='master'):
     sudo('chown www-data:www-data %s' % root_dir)
 
     # Install required packages
+    sudo('apt-add-repository -y ppa:ubuntugis/ubuntugis-unstable')
     sudo('apt-get update')
-    sudo('apt-get install -y git libpq-dev python-dev gdal-bin')
+    sudo('apt-get install -y git libpq-dev python-dev python-gdal')
 
     # Install and set up apache and mod_wsgi
     sudo('apt-get install -y apache2 libapache2-mod-wsgi')
