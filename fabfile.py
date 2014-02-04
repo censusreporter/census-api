@@ -16,7 +16,7 @@ def deploy(branch='master'):
 
     # Install required packages
     sudo('apt-get update')
-    sudo('apt-get install -y git libpq-dev python-dev gdal')
+    sudo('apt-get install -y git libpq-dev python-dev gdal-bin')
 
     # Install and set up apache and mod_wsgi
     sudo('apt-get install -y apache2 libapache2-mod-wsgi')
