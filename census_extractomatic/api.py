@@ -1779,9 +1779,9 @@ def show_specified_data(acs):
     abort(400, str(e))
 
 
-# Example: /1.0/data/show/acs2012_5yr/download?format=shp&table_ids=B01001,B01003&geo_ids=04000US55,04000US56
-# Example: /1.0/data/show/latest/download?table_ids=B01001&geo_ids=160|04000US17,04000US56
-@app.route("/1.0/data/show/<acs>/download")
+# Example: /1.0/data/download/acs2012_5yr?format=shp&table_ids=B01001,B01003&geo_ids=04000US55,04000US56
+# Example: /1.0/data/download/latest?table_ids=B01001&geo_ids=160|04000US17,04000US56
+@app.route("/1.0/data/download/<acs>")
 @qwarg_validate({
     'table_ids': {'valid': StringList(), 'required': True},
     'geo_ids': {'valid': StringList(), 'required': True},
