@@ -5,6 +5,7 @@ from flask import Flask
 from flask import abort, request, g
 from flask import make_response, current_app, send_file
 from flask import jsonify
+from werkzeug.exceptions import HTTPException
 from functools import update_wrapper
 from itertools import groupby
 import psycopg2
@@ -194,8 +195,12 @@ def crossdomain(origin=None, methods=None, headers=None,
 @app.errorhandler(500)
 @crossdomain(origin='*')
 def jsonify_error_handler(error):
-    resp = jsonify(error=error.description)
-    resp.status_code = error.code
+    if type(error) == HTTPException:
+        resp = jsonify(error=error.description)
+        resp.status_code = error.code
+    else:
+        resp = jsonify(error=error.message)
+        resp.status_code = 500
     return resp
 
 def maybe_int(i):
