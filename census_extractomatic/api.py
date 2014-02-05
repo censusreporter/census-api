@@ -1921,7 +1921,8 @@ def download_specified_data(acs):
                 out_srs = osr.SpatialReference()
                 out_srs.ImportFromEPSG(4326)
                 out_data = out_driver.CreateDataSource(out_filename)
-                out_layer = out_data.CreateLayer(file_ident, srs=out_srs, geom_type=ogr.wkbMultiPolygon)
+                # See http://gis.stackexchange.com/questions/53920/ogr-createlayer-returns-typeerror
+                out_layer = out_data.CreateLayer(file_ident.encode('utf-8'), srs=out_srs, geom_type=ogr.wkbMultiPolygon)
                 out_layer.CreateField(ogr.FieldDefn('geoid', ogr.OFTString))
                 out_layer.CreateField(ogr.FieldDefn('name', ogr.OFTString))
                 for (table_id, table) in table_metadata.iteritems():
