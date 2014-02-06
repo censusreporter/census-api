@@ -1313,7 +1313,7 @@ def geo_tiles(sumlevel, zoom, x, y):
     (maxy, maxx) = num2deg(x + 1, y + 1, zoom)
 
     g.cur.execute("""SELECT
-                ST_AsGeoJSON(ST_Simplify(
+                ST_AsGeoJSON(ST_SimplifyPreserveTopology(
                     ST_Intersection(ST_Buffer(ST_MakeEnvelope(%s, %s, %s, %s, 4326), 0.01, 'endcap=square'), the_geom),
                     ST_Perimeter(the_geom) / 2500), 6) as geom,
                 full_geoid,
