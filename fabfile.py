@@ -15,9 +15,8 @@ def deploy(branch='master'):
     sudo('chown www-data:www-data %s' % root_dir)
 
     # Install required packages
-    sudo('apt-add-repository -y ppa:ubuntugis/ubuntugis-unstable')
     sudo('apt-get update')
-    sudo('apt-get install -y git libpq-dev python-dev python-gdal')
+    sudo('apt-get install -y git libpq-dev python-dev build-essential libgdal1-dev')
 
     # Install and set up apache and mod_wsgi
     sudo('apt-get install -y apache2 libapache2-mod-wsgi')
@@ -52,7 +51,8 @@ def deploy(branch='master'):
         sudo('git pull origin %s' % branch)
 
         # Install pip requirements
-        sudo('source %s/bin/activate && pip install -r requirements.txt' % virtualenv_dir)
+        with settings(CPLUS_INCLUDE_PATH="/usr/include/gdal", C_INCLUDE_PATH="/usr/include/gdal"):
+            sudo('source %s/bin/activate; pip install -r requirements.txt' % virtualenv_dir)
 
         # Make sure everything is correctly owned
         sudo('chown www-data:www-data -R %s %s' % (code_dir, virtualenv_dir))
