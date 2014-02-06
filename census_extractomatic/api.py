@@ -1315,7 +1315,7 @@ def geo_tiles(sumlevel, zoom, x, y):
     g.cur.execute("""SELECT
                 ST_AsGeoJSON(ST_Simplify(
                     ST_Intersection(ST_Buffer(ST_MakeEnvelope(%s, %s, %s, %s, 4326), 0.01, 'endcap=square'), the_geom),
-                    ST_Perimeter(the_geom) / 1000), 6) as geom,
+                    ST_Perimeter(the_geom) / 2500), 6) as geom,
                 full_geoid,
                 display_name
             FROM tiger2012.census_name_lookup
