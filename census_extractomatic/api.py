@@ -1306,7 +1306,7 @@ def num2deg(xtile, ytile, zoom):
 
 
 # Example: /1.0/geo/tiger2012/tiles/160/12/1444/2424.json
-@app.route("/1.0/geo/tiger2012/tiles/<sumlevel>/<int:zoom>/<int:x>/<int:y>.json")
+@app.route("/1.0/geo/tiger2012/tiles/<sumlevel>/<int:zoom>/<int:x>/<int:y>.geojson")
 @crossdomain(origin='*')
 def geo_tiles(sumlevel, zoom, x, y):
     (miny, minx) = num2deg(x, y, zoom)
