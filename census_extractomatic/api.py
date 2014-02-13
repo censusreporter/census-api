@@ -1309,6 +1309,9 @@ def num2deg(xtile, ytile, zoom):
 @app.route("/1.0/geo/tiger2012/tiles/<sumlevel>/<int:zoom>/<int:x>/<int:y>.geojson")
 @crossdomain(origin='*')
 def geo_tiles(sumlevel, zoom, x, y):
+    if sumlevel not in SUMLEV_NAMES:
+        abort(404, "Unknown sumlevel")
+
     (miny, minx) = num2deg(x, y, zoom)
     (maxy, maxx) = num2deg(x + 1, y + 1, zoom)
 
