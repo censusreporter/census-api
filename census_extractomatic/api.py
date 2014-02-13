@@ -1387,11 +1387,12 @@ def geo_parent(geoid):
             "geoid": p['full_geoid'],
         })
 
-    g.cur.execute("SELECT display_name,sumlevel,full_geoid FROM tiger2012.census_name_lookup WHERE full_geoid IN %s ORDER BY sumlevel DESC", [tuple(parent_geoids)])
-    parent_list = dict([build_item(p) for p in g.cur])
+    if parent_geoids:
+        g.cur.execute("SELECT display_name,sumlevel,full_geoid FROM tiger2012.census_name_lookup WHERE full_geoid IN %s ORDER BY sumlevel DESC", [tuple(parent_geoids)])
+        parent_list = dict([build_item(p) for p in g.cur])
 
-    for parent in parents:
-        parent.update(parent_list[parent['geoid']])
+        for parent in parents:
+            parent.update(parent_list[parent['geoid']])
 
     return jsonify(parents=parents)
 
