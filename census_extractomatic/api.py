@@ -1610,7 +1610,7 @@ def get_child_geoids(parent_geoid, child_summary_level):
 def get_all_child_geoids(child_summary_level):
     g.cur.execute("""SELECT geoid,name
         FROM geoheader
-        WHERE sumlevel=%s AND component='00'
+        WHERE sumlevel=%s AND component='00' AND geoid NOT IN ('04000US72')
         ORDER BY name""", [int(child_summary_level)])
 
     return g.cur.fetchall()
