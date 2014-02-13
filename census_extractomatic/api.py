@@ -1725,19 +1725,26 @@ def show_specified_data(acs):
                     geo_ids.append(geoid_str)
 
             # Check to make sure the geos requested are valid
-            g.cur.execute("SELECT full_geoid,population,display_name FROM tiger2012.census_name_lookup WHERE full_geoid IN %s;", [tuple(geo_ids)])
+            if not geo_ids:
+                raise ShowDataException("No geo_ids for release %s." % (acs))
 
             valid_geo_ids = []
-            geo_metadata = OrderedDict()
+            g.cur.execute("SELECT geoid FROM geoheader WHERE geoid IN %s;", [tuple(geo_ids)])
             for geo in g.cur:
-                valid_geo_ids.append(geo['full_geoid'])
-                geo_metadata[geo['full_geoid']] = {
-                    "name": geo['display_name'],
-                }
+                valid_geo_ids.append(geo['geoid'])
 
             invalid_geo_ids = set(geo_ids) - set(valid_geo_ids)
             if invalid_geo_ids:
                 raise ShowDataException("The %s release doesn't include GeoID(s) %s." % (get_acs_name(acs), ','.join(invalid_geo_ids)))
+
+            # Fill in the display name for the geos
+            g.cur.execute("SELECT full_geoid,population,display_name FROM tiger2012.census_name_lookup WHERE full_geoid IN %s;", [tuple(geo_ids)])
+
+            geo_metadata = OrderedDict()
+            for geo in g.cur:
+                geo_metadata[geo['full_geoid']] = {
+                    "name": geo['display_name'],
+                }
 
             # Now fetch the actual data
             from_stmt = '%s_moe' % (valid_table_ids[0])
