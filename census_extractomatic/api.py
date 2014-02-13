@@ -68,6 +68,7 @@ SUMLEV_NAMES = {
     "250": {"name": "native area", "plural": "native areas", "tiger_table": "aiannh"},
     "300": {"name": "MSA", "plural": "MSAs", "tiger_table": "metdiv"},
     "310": {"name": "CBSA", "plural": "CBSAs", "tiger_table": "cbsa"},
+    "330": {"name": "CSA", "plural": "CSAs", "tiger_table": "csa"},
     "350": {"name": "NECTA", "plural": "NECTAs", "tiger_table": "necta"},
     "400": {"name": "urban area", "plural": "urban areas", "tiger_table": "uac"},
     "500": {"name": "congressional district", "plural": "congressional districts", "tiger_table": "cd"},
