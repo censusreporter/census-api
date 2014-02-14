@@ -1398,6 +1398,51 @@ def geo_parent(geoid):
     return jsonify(parents=parents)
 
 
+# Example: /1.0/geo/show/tiger2012?geo_ids=04000US55,04000US56
+# Example: /1.0/geo/show/tiger2012?geo_ids=160|04000US17,04000US56
+@app.route("/1.0/geo/show/tiger2012")
+@qwarg_validate({
+    'geo_ids': {'valid': StringList(), 'required': True},
+})
+@crossdomain(origin='*')
+def show_specified_geo_data():
+    # Look for geoid "groups" of the form `child_sumlevel|parent_geoid`.
+    # These will expand into a list of geoids like the old comparison endpoint used to
+    geo_ids = []
+    for geoid_str in request.qwargs.geo_ids:
+        geoid_split = geoid_str.split('|')
+        if len(geoid_split) == 2 and len(geoid_split[0]) == 3:
+            (child_summary_level, parent_geoid) = geoid_split
+            child_geoids = get_child_geoids(parent_geoid, child_summary_level)
+            for child_geoid in child_geoids:
+                geo_ids.append(child_geoid['geoid'])
+        else:
+            geo_ids.append(geoid_str)
+
+    g.cur.execute("""SELECT full_geoid,display_name,ST_AsGeoJSON(ST_Simplify(the_geom,ST_Perimeter(the_geom) / 2500)) as geom
+        FROM tiger2012.census_name_lookup
+        WHERE full_geoid IN %s;""", [tuple(geo_ids)])
+
+    results = []
+    valid_geo_ids = []
+    for row in g.cur:
+        valid_geo_ids.append(row['full_geoid'])
+        results.append({
+            "type": "Feature",
+            "properties": {
+                "geoid": row['full_geoid'],
+                "name": row['display_name']
+            },
+            "geometry": json.loads(row['geom'])
+        })
+
+    invalid_geo_ids = set(geo_ids) - set(valid_geo_ids)
+    if invalid_geo_ids:
+        abort(400, "GeoID(s) %s are not valid." % (','.join(invalid_geo_ids)))
+
+    return jsonify(type="FeatureCollection", features=results)
+
+
 ## TABLE LOOKUPS ##
 
 def format_table_search_result(obj, obj_type):
