@@ -1652,6 +1652,8 @@ def get_child_geoids(parent_geoid, child_summary_level):
         return get_child_geoids_by_gis(parent_geoid, child_summary_level)
 
 def get_all_child_geoids(child_summary_level):
+    # Use the "worst"/biggest ACS to find all child geoids
+    g.cur.execute("SET search_path=%s,public;", [allowed_acs[-1]])
     g.cur.execute("""SELECT geoid,name
         FROM geoheader
         WHERE sumlevel=%s AND component='00' AND geoid NOT IN ('04000US72')
@@ -1660,6 +1662,8 @@ def get_all_child_geoids(child_summary_level):
     return g.cur.fetchall()
 
 def get_child_geoids_by_coverage(parent_geoid, child_summary_level):
+    # Use the "worst"/biggest ACS to find all child geoids
+    g.cur.execute("SET search_path=%s,public;", [allowed_acs[-1]])
     g.cur.execute("""SELECT DISTINCT(child_geoid)
         FROM tiger2012.census_geo_containment
         WHERE census_geo_containment.parent_geoid = %s AND census_geo_containment.child_geoid LIKE %s""", [parent_geoid, child_summary_level+'%'])
