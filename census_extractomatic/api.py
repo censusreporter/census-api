@@ -196,7 +196,7 @@ def crossdomain(origin=None, methods=None, headers=None,
 @app.errorhandler(500)
 @crossdomain(origin='*')
 def jsonify_error_handler(error):
-    if type(error) == HTTPException:
+    if isinstance(error, HTTPException):
         resp = jsonify(error=error.description)
         resp.status_code = error.code
     else:
