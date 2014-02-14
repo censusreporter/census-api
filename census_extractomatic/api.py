@@ -191,7 +191,6 @@ def crossdomain(origin=None, methods=None, headers=None,
         return update_wrapper(wrapped_function, f)
     return decorator
 
-@app.errorhandler(404)
 @app.errorhandler(400)
 @app.errorhandler(500)
 @crossdomain(origin='*')
@@ -1221,7 +1220,7 @@ def acs_geo_profile(acs, geoid):
     valid_acs, valid_geoid = find_geoid(geoid, acs)
 
     if not valid_acs:
-        abort(404, 'GeoID %s isn\'t included in the %s release.' % (geoid, get_acs_name(acs)))
+        abort(400, 'GeoID %s isn\'t included in the %s release.' % (geoid, get_acs_name(acs)))
 
     return geo_profile(valid_acs, valid_geoid)
 
@@ -1231,7 +1230,7 @@ def latest_geo_profile(geoid):
     valid_acs, valid_geoid = find_geoid(geoid)
 
     if not valid_acs:
-        abort(404, 'None of the supported ACS releases include GeoID %s.' % (geoid))
+        abort(400, 'None of the supported ACS releases include GeoID %s.' % (geoid))
 
     return geo_profile("latest", valid_geoid)
 
@@ -1311,7 +1310,7 @@ def num2deg(xtile, ytile, zoom):
 @crossdomain(origin='*')
 def geo_tiles(sumlevel, zoom, x, y):
     if sumlevel not in SUMLEV_NAMES:
-        abort(404, "Unknown sumlevel")
+        abort(400, "Unknown sumlevel")
 
     (miny, minx) = num2deg(x, y, zoom)
     (maxy, maxx) = num2deg(x + 1, y + 1, zoom)
@@ -1365,7 +1364,7 @@ def geo_lookup(geoid):
     result = g.cur.fetchone()
 
     if not result:
-        abort(404, 'Unknown GeoID')
+        abort(400, 'Unknown GeoID')
 
     geom = result.pop('geom', None)
     if geom:
@@ -1555,7 +1554,7 @@ def table_details(table_id):
     row = g.cur.fetchone()
 
     if not row:
-        abort(404, "Table %s not found." % table_id.upper())
+        abort(400, "Table %s not found." % table_id.upper())
 
     data = OrderedDict([
         ("table_id", row['table_id']),
@@ -1722,7 +1721,7 @@ def show_specified_data(acs):
     elif acs == 'latest':
         acs_to_try = allowed_acs[:3]
     else:
-        abort(404, 'The %s release isn\'t supported.' % get_acs_name(acs))
+        abort(400, 'The %s release isn\'t supported.' % get_acs_name(acs))
 
     for acs in acs_to_try:
         try:
@@ -1851,7 +1850,7 @@ def download_specified_data(acs):
     elif acs == 'latest':
         acs_to_try = allowed_acs[:3]
     else:
-        abort(404, 'The %s release isn\'t supported.' % get_acs_name(acs))
+        abort(400, 'The %s release isn\'t supported.' % get_acs_name(acs))
 
     for acs in acs_to_try:
         try:
@@ -2048,7 +2047,7 @@ def download_specified_data(acs):
 def data_compare_geographies_within_parent(acs, table_id):
     # make sure we support the requested ACS release
     if acs not in allowed_acs:
-        abort(404, 'The %s release isn\'t supported.' % get_acs_name(acs))
+        abort(400, 'The %s release isn\'t supported.' % get_acs_name(acs))
     g.cur.execute("SET search_path=%s,public;", [acs])
 
     parent_geoid = request.qwargs.within
@@ -2073,7 +2072,7 @@ def data_compare_geographies_within_parent(acs, table_id):
     table_metadata = g.cur.fetchall()
 
     if not table_metadata:
-        abort(404, 'Table %s isn\'t available in the %s release.' % (table_id.upper(), get_acs_name(acs)))
+        abort(400, 'Table %s isn\'t available in the %s release.' % (table_id.upper(), get_acs_name(acs)))
 
     validated_table_id = table_metadata[0]['table_id']
 
