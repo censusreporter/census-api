@@ -1405,18 +1405,7 @@ def geo_parent(geoid):
 })
 @crossdomain(origin='*')
 def show_specified_geo_data():
-    # Look for geoid "groups" of the form `child_sumlevel|parent_geoid`.
-    # These will expand into a list of geoids like the old comparison endpoint used to
-    geo_ids = []
-    for geoid_str in request.qwargs.geo_ids:
-        geoid_split = geoid_str.split('|')
-        if len(geoid_split) == 2 and len(geoid_split[0]) == 3:
-            (child_summary_level, parent_geoid) = geoid_split
-            child_geoids = get_child_geoids(parent_geoid, child_summary_level)
-            for child_geoid in child_geoids:
-                geo_ids.append(child_geoid['geoid'])
-        else:
-            geo_ids.append(geoid_str)
+    geo_ids = expand_geoids(request.qwargs.geo_ids)
 
     g.cur.execute("""SELECT full_geoid,display_name,ST_AsGeoJSON(ST_Simplify(the_geom,ST_Perimeter(the_geom) / 2500)) as geom
         FROM tiger2012.census_name_lookup
@@ -1707,6 +1696,36 @@ def get_child_geoids_by_prefix(parent_geoid, child_summary_level):
     return g.cur.fetchall()
 
 
+def expand_geoids(geoid_list):
+    # Look for geoid "groups" of the form `child_sumlevel|parent_geoid`.
+    # These will expand into a list of geoids like the old comparison endpoint used to
+    geo_ids = []
+    for geoid_str in geoid_list:
+        geoid_split = geoid_str.split('|')
+        if len(geoid_split) == 2 and len(geoid_split[0]) == 3:
+            (child_summary_level, parent_geoid) = geoid_split
+            child_geoids = get_child_geoids(parent_geoid, child_summary_level)
+            for child_geoid in child_geoids:
+                geo_ids.append(child_geoid['geoid'])
+        else:
+            geo_ids.append(geoid_str)
+
+    # Check to make sure the geos requested are valid
+    if not geo_ids:
+        raise ShowDataException("No geo_ids for release %s." % (acs))
+
+    valid_geo_ids = []
+    g.cur.execute("SELECT geoid FROM geoheader WHERE geoid IN %s;", [tuple(geo_ids)])
+    for geo in g.cur:
+        valid_geo_ids.append(geo['geoid'])
+
+    invalid_geo_ids = set(geo_ids) - set(valid_geo_ids)
+    if invalid_geo_ids:
+        raise ShowDataException("The %s release doesn't include GeoID(s) %s." % (get_acs_name(acs), ','.join(invalid_geo_ids)))
+
+    return valid_geo_ids
+
+
 class ShowDataException(Exception):
     pass
 
@@ -1726,6 +1745,17 @@ def show_specified_data(acs):
         acs_to_try = allowed_acs[:3]
     else:
         abort(400, 'The %s release isn\'t supported.' % get_acs_name(acs))
+
+    valid_geo_ids = expand_geoids(request.qwargs.geo_ids)
+
+    # Fill in the display name for the geos
+    g.cur.execute("SELECT full_geoid,population,display_name FROM tiger2012.census_name_lookup WHERE full_geoid IN %s;", [tuple(valid_geo_ids)])
+
+    geo_metadata = OrderedDict()
+    for geo in g.cur:
+        geo_metadata[geo['full_geoid']] = {
+            "name": geo['display_name'],
+        }
 
     for acs in acs_to_try:
         try:
@@ -1758,41 +1788,6 @@ def show_specified_data(acs):
             invalid_table_ids = set(request.qwargs.table_ids) - set(valid_table_ids)
             if invalid_table_ids:
                 raise ShowDataException("The %s release doesn't include table(s) %s." % (get_acs_name(acs), ','.join(invalid_table_ids)))
-
-            # Look for geoid "groups" of the form `child_sumlevel|parent_geoid`.
-            # These will expand into a list of geoids like the old comparison endpoint used to
-            geo_ids = []
-            for geoid_str in request.qwargs.geo_ids:
-                geoid_split = geoid_str.split('|')
-                if len(geoid_split) == 2 and len(geoid_split[0]) == 3:
-                    (child_summary_level, parent_geoid) = geoid_split
-                    child_geoids = get_child_geoids(parent_geoid, child_summary_level)
-                    for child_geoid in child_geoids:
-                        geo_ids.append(child_geoid['geoid'])
-                else:
-                    geo_ids.append(geoid_str)
-
-            # Check to make sure the geos requested are valid
-            if not geo_ids:
-                raise ShowDataException("No geo_ids for release %s." % (acs))
-
-            valid_geo_ids = []
-            g.cur.execute("SELECT geoid FROM geoheader WHERE geoid IN %s;", [tuple(geo_ids)])
-            for geo in g.cur:
-                valid_geo_ids.append(geo['geoid'])
-
-            invalid_geo_ids = set(geo_ids) - set(valid_geo_ids)
-            if invalid_geo_ids:
-                raise ShowDataException("The %s release doesn't include GeoID(s) %s." % (get_acs_name(acs), ','.join(invalid_geo_ids)))
-
-            # Fill in the display name for the geos
-            g.cur.execute("SELECT full_geoid,population,display_name FROM tiger2012.census_name_lookup WHERE full_geoid IN %s;", [tuple(geo_ids)])
-
-            geo_metadata = OrderedDict()
-            for geo in g.cur:
-                geo_metadata[geo['full_geoid']] = {
-                    "name": geo['display_name'],
-                }
 
             # Now fetch the actual data
             from_stmt = '%s_moe' % (valid_table_ids[0])
@@ -1856,6 +1851,17 @@ def download_specified_data(acs):
     else:
         abort(400, 'The %s release isn\'t supported.' % get_acs_name(acs))
 
+    valid_geo_ids = expand_geoids(request.qwargs.geo_ids)
+
+    # Fill in the display name for the geos
+    g.cur.execute("SELECT full_geoid,population,display_name FROM tiger2012.census_name_lookup WHERE full_geoid IN %s;", [tuple(valid_geo_ids)])
+
+    geo_metadata = OrderedDict()
+    for geo in g.cur:
+        geo_metadata[geo['full_geoid']] = {
+            "name": geo['display_name'],
+        }
+
     for acs in acs_to_try:
         try:
             g.cur.execute("SET search_path=%s,public;", [acs])
@@ -1887,34 +1893,6 @@ def download_specified_data(acs):
             invalid_table_ids = set(request.qwargs.table_ids) - set(valid_table_ids)
             if invalid_table_ids:
                 raise ShowDataException("The %s release doesn't include table(s) %s." % (get_acs_name(acs), ','.join(invalid_table_ids)))
-
-            # Look for geoid "groups" of the form `child_sumlevel|parent_geoid`.
-            # These will expand into a list of geoids like the old comparison endpoint used to
-            geo_ids = []
-            for geoid_str in request.qwargs.geo_ids:
-                geoid_split = geoid_str.split('|')
-                if len(geoid_split) == 2 and len(geoid_split[0]) == 3:
-                    (child_summary_level, parent_geoid) = geoid_split
-                    child_geoids = get_child_geoids(parent_geoid, child_summary_level)
-                    for child_geoid in child_geoids:
-                        geo_ids.append(child_geoid['geoid'])
-                else:
-                    geo_ids.append(geoid_str)
-
-            # Check to make sure the geos requested are valid
-            g.cur.execute("SELECT full_geoid,population,display_name FROM tiger2012.census_name_lookup WHERE full_geoid IN %s;", [tuple(geo_ids)])
-
-            valid_geo_ids = []
-            geo_metadata = OrderedDict()
-            for geo in g.cur:
-                valid_geo_ids.append(geo['full_geoid'])
-                geo_metadata[geo['full_geoid']] = {
-                    "name": geo['display_name'],
-                }
-
-            invalid_geo_ids = set(geo_ids) - set(valid_geo_ids)
-            if invalid_geo_ids:
-                raise ShowDataException("The %s release doesn't include GeoID(s) %s." % (get_acs_name(acs), ','.join(invalid_geo_ids)))
 
             # Now fetch the actual data
             from_stmt = '%s_moe' % (valid_table_ids[0])
