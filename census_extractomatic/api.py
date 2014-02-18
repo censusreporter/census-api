@@ -1701,7 +1701,10 @@ def get_child_geoids_by_prefix(parent_geoid, child_summary_level):
     return g.cur.fetchall()
 
 
-def expand_geoids(geoid_list):
+def expand_geoids(geoid_list, release=None):
+    if not release:
+        release = allowed_acs[-1]
+
     # Look for geoid "groups" of the form `child_sumlevel|parent_geoid`.
     # These will expand into a list of geoids like the old comparison endpoint used to
     geo_ids = []
@@ -1717,16 +1720,17 @@ def expand_geoids(geoid_list):
 
     # Check to make sure the geos requested are valid
     if not geo_ids:
-        raise ShowDataException("No geo_ids for release %s." % (acs))
+        raise ShowDataException("No geo_ids for release %s." % (release))
 
     valid_geo_ids = []
+    g.cur.execute("SET search_path=%s,public;", [release])
     g.cur.execute("SELECT geoid FROM geoheader WHERE geoid IN %s;", [tuple(geo_ids)])
     for geo in g.cur:
         valid_geo_ids.append(geo['geoid'])
 
     invalid_geo_ids = set(geo_ids) - set(valid_geo_ids)
     if invalid_geo_ids:
-        raise ShowDataException("The %s release doesn't include GeoID(s) %s." % (get_acs_name(acs), ','.join(invalid_geo_ids)))
+        raise ShowDataException("The %s release doesn't include GeoID(s) %s." % (get_acs_name(release), ','.join(invalid_geo_ids)))
 
     return valid_geo_ids
 
