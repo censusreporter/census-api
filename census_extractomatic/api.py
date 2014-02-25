@@ -1755,10 +1755,19 @@ def show_specified_data(acs):
     else:
         abort(400, 'The %s release isn\'t supported.' % get_acs_name(acs))
 
-    valid_geo_ids = expand_geoids(request.qwargs.geo_ids)
+    # valid_geo_ids only contains geos for which we want data
+    requested_geo_ids = request.qwargs.geo_ids
+    valid_geo_ids = expand_geoids(requested_geo_ids)
+    
+    # expand_geoids has validated parents of groups by getting children;
+    # this will include those parent names in the reponse `geography` list
+    # but leave them out of the response `data` list
+    grouped_geo_ids = [g for g in requested_geo_ids if "|" in g]
+    parents_of_groups = [g.split('|')[1] for g in grouped_geo_ids]
+    named_geo_ids = valid_geo_ids + parents_of_groups
 
     # Fill in the display name for the geos
-    g.cur.execute("SELECT full_geoid,population,display_name FROM tiger2012.census_name_lookup WHERE full_geoid IN %s;", [tuple(valid_geo_ids)])
+    g.cur.execute("SELECT full_geoid,population,display_name FROM tiger2012.census_name_lookup WHERE full_geoid IN %s;", [tuple(named_geo_ids)])
 
     geo_metadata = OrderedDict()
     for geo in g.cur:
