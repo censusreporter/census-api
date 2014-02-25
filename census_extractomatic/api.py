@@ -1762,8 +1762,8 @@ def show_specified_data(acs):
     # expand_geoids has validated parents of groups by getting children;
     # this will include those parent names in the reponse `geography` list
     # but leave them out of the response `data` list
-    grouped_geo_ids = [g for g in requested_geo_ids if "|" in g]
-    parents_of_groups = [g.split('|')[1] for g in grouped_geo_ids]
+    grouped_geo_ids = [item for item in requested_geo_ids if "|" in item]
+    parents_of_groups = [item_group.split('|')[1] for item_group in grouped_geo_ids]
     named_geo_ids = valid_geo_ids + parents_of_groups
 
     # Fill in the display name for the geos
