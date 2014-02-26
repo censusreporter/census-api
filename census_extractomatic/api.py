@@ -1694,6 +1694,8 @@ def get_child_geoids_by_gis(parent_geoid, child_summary_level):
 def get_child_geoids_by_prefix(parent_geoid, child_summary_level):
     child_geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid.split('US')[1])
 
+    # Use the "worst"/biggest ACS to find all child geoids
+    g.cur.execute("SET search_path=%s,public;", [allowed_acs[-1]])
     g.cur.execute("""SELECT geoid,name
         FROM geoheader
         WHERE geoid LIKE %s
@@ -1758,7 +1760,7 @@ def show_specified_data(acs):
     # valid_geo_ids only contains geos for which we want data
     requested_geo_ids = request.qwargs.geo_ids
     valid_geo_ids = expand_geoids(requested_geo_ids)
-    
+
     # expand_geoids has validated parents of groups by getting children;
     # this will include those parent names in the reponse `geography` list
     # but leave them out of the response `data` list
