@@ -2026,7 +2026,8 @@ def download_specified_data(acs):
 
                 sql = g.cur.mogrify("""SELECT the_geom,full_geoid,display_name
                     FROM tiger2012.census_name_lookup
-                    WHERE full_geoid IN %s""", [tuple(valid_geo_ids)])
+                    WHERE full_geoid IN %s
+                    ORDER BY full_geoid""", [tuple(valid_geo_ids)])
                 in_layer = conn.ExecuteSQL(sql)
 
                 in_feat = in_layer.GetNextFeature()
