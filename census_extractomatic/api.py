@@ -2065,7 +2065,7 @@ def download_specified_data(acs):
                 },
                 'tables': table_metadata
             }
-            json.dump(metadata_dict, open(os.path.join(inner_path, 'metadata.json'), 'w'))
+            json.dump(metadata_dict, open(os.path.join(inner_path, 'metadata.json'), 'w'), indent=4)
 
             zfile_path = os.path.join(temp_path, file_ident + '.zip')
             zfile = zipfile.ZipFile(zfile_path, 'w', zipfile.ZIP_DEFLATED)
