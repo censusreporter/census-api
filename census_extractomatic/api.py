@@ -2032,11 +2032,12 @@ def download_specified_data(acs):
                     out_feat.SetField('geoid', geoid)
                     out_feat.SetField('name', in_feat.GetField('display_name'))
                     for (table_id, table) in table_metadata.iteritems():
+                        table_estimates = data[geoid][table_id]['estimate']
+                        table_errors = data[geoid][table_id]['error']
                         for column in table['columns'].keys():
-                            estimate = data[geoid][table_id]['estimate'][column]
-                            error = data[geoid][table_id]['error'][column]
-                            out_feat.SetField(column, estimate)
-                            out_feat.SetField(column+"e", error)
+                            if column in table_estimates:
+                                out_feat.SetField(column, table_estimates[column])
+                                out_feat.SetField(column+"e", table_errors[column])
 
                     out_layer.CreateFeature(out_feat)
                     in_feat.Destroy()
