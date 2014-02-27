@@ -1508,16 +1508,21 @@ def table_search():
 
     data = []
     # retrieve matching tables.
-    g.cur.execute("""SELECT tab.tabulation_code,tab.table_title,tab.simple_table_title,tab.universe,tab.topics,tab.one_yr,tab.three_yr,tab.five_yr
+    g.cur.execute("""SELECT tab.tabulation_code,
+                            tab.table_title,
+                            tab.simple_table_title,
+                            tab.universe,
+                            tab.topics,
+                            tab.tables_in_one_yr,
+                            tab.tables_in_three_yr,
+                            tab.tables_in_five_yr
                      FROM census_tabulation_metadata tab
                      WHERE %s
                      ORDER BY tab.weight DESC""" % (table_where), table_where_args)
     for tabulation in g.cur:
-        for r in ('one_yr', 'three_yr', 'five_yr'):
-            for p in ('B', 'C', 'I', 'P'):
-                if tabulation[r]:
-                    tabulation['table_id'] = '%s%s' % (p, tabulation['tabulation_code'])
-                    break
+        for tables_for_release_col in ('tables_in_one_yr', 'tables_in_three_yr', 'tables_in_five_yr'):
+            tabulation['table_id'] = next(iter(tabulation[tables_for_release_col]))
+            break
         data.append(format_table_search_result(tabulation, 'table'))
 
     # retrieve matching columns.
