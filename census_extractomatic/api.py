@@ -1479,6 +1479,23 @@ def table_search():
     if not (q or topics):
         abort(400, "Must provide a query term or topics for filtering.")
 
+    g.cur.execute("SET search_path=%s,public;", [acs])
+    data = []
+
+    if re.match(r'^\w\d+\w{0,3}$', q, flags=re.IGNORECASE):
+        # Matching for table id
+        g.cur.execute("""SELECT tab.table_id,
+                                tab.table_title,
+                                tab.simple_table_title,
+                                tab.universe,
+                                tab.topics
+                     FROM census_table_metadata tab
+                     WHERE table_id=%s""", [q])
+        for row in g.cur:
+            data.append(format_table_search_result(row, 'table'))
+
+        return json.dumps(data)
+
     table_where_parts = []
     table_where_args = []
     column_where_parts = []
@@ -1504,9 +1521,6 @@ def table_search():
         table_where = 'TRUE'
         column_where = 'TRUE'
 
-    g.cur.execute("SET search_path=%s,public;", [acs])
-
-    data = []
     # retrieve matching tables.
     g.cur.execute("""SELECT tab.tabulation_code,
                             tab.table_title,
@@ -1528,7 +1542,13 @@ def table_search():
     # retrieve matching columns.
     if q != '*':
         # Special case for when we want ALL the tables (but not all the columns)
-        g.cur.execute("""SELECT col.column_id,col.column_title,tab.table_id,tab.table_title,tab.simple_table_title,tab.universe,tab.topics
+        g.cur.execute("""SELECT col.column_id,
+                                col.column_title,
+                                tab.table_id,
+                                tab.table_title,
+                                tab.simple_table_title,
+                                tab.universe,
+                                tab.topics
                          FROM census_column_metadata col
                          LEFT OUTER JOIN census_table_metadata tab USING (table_id)
                          WHERE %s
