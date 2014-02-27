@@ -1723,8 +1723,8 @@ def get_child_geoids_by_prefix(parent_geoid, child_summary_level):
     g.cur.execute("SET search_path=%s,public;", [allowed_acs[-1]])
     g.cur.execute("""SELECT geoid,name
         FROM geoheader
-        WHERE geoid LIKE %s
-        ORDER BY name""", [child_geoid_prefix])
+        WHERE geoid LIKE %s AND name NOT LIKE %s
+        ORDER BY geoid""", [child_geoid_prefix, '%%not defined%%'])
     return g.cur.fetchall()
 
 
