@@ -2015,9 +2015,14 @@ def download_specified_data(acs):
                 out_layer.CreateField(ogr.FieldDefn('geoid', ogr.OFTString))
                 out_layer.CreateField(ogr.FieldDefn('name', ogr.OFTString))
                 for (table_id, table) in table_metadata.iteritems():
-                    for column in table['columns'].keys():
-                        out_layer.CreateField(ogr.FieldDefn(column, ogr.OFTReal))
-                        out_layer.CreateField(ogr.FieldDefn(column+"e", ogr.OFTReal))
+                    for column_id, column_info in table['columns'].iteritems():
+                        if request.qwargs.format == 'shp':
+                            # Work around the Shapefile column name length limits
+                            out_layer.CreateField(ogr.FieldDefn(column_id, ogr.OFTReal))
+                            out_layer.CreateField(ogr.FieldDefn(column_id+"e", ogr.OFTReal))
+                        else:
+                            out_layer.CreateField(ogr.FieldDefn(column_info['name'], ogr.OFTReal))
+                            out_layer.CreateField(ogr.FieldDefn(column_info['name']+", Error", ogr.OFTReal))
 
                 sql = g.cur.mogrify("""SELECT the_geom,full_geoid,display_name
                     FROM tiger2012.census_name_lookup
@@ -2034,10 +2039,18 @@ def download_specified_data(acs):
                     for (table_id, table) in table_metadata.iteritems():
                         table_estimates = data[geoid][table_id]['estimate']
                         table_errors = data[geoid][table_id]['error']
-                        for column in table['columns'].keys():
-                            if column in table_estimates:
-                                out_feat.SetField(column, table_estimates[column])
-                                out_feat.SetField(column+"e", table_errors[column])
+                        for column_id, column_info in table['columns'].iteritems():
+                            if column_id in table_estimates:
+                                if request.qwargs.format == 'shp':
+                                    # Work around the Shapefile column name length limits
+                                    estimate_col_name = column_id
+                                    error_col_name = column_id+"e"
+                                else:
+                                    estimate_col_name = column_info['name']
+                                    error_col_name = column_info['name']+", Error"
+
+                                out_feat.SetField(estimate_col_name, table_estimates[column_id])
+                                out_feat.SetField(error_col_name, table_errors[column_id])
 
                     out_layer.CreateFeature(out_feat)
                     in_feat.Destroy()
