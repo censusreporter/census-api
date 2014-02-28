@@ -1537,7 +1537,10 @@ def table_search():
                      ORDER BY tab.weight DESC""" % (table_where), table_where_args)
     for tabulation in g.cur:
         for tables_for_release_col in ('tables_in_one_yr', 'tables_in_three_yr', 'tables_in_five_yr'):
-            tabulation['table_id'] = next(iter(tabulation[tables_for_release_col]))
+            if tabulation[tables_for_release_col]:
+                tabulation['table_id'] = tabulation[tables_for_release_col][0]
+            else:
+                continue
             break
         data.append(format_table_search_result(tabulation, 'table'))
 
