@@ -1311,6 +1311,8 @@ def num2deg(xtile, ytile, zoom):
 def geo_tiles(sumlevel, zoom, x, y):
     if sumlevel not in SUMLEV_NAMES:
         abort(400, "Unknown sumlevel")
+    if sumlevel == '010':
+        abort(400, "Don't support US tiles")
 
     (miny, minx) = num2deg(x, y, zoom)
     (maxy, maxx) = num2deg(x + 1, y + 1, zoom)
