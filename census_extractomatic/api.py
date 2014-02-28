@@ -1707,6 +1707,8 @@ def get_child_geoids_by_gis(parent_geoid, child_summary_level):
     child_geoids = [r['full_geoid'] for r in g.cur]
 
     if child_geoids:
+        # Use the "worst"/biggest ACS to find all child geoids
+        g.cur.execute("SET search_path=%s,public;", [allowed_acs[-1]])
         g.cur.execute("""SELECT geoid,name
             FROM geoheader
             WHERE geoid IN %s
