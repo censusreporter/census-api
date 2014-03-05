@@ -4,7 +4,8 @@ class Config(object):
 
 class Production(Config):
     DATABASE_URI = 'postgresql://census:censuspassword@localhost/census'
-
+    MEMCACHE_ADDR = ['127.0.0.1']
 
 class Development(Config):
-    DATABASE_URI = 'postgresql://census:censuspassword@staging.censusreporter.org/census'
+    DATABASE_URI = 'postgresql://census:censuspassword@localhost/census'
+    MEMCACHE_ADDR = ['127.0.0.1']

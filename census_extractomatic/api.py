@@ -22,11 +22,17 @@ import shutil
 import tempfile
 import urlparse
 import zipfile
+import pylibmc
 from validation import qwarg_validate, NonemptyString, FloatRange, StringList, Bool, OneOf
 
 
 app = Flask(__name__)
 app.config.from_object(os.environ.get('EXTRACTOMATIC_CONFIG_MODULE', 'census_extractomatic.config.Development'))
+
+memcache_addr = app.config.get('MEMCACHE_ADDR')
+cache = {}
+if memcache_addr:
+    cache = pylibmc.Client(memcache_addr)
 
 if not app.debug:
     import logging
@@ -1314,6 +1320,11 @@ def geo_tiles(sumlevel, zoom, x, y):
     if sumlevel == '010':
         abort(400, "Don't support US tiles")
 
+    cache_key = str('%s.%s.%s.%s' % (sumlevel, zoom, x, y))
+    cached = cache.get(cache_key)
+    if cached:
+        return jsonify(type="FeatureCollection", features=cached)
+
     (miny, minx) = num2deg(x, y, zoom)
     (maxy, maxx) = num2deg(x + 1, y + 1, zoom)
 
@@ -1337,6 +1348,8 @@ def geo_tiles(sumlevel, zoom, x, y):
             },
             "geometry": json.loads(row['geom'])
         })
+
+    cache.set(cache_key, results)
 
     return jsonify(type="FeatureCollection", features=results)
 
