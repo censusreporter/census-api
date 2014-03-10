@@ -1510,7 +1510,7 @@ def table_search():
 
     results = [format_table_search_result(t, backfill_table_details) for t in g.es.search(s)]
 
-    return jsonify(results=results)
+    return json.dumps(results)
 
 
 # Example: /1.0/table/B01001?release=acs2012_1yr
