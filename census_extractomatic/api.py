@@ -336,6 +336,8 @@ def find_geoid(geoid, acs=None):
     "Find the best acs to use for a given geoid or None if the geoid is not found."
 
     if acs:
+        if acs not in allowed_acs:
+            abort(404, "We don't have data for that release.")
         acs_to_search = [acs]
     else:
         acs_to_search = allowed_acs
