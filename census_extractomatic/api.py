@@ -23,17 +23,13 @@ import tempfile
 import urlparse
 import zipfile
 import pylibmc
+import mockcache
 import pyes
 from validation import qwarg_validate, NonemptyString, FloatRange, StringList, Bool, OneOf
 
 
 app = Flask(__name__)
 app.config.from_object(os.environ.get('EXTRACTOMATIC_CONFIG_MODULE', 'census_extractomatic.config.Development'))
-
-memcache_addr = app.config.get('MEMCACHE_ADDR')
-cache = {}
-if memcache_addr:
-    cache = pylibmc.Client(memcache_addr)
 
 if not app.debug:
     import logging
@@ -370,6 +366,9 @@ def before_request():
     g.cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     g.es = pyes.ES(app.config.get('ELASTICSEARCH_HOST'), timeout=2)
+
+    memcache_addr = app.config.get('MEMCACHE_ADDR')
+    g.cache = pylibmc.Client(memcache_addr) if memcache_addr else mockcache.Client(memcache_addr)
 
 @app.teardown_request
 def teardown_request(exception):
@@ -1315,7 +1314,7 @@ def num2deg(xtile, ytile, zoom):
   return (lat_deg, lon_deg)
 
 
-# Example: /1.0/geo/tiger2012/tiles/160/12/1444/2424.json
+# Example: /1.0/geo/tiger2012/tiles/160/10/261/373.geojson
 @app.route("/1.0/geo/tiger2012/tiles/<sumlevel>/<int:zoom>/<int:x>/<int:y>.geojson")
 @crossdomain(origin='*')
 def geo_tiles(sumlevel, zoom, x, y):
@@ -1325,37 +1324,40 @@ def geo_tiles(sumlevel, zoom, x, y):
         abort(400, "Don't support US tiles")
 
     cache_key = str('%s.%s.%s.%s' % (sumlevel, zoom, x, y))
-    cached = cache.get(cache_key)
+    cached = g.cache.get(cache_key)
     if cached:
-        return jsonify(type="FeatureCollection", features=cached)
+        resp = jsonify(type="FeatureCollection", features=cached)
+    else:
+        (miny, minx) = num2deg(x, y, zoom)
+        (maxy, maxx) = num2deg(x + 1, y + 1, zoom)
 
-    (miny, minx) = num2deg(x, y, zoom)
-    (maxy, maxx) = num2deg(x + 1, y + 1, zoom)
+        g.cur.execute("""SELECT
+                    ST_AsGeoJSON(ST_SimplifyPreserveTopology(
+                        ST_Intersection(ST_Buffer(ST_MakeEnvelope(%s, %s, %s, %s, 4326), 0.01, 'endcap=square'), the_geom),
+                        ST_Perimeter(the_geom) / 2500), 6) as geom,
+                    full_geoid,
+                    display_name
+                FROM tiger2012.census_name_lookup
+                WHERE sumlevel=%s AND ST_Intersects(ST_MakeEnvelope(%s, %s, %s, %s, 4326), the_geom)""",
+                [minx, miny, maxx, maxy, sumlevel, minx, miny, maxx, maxy])
 
-    g.cur.execute("""SELECT
-                ST_AsGeoJSON(ST_SimplifyPreserveTopology(
-                    ST_Intersection(ST_Buffer(ST_MakeEnvelope(%s, %s, %s, %s, 4326), 0.01, 'endcap=square'), the_geom),
-                    ST_Perimeter(the_geom) / 2500), 6) as geom,
-                full_geoid,
-                display_name
-            FROM tiger2012.census_name_lookup
-            WHERE sumlevel=%s AND ST_Intersects(ST_MakeEnvelope(%s, %s, %s, %s, 4326), the_geom)""",
-            [minx, miny, maxx, maxy, sumlevel, minx, miny, maxx, maxy])
+        results = []
+        for row in g.cur:
+            results.append({
+                "type": "Feature",
+                "properties": {
+                    "geoid": row['full_geoid'],
+                    "name": row['display_name']
+                },
+                "geometry": json.loads(row['geom'])
+            })
 
-    results = []
-    for row in g.cur:
-        results.append({
-            "type": "Feature",
-            "properties": {
-                "geoid": row['full_geoid'],
-                "name": row['display_name']
-            },
-            "geometry": json.loads(row['geom'])
-        })
+        g.cache.set(cache_key, results)
 
-    cache.set(cache_key, results)
+        resp = jsonify(type="FeatureCollection", features=results)
 
-    return jsonify(type="FeatureCollection", features=results)
+    resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600*4))
+    return resp
 
 # Example: /1.0/geo/tiger2012/04000US53
 @app.route("/1.0/geo/tiger2012/<geoid>")
