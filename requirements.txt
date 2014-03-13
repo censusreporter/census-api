@@ -5,3 +5,4 @@ Fabric==1.6.1
 simplejson==3.3.1
 GDAL==1.10.0
 pylibmc==1.2.3
+pyes==0.90.1

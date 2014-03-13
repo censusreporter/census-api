@@ -23,6 +23,7 @@ import tempfile
 import urlparse
 import zipfile
 import pylibmc
+import pyes
 from validation import qwarg_validate, NonemptyString, FloatRange, StringList, Bool, OneOf
 
 
@@ -341,6 +342,8 @@ def find_geoid(geoid, acs=None):
     "Find the best acs to use for a given geoid or None if the geoid is not found."
 
     if acs:
+        if acs not in allowed_acs:
+            abort(404, "We don't have data for that release.")
         acs_to_search = [acs]
     else:
         acs_to_search = allowed_acs
@@ -366,6 +369,7 @@ def before_request():
 
     g.cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
+    g.es = pyes.ES(app.config.get('ELASTICSEARCH_HOST'), timeout=2)
 
 @app.teardown_request
 def teardown_request(exception):
@@ -1448,29 +1452,32 @@ def show_specified_geo_data():
 
 ## TABLE LOOKUPS ##
 
-def format_table_search_result(obj, obj_type):
+def format_table_search_result(obj, backfill_table_details):
     '''internal util for formatting each object in `table_search` API response'''
-    result = {
-        'type': obj_type,
-        'table_id': obj['table_id'],
-        'table_name': obj['table_title'],
-        'simple_table_name': obj['simple_table_title'],
-        'topics': obj['topics'],
-        'universe': obj['universe'],
-    }
 
-    if obj_type == 'table':
-        result.update({
+    if obj._meta.type == 'table':
+        result = {
             'id': obj['table_id'],
             'unique_key': obj['table_id'],
-        })
-    elif obj_type == 'column':
-        result.update({
+            'table_id': obj['table_id'],
+            'table_name': obj['table_title'],
+            'simple_table_name': obj['simple_table_title'],
+            'topics': obj['topics'],
+            'universe': obj['universe'],
+        }
+    elif obj._meta.type == 'column':
+        table = backfill_table_details[obj['table_id']]
+        result = {
             'id': obj['column_id'],
             'unique_key': '%s|%s' % (obj['table_id'], obj['column_id']),
             'column_id': obj['column_id'],
             'column_name': obj['column_title'],
-        })
+            'table_id': table['table_id'],
+            'table_name': table['table_title'],
+            'simple_table_name': table['simple_table_title'],
+            'topics': table['topics'],
+            'universe': table['universe'],
+        }
 
     return result
 
@@ -1486,94 +1493,39 @@ def format_table_search_result(obj, obj_type):
 })
 @crossdomain(origin='*')
 def table_search():
-    # allow choice of release, default to 2011 1-year
-    acs = request.qwargs.acs
-    q = request.qwargs.q
-    topics = request.qwargs.topics
-
-    if not (q or topics):
+    if not (request.qwargs.q or request.qwargs.topics):
         abort(400, "Must provide a query term or topics for filtering.")
 
-    g.cur.execute("SET search_path=%s,public;", [acs])
-    data = []
+    q = pyes.query.BoolQuery()
 
-    if re.match(r'^\w\d+\w{0,3}$', q, flags=re.IGNORECASE):
-        # Matching for table id
-        g.cur.execute("""SELECT tab.table_id,
-                                tab.table_title,
-                                tab.simple_table_title,
-                                tab.universe,
-                                tab.topics
-                     FROM census_table_metadata tab
-                     WHERE table_id=%s""", [q])
-        for row in g.cur:
-            data.append(format_table_search_result(row, 'table'))
+    q.add_must(pyes.query.MatchQuery('release', request.qwargs.acs))
 
-        return json.dumps(data)
+    if request.qwargs.q:
+        q.add_should(pyes.query.MatchQuery('table_id', request.qwargs.q))
+        q.add_should(pyes.query.MultiMatchQuery(['table_title', 'column_title'], request.qwargs.q))
+        # q.add_should(pyes.query.NestedQuery('rows', pyes.query.MultiMatchQuery(['column_title', 'column_id'], request.qwargs.q)))
 
-    table_where_parts = []
-    table_where_args = []
-    column_where_parts = []
-    column_where_args = []
+    if request.qwargs.topics:
+        q.add_must(pyes.query.MatchQuery('topics', request.qwargs.topics))
 
-    if q and q != '*':
-        q = '%%%s%%' % q
-        table_where_parts.append("lower(tab.table_title) LIKE lower(%s)")
-        table_where_args.append(q)
-        column_where_parts.append("lower(col.column_title) LIKE lower(%s)")
-        column_where_args.append(q)
+    s = pyes.query.Search(q)
+    results = g.es.search(s)
 
-    if topics:
-        table_where_parts.append('tab.topics @> %s')
-        table_where_args.append(topics)
-        column_where_parts.append('tab.topics @> %s')
-        column_where_args.append(topics)
+    # Backfill column results with table data
+    backfill_table_details = {}
+    tables_to_backfill = set()
+    for col in results:
+        if col._meta.type == 'column':
+            tables_to_backfill.add(col.release + col.table_id)
+    if tables_to_backfill:
+        results = g.es.mget(tables_to_backfill, index='census', doc_type='table')
+        if results:
+            for table in results:
+                backfill_table_details[table['table_id']] = table
 
-    if table_where_parts:
-        table_where = ' AND '.join(table_where_parts)
-        column_where = ' AND '.join(column_where_parts)
-    else:
-        table_where = 'TRUE'
-        column_where = 'TRUE'
+    results = [format_table_search_result(t, backfill_table_details) for t in g.es.search(s)]
 
-    # retrieve matching tables.
-    g.cur.execute("""SELECT tab.tabulation_code,
-                            tab.table_title,
-                            tab.simple_table_title,
-                            tab.universe,
-                            tab.topics,
-                            tab.tables_in_one_yr,
-                            tab.tables_in_three_yr,
-                            tab.tables_in_five_yr
-                     FROM census_tabulation_metadata tab
-                     WHERE %s
-                     ORDER BY tab.weight DESC""" % (table_where), table_where_args)
-    for tabulation in g.cur:
-        for tables_for_release_col in ('tables_in_one_yr', 'tables_in_three_yr', 'tables_in_five_yr'):
-            if tabulation[tables_for_release_col]:
-                tabulation['table_id'] = tabulation[tables_for_release_col][0]
-            else:
-                continue
-            break
-        data.append(format_table_search_result(tabulation, 'table'))
-
-    # retrieve matching columns.
-    if q != '*':
-        # Special case for when we want ALL the tables (but not all the columns)
-        g.cur.execute("""SELECT col.column_id,
-                                col.column_title,
-                                tab.table_id,
-                                tab.table_title,
-                                tab.simple_table_title,
-                                tab.universe,
-                                tab.topics
-                         FROM census_column_metadata col
-                         LEFT OUTER JOIN census_table_metadata tab USING (table_id)
-                         WHERE %s
-                         ORDER BY char_length(tab.table_id), tab.table_id""" % (column_where), column_where_args)
-        data.extend([format_table_search_result(column, 'column') for column in g.cur])
-
-    return json.dumps(data)
+    return json.dumps(results)
 
 
 # Example: /1.0/table/B01001?release=acs2012_1yr

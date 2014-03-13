@@ -18,6 +18,12 @@ def deploy(branch='master'):
     sudo('apt-get update')
     sudo('apt-get install -y git libpq-dev python-dev libmemcached build-essential libgdal1-dev')
 
+    # Install and start ElasticSearch
+    sudo('apt-get install -y openjdk-7-jre-headless')
+    run('wget --continue https://download.elasticsearch.org/elasticsearch/elasticsearch/elasticsearch-1.0.1.deb')
+    sudo('dpkg -i elasticsearch-1.0.1.deb')
+    sudo('service elasticsearch start')
+
     # Install and set up apache and mod_wsgi
     sudo('apt-get install -y apache2 libapache2-mod-wsgi')
     sudo('a2enmod wsgi')
