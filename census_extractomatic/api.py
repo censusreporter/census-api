@@ -22,6 +22,8 @@ import shutil
 import tempfile
 import urlparse
 import zipfile
+import pylibmc
+import mockcache
 import pyes
 from validation import qwarg_validate, NonemptyString, FloatRange, StringList, Bool, OneOf
 
@@ -364,6 +366,9 @@ def before_request():
     g.cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     g.es = pyes.ES(app.config.get('ELASTICSEARCH_HOST'), timeout=2)
+
+    memcache_addr = app.config.get('MEMCACHE_ADDR')
+    g.cache = pylibmc.Client(memcache_addr) if memcache_addr else mockcache.Client(memcache_addr)
 
 @app.teardown_request
 def teardown_request(exception):
@@ -1309,7 +1314,7 @@ def num2deg(xtile, ytile, zoom):
   return (lat_deg, lon_deg)
 
 
-# Example: /1.0/geo/tiger2012/tiles/160/12/1444/2424.json
+# Example: /1.0/geo/tiger2012/tiles/160/10/261/373.geojson
 @app.route("/1.0/geo/tiger2012/tiles/<sumlevel>/<int:zoom>/<int:x>/<int:y>.geojson")
 @crossdomain(origin='*')
 def geo_tiles(sumlevel, zoom, x, y):
@@ -1318,31 +1323,41 @@ def geo_tiles(sumlevel, zoom, x, y):
     if sumlevel == '010':
         abort(400, "Don't support US tiles")
 
-    (miny, minx) = num2deg(x, y, zoom)
-    (maxy, maxx) = num2deg(x + 1, y + 1, zoom)
+    cache_key = str('%s.%s.%s.%s' % (sumlevel, zoom, x, y))
+    cached = g.cache.get(cache_key)
+    if cached:
+        resp = jsonify(type="FeatureCollection", features=cached)
+    else:
+        (miny, minx) = num2deg(x, y, zoom)
+        (maxy, maxx) = num2deg(x + 1, y + 1, zoom)
 
-    g.cur.execute("""SELECT
-                ST_AsGeoJSON(ST_SimplifyPreserveTopology(
-                    ST_Intersection(ST_Buffer(ST_MakeEnvelope(%s, %s, %s, %s, 4326), 0.01, 'endcap=square'), the_geom),
-                    ST_Perimeter(the_geom) / 2500), 6) as geom,
-                full_geoid,
-                display_name
-            FROM tiger2012.census_name_lookup
-            WHERE sumlevel=%s AND ST_Intersects(ST_MakeEnvelope(%s, %s, %s, %s, 4326), the_geom)""",
-            [minx, miny, maxx, maxy, sumlevel, minx, miny, maxx, maxy])
+        g.cur.execute("""SELECT
+                    ST_AsGeoJSON(ST_SimplifyPreserveTopology(
+                        ST_Intersection(ST_Buffer(ST_MakeEnvelope(%s, %s, %s, %s, 4326), 0.01, 'endcap=square'), the_geom),
+                        ST_Perimeter(the_geom) / 2500), 6) as geom,
+                    full_geoid,
+                    display_name
+                FROM tiger2012.census_name_lookup
+                WHERE sumlevel=%s AND ST_Intersects(ST_MakeEnvelope(%s, %s, %s, %s, 4326), the_geom)""",
+                [minx, miny, maxx, maxy, sumlevel, minx, miny, maxx, maxy])
 
-    results = []
-    for row in g.cur:
-        results.append({
-            "type": "Feature",
-            "properties": {
-                "geoid": row['full_geoid'],
-                "name": row['display_name']
-            },
-            "geometry": json.loads(row['geom'])
-        })
+        results = []
+        for row in g.cur:
+            results.append({
+                "type": "Feature",
+                "properties": {
+                    "geoid": row['full_geoid'],
+                    "name": row['display_name']
+                },
+                "geometry": json.loads(row['geom'])
+            })
 
-    return jsonify(type="FeatureCollection", features=results)
+        g.cache.set(cache_key, results)
+
+        resp = jsonify(type="FeatureCollection", features=results)
+
+    resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600*4))
+    return resp
 
 # Example: /1.0/geo/tiger2012/04000US53
 @app.route("/1.0/geo/tiger2012/<geoid>")
@@ -1355,26 +1370,33 @@ def geo_lookup(geoid):
     if len(geoid_parts) is not 2:
         abort(400, 'Invalid GeoID')
 
-    if request.qwargs.geom:
-        g.cur.execute("""SELECT display_name,simple_name,sumlevel,full_geoid,population,aland,awater,
-            ST_AsGeoJSON(ST_Simplify(the_geom,ST_Perimeter(the_geom) / 1700)) as geom
-            FROM tiger2012.census_name_lookup
-            WHERE full_geoid=%s
-            LIMIT 1""", [geoid])
+    cache_key = str('%s.%s' % (geoid, request.qwargs.geom))
+    cached = g.cache.get(cache_key)
+    if cached:
+        result, geom = cached
     else:
-        g.cur.execute("""SELECT display_name,simple_name,sumlevel,full_geoid,population,aland,awater
-            FROM tiger2012.census_name_lookup
-            WHERE full_geoid=%s
-            LIMIT 1""", [geoid])
+        if request.qwargs.geom:
+            g.cur.execute("""SELECT display_name,simple_name,sumlevel,full_geoid,population,aland,awater,
+                ST_AsGeoJSON(ST_Simplify(the_geom,ST_Perimeter(the_geom) / 1700)) as geom
+                FROM tiger2012.census_name_lookup
+                WHERE full_geoid=%s
+                LIMIT 1""", [geoid])
+        else:
+            g.cur.execute("""SELECT display_name,simple_name,sumlevel,full_geoid,population,aland,awater
+                FROM tiger2012.census_name_lookup
+                WHERE full_geoid=%s
+                LIMIT 1""", [geoid])
 
-    result = g.cur.fetchone()
+        result = g.cur.fetchone()
 
-    if not result:
-        abort(400, 'Unknown GeoID')
+        if not result:
+            abort(400, 'Unknown GeoID')
 
-    geom = result.pop('geom', None)
-    if geom:
-        geom = json.loads(geom)
+        geom = result.pop('geom', None)
+        if geom:
+            geom = json.loads(geom)
+
+        g.cache.set(cache_key, (result, geom))
 
     return jsonify(type="Feature", properties=result, geometry=geom)
 
@@ -1383,22 +1405,29 @@ def geo_lookup(geoid):
 @app.route("/1.0/geo/tiger2012/<geoid>/parents")
 @crossdomain(origin='*')
 def geo_parent(geoid):
-    parents = filter(lambda i: i['relation']!='this', compute_profile_item_levels(geoid))
-    parent_geoids = [p['geoid'] for p in parents]
+    cache_key = str(geoid)
+    cached = g.cache.get(cache_key)
+    if cached:
+        parents = cached
+    else:
+        parents = filter(lambda i: i['relation']!='this', compute_profile_item_levels(geoid))
+        parent_geoids = [p['geoid'] for p in parents]
 
-    def build_item(p):
-        return (p['full_geoid'], {
-            "display_name": p['display_name'],
-            "sumlevel": p['sumlevel'],
-            "geoid": p['full_geoid'],
-        })
+        def build_item(p):
+            return (p['full_geoid'], {
+                "display_name": p['display_name'],
+                "sumlevel": p['sumlevel'],
+                "geoid": p['full_geoid'],
+            })
 
-    if parent_geoids:
-        g.cur.execute("SELECT display_name,sumlevel,full_geoid FROM tiger2012.census_name_lookup WHERE full_geoid IN %s ORDER BY sumlevel DESC", [tuple(parent_geoids)])
-        parent_list = dict([build_item(p) for p in g.cur])
+        if parent_geoids:
+            g.cur.execute("SELECT display_name,sumlevel,full_geoid FROM tiger2012.census_name_lookup WHERE full_geoid IN %s ORDER BY sumlevel DESC", [tuple(parent_geoids)])
+            parent_list = dict([build_item(p) for p in g.cur])
 
-        for parent in parents:
-            parent.update(parent_list[parent['geoid']])
+            for parent in parents:
+                parent.update(parent_list[parent['geoid']])
+
+        g.cache.set(cache_key, parents)
 
     return jsonify(parents=parents)
 

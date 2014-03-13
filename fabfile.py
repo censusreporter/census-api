@@ -1,9 +1,13 @@
 from fabric.api import *
 from fabric.contrib.files import *
 
+def flushcache():
+    "Flush the memcache by restarting it."
 
-def deploy(branch='master'):
-    "Deploy the specified branch to the remote host."
+    sudo('service memcached restart')
+
+def initial_setup():
+    "Set up the remote host to run Census Reporter."
 
     root_dir = '/home/www-data'
     code_dir = '%s/api_app' % root_dir
@@ -16,13 +20,16 @@ def deploy(branch='master'):
 
     # Install required packages
     sudo('apt-get update')
-    sudo('apt-get install -y git libpq-dev python-dev build-essential libgdal1-dev')
+    sudo('apt-get install -y git libpq-dev python-dev libmemcached build-essential libgdal1-dev')
 
     # Install and start ElasticSearch
     sudo('apt-get install -y openjdk-7-jre-headless')
     run('wget --continue https://download.elasticsearch.org/elasticsearch/elasticsearch/elasticsearch-1.0.1.deb')
     sudo('dpkg -i elasticsearch-1.0.1.deb')
     sudo('service elasticsearch start')
+
+    # Install and start memcached
+    sudo('apt-get install -y memcached')
 
     # Install and set up apache and mod_wsgi
     sudo('apt-get install -y apache2 libapache2-mod-wsgi')
@@ -52,6 +59,9 @@ def deploy(branch='master'):
         if sudo('test -d %s' % code_dir).failed:
             sudo('git clone git://github.com/censusreporter/census-extractomatic.git %s' % code_dir)
 
+
+def deploy(branch='master'):
+    "Deploy the specified branch to the remote host."
     with cd(code_dir):
         sudo('find . -name \'*.pyc\' -delete')
         sudo('git pull origin %s' % branch)
