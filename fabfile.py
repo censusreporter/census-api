@@ -1,6 +1,11 @@
 from fabric.api import *
 from fabric.contrib.files import *
 
+root_dir = '/home/www-data'
+code_dir = '%s/api_app' % root_dir
+virtualenv_name = 'api_venv'
+virtualenv_dir = '%s/%s' % (root_dir, virtualenv_name)
+
 def flushcache():
     "Flush the memcache by restarting it."
 
@@ -9,10 +14,6 @@ def flushcache():
 def initial_setup():
     "Set up the remote host to run Census Reporter."
 
-    root_dir = '/home/www-data'
-    code_dir = '%s/api_app' % root_dir
-    virtualenv_name = 'api_venv'
-    virtualenv_dir = '%s/%s' % (root_dir, virtualenv_name)
     host = 'api.censusreporter.org'
 
     sudo('mkdir -p %s' % root_dir)
@@ -20,7 +21,7 @@ def initial_setup():
 
     # Install required packages
     sudo('apt-get update')
-    sudo('apt-get install -y git libpq-dev python-dev libmemcached build-essential libgdal1-dev')
+    sudo('apt-get install -y git libpq-dev python-dev libmemcached-dev build-essential libgdal1-dev')
 
     # Install and start ElasticSearch
     sudo('apt-get install -y openjdk-7-jre-headless')
