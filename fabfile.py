@@ -1,6 +1,10 @@
 from fabric.api import *
 from fabric.contrib.files import *
 
+def flushcache():
+    "Flush the memcache by restarting it."
+
+    sudo('service memcached restart')
 
 def deploy(branch='master'):
     "Deploy the specified branch to the remote host."
