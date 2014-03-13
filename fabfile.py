@@ -24,6 +24,9 @@ def deploy(branch='master'):
     sudo('dpkg -i elasticsearch-1.0.1.deb')
     sudo('service elasticsearch start')
 
+    # Install and start memcached
+    sudo('apt-get install -y memcached')
+
     # Install and set up apache and mod_wsgi
     sudo('apt-get install -y apache2 libapache2-mod-wsgi')
     sudo('a2enmod wsgi')
