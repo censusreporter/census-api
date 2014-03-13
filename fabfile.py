@@ -6,8 +6,8 @@ def flushcache():
 
     sudo('service memcached restart')
 
-def deploy(branch='master'):
-    "Deploy the specified branch to the remote host."
+def initial_setup():
+    "Set up the remote host to run Census Reporter."
 
     root_dir = '/home/www-data'
     code_dir = '%s/api_app' % root_dir
@@ -59,6 +59,9 @@ def deploy(branch='master'):
         if sudo('test -d %s' % code_dir).failed:
             sudo('git clone git://github.com/censusreporter/census-extractomatic.git %s' % code_dir)
 
+
+def deploy(branch='master'):
+    "Deploy the specified branch to the remote host."
     with cd(code_dir):
         sudo('find . -name \'*.pyc\' -delete')
         sudo('git pull origin %s' % branch)
