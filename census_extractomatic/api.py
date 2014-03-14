@@ -1468,7 +1468,7 @@ def show_specified_geo_data():
 
 ## TABLE LOOKUPS ##
 
-def format_table_search_result(obj, backfill_table_details):
+def format_table_elasticsearch_result(obj, backfill_table_details):
     '''internal util for formatting each object in `table_search` API response'''
 
     if obj._meta.type == 'table':
@@ -1501,14 +1501,14 @@ def format_table_search_result(obj, backfill_table_details):
 # Example: /1.0/table/search?q=norweg
 # Example: /1.0/table/search?q=norweg&topics=age,sex
 # Example: /1.0/table/search?topics=housing,poverty
-@app.route("/1.0/table/search")
+@app.route("/1.0/table/elasticsearch")
 @qwarg_validate({
     'acs': {'valid': OneOf(allowed_acs), 'default': 'acs2012_1yr'},
     'q':   {'valid': NonemptyString()},
     'topics': {'valid': StringList()}
 })
 @crossdomain(origin='*')
-def table_search():
+def elasticsearch_table_search():
     if not (request.qwargs.q or request.qwargs.topics):
         abort(400, "Must provide a query term or topics for filtering.")
 
@@ -1539,10 +1539,136 @@ def table_search():
             for table in results:
                 backfill_table_details[table['table_id']] = table
 
-    results = [format_table_search_result(t, backfill_table_details) for t in g.es.search(s)]
+    results = [format_table_elasticsearch_result(t, backfill_table_details) for t in g.es.search(s)]
 
     return json.dumps(results)
 
+def format_table_search_result(obj, obj_type):
+    '''internal util for formatting each object in `table_search` API response'''
+    result = {
+        'type': obj_type,
+        'table_id': obj['table_id'],
+        'table_name': obj['table_title'],
+        'simple_table_name': obj['simple_table_title'],
+        'topics': obj['topics'],
+        'universe': obj['universe'],
+    }
+
+    if obj_type == 'table':
+        result.update({
+            'id': obj['table_id'],
+            'unique_key': obj['table_id'],
+        })
+    elif obj_type == 'column':
+        result.update({
+            'id': obj['column_id'],
+            'unique_key': '%s|%s' % (obj['table_id'], obj['column_id']),
+            'column_id': obj['column_id'],
+            'column_name': obj['column_title'],
+        })
+
+    return result
+
+
+# Example: /1.0/table/search?q=norweg
+# Example: /1.0/table/search?q=norweg&topics=age,sex
+# Example: /1.0/table/search?topics=housing,poverty
+@app.route("/1.0/table/search")
+@qwarg_validate({
+    'acs': {'valid': OneOf(allowed_acs), 'default': 'acs2012_1yr'},
+    'q':   {'valid': NonemptyString()},
+    'topics': {'valid': StringList()}
+})
+@crossdomain(origin='*')
+def table_search():
+    # allow choice of release, default to 2011 1-year
+    acs = request.qwargs.acs
+    q = request.qwargs.q
+    topics = request.qwargs.topics
+
+    if not (q or topics):
+        abort(400, "Must provide a query term or topics for filtering.")
+
+    g.cur.execute("SET search_path=%s,public;", [acs])
+    data = []
+
+    if re.match(r'^\w\d+\w{0,3}$', q, flags=re.IGNORECASE):
+        # Matching for table id
+        g.cur.execute("""SELECT tab.table_id,
+                                tab.table_title,
+                                tab.simple_table_title,
+                                tab.universe,
+                                tab.topics
+                     FROM census_table_metadata tab
+                     WHERE table_id=%s""", [q])
+        for row in g.cur:
+            data.append(format_table_search_result(row, 'table'))
+
+        return json.dumps(data)
+
+    table_where_parts = []
+    table_where_args = []
+    column_where_parts = []
+    column_where_args = []
+
+    if q and q != '*':
+        q = '%%%s%%' % q
+        table_where_parts.append("lower(tab.table_title) LIKE lower(%s)")
+        table_where_args.append(q)
+        column_where_parts.append("lower(col.column_title) LIKE lower(%s)")
+        column_where_args.append(q)
+
+    if topics:
+        table_where_parts.append('tab.topics @> %s')
+        table_where_args.append(topics)
+        column_where_parts.append('tab.topics @> %s')
+        column_where_args.append(topics)
+
+    if table_where_parts:
+        table_where = ' AND '.join(table_where_parts)
+        column_where = ' AND '.join(column_where_parts)
+    else:
+        table_where = 'TRUE'
+        column_where = 'TRUE'
+
+    # retrieve matching tables.
+    g.cur.execute("""SELECT tab.tabulation_code,
+                            tab.table_title,
+                            tab.simple_table_title,
+                            tab.universe,
+                            tab.topics,
+                            tab.tables_in_one_yr,
+                            tab.tables_in_three_yr,
+                            tab.tables_in_five_yr
+                     FROM census_tabulation_metadata tab
+                     WHERE %s
+                     ORDER BY tab.weight DESC""" % (table_where), table_where_args)
+    for tabulation in g.cur:
+        for tables_for_release_col in ('tables_in_one_yr', 'tables_in_three_yr', 'tables_in_five_yr'):
+            if tabulation[tables_for_release_col]:
+                tabulation['table_id'] = tabulation[tables_for_release_col][0]
+            else:
+                continue
+            break
+        data.append(format_table_search_result(tabulation, 'table'))
+
+    # retrieve matching columns.
+    if q != '*':
+        # Special case for when we want ALL the tables (but not all the columns)
+        g.cur.execute("""SELECT col.column_id,
+                                col.column_title,
+                                tab.table_id,
+                                tab.table_title,
+                                tab.simple_table_title,
+                                tab.universe,
+                                tab.topics
+                         FROM census_column_metadata col
+                         LEFT OUTER JOIN census_table_metadata tab USING (table_id)
+                         WHERE %s
+                         ORDER BY char_length(tab.table_id), tab.table_id""" % (column_where), column_where_args)
+        data.extend([format_table_search_result(column, 'column') for column in g.cur])
+
+    return json.dumps(data)
 
 # Example: /1.0/table/B01001?release=acs2012_1yr
 @app.route("/1.0/table/<table_id>")
