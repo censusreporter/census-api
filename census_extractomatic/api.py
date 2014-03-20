@@ -1440,30 +1440,44 @@ def geo_parent(geoid):
 })
 @crossdomain(origin='*')
 def show_specified_geo_data():
-    geo_ids = expand_geoids(request.qwargs.geo_ids)
+    cache_key = str("geoshow%s" % ''.join(request.qwargs.geo_ids))
+    cached = g.cache.get(cache_key)
+    if cached:
+        resp = make_response(cached)
+        resp.headers['Content-Type'] = 'application/json'
+        return resp
+    else:
+        geo_ids = expand_geoids(request.qwargs.geo_ids)
 
-    g.cur.execute("""SELECT full_geoid,display_name,ST_AsGeoJSON(ST_Simplify(the_geom,ST_Perimeter(the_geom) / 2500)) as geom
-        FROM tiger2012.census_name_lookup
-        WHERE full_geoid IN %s;""", [tuple(geo_ids)])
+        g.cur.execute("""SELECT full_geoid,display_name,ST_AsGeoJSON(ST_Simplify(the_geom,ST_Perimeter(the_geom) / 2500)) as geom
+            FROM tiger2012.census_name_lookup
+            WHERE full_geoid IN %s;""", [tuple(geo_ids)])
 
-    results = []
-    valid_geo_ids = []
-    for row in g.cur:
-        valid_geo_ids.append(row['full_geoid'])
-        results.append({
-            "type": "Feature",
-            "properties": {
-                "geoid": row['full_geoid'],
-                "name": row['display_name']
-            },
-            "geometry": json.loads(row['geom'])
+        results = []
+        valid_geo_ids = []
+        for row in g.cur:
+            valid_geo_ids.append(row['full_geoid'])
+            results.append({
+                "type": "Feature",
+                "properties": {
+                    "geoid": row['full_geoid'],
+                    "name": row['display_name']
+                },
+                "geometry": json.loads(row['geom'])
+            })
+
+        invalid_geo_ids = set(geo_ids) - set(valid_geo_ids)
+        if invalid_geo_ids:
+            abort(400, "GeoID(s) %s are not valid." % (','.join(invalid_geo_ids)))
+
+        resp_data = json.dumps({
+            'type': 'FeatureCollection',
+            'features': results
         })
-
-    invalid_geo_ids = set(geo_ids) - set(valid_geo_ids)
-    if invalid_geo_ids:
-        abort(400, "GeoID(s) %s are not valid." % (','.join(invalid_geo_ids)))
-
-    return jsonify(type="FeatureCollection", features=results)
+        g.cache.set(cache_key, resp_data)
+        resp = make_response(resp_data)
+        resp.headers['Content-Type'] = 'application/json'
+        return resp
 
 
 ## TABLE LOOKUPS ##
