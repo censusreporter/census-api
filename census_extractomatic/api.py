@@ -1323,7 +1323,7 @@ def geo_tiles(sumlevel, zoom, x, y):
     if sumlevel == '010':
         abort(400, "Don't support US tiles")
 
-    cache_key = str('%s.%s.%s.%s' % (sumlevel, zoom, x, y))
+    cache_key = str('tigertile%s%s%s%s' % (sumlevel, zoom, x, y))
     cached = g.cache.get(cache_key)
     if cached:
         resp = jsonify(type="FeatureCollection", features=cached)
@@ -1370,7 +1370,7 @@ def geo_lookup(geoid):
     if len(geoid_parts) is not 2:
         abort(400, 'Invalid GeoID')
 
-    cache_key = str('%s.%s' % (geoid, request.qwargs.geom))
+    cache_key = str('showtiger%s%s' % (geoid, request.qwargs.geom))
     cached = g.cache.get(cache_key)
     if cached:
         result, geom = cached
@@ -1405,7 +1405,7 @@ def geo_lookup(geoid):
 @app.route("/1.0/geo/tiger2012/<geoid>/parents")
 @crossdomain(origin='*')
 def geo_parent(geoid):
-    cache_key = str(geoid)
+    cache_key = str('tigerparents%s' % geoid)
     cached = g.cache.get(cache_key)
     if cached:
         parents = cached
@@ -1896,7 +1896,7 @@ def show_specified_data(acs):
     else:
         abort(400, 'The %s release isn\'t supported.' % get_acs_name(acs))
 
-    cache_key = str("%s%s%s" % (acs, ''.join(request.qwargs.table_ids), ''.join(request.qwargs.geo_ids)))
+    cache_key = str("datashow%s%s%s" % (acs, ''.join(request.qwargs.table_ids), ''.join(request.qwargs.geo_ids)))
     cached = g.cache.get(cache_key)
     if cached:
         resp = make_response(cached)
