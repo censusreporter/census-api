@@ -96,7 +96,10 @@ def _install_elasticsearch():
     sudo('apt-get install -q -y openjdk-7-jre-headless')
     run('wget --quiet --continue https://download.elasticsearch.org/elasticsearch/elasticsearch/elasticsearch-1.0.1.deb')
     sudo('dpkg -i elasticsearch-1.0.1.deb')
-    sudo('service elasticsearch start')
+    sudo('mkdir -p /vol/elasticsearch')
+    sudo('chown elasticsearch:elasticsearch /vol/elasticsearch')
+    append('/etc/elasticsearch/elasticsearch.yml', 'path.data: /vol/elasticsearch', use_sudo=True)
+    sudo('service elasticsearch restart')
 
 def _install_memcached():
     """ Install and start memcached. """
