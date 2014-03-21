@@ -173,3 +173,28 @@ def deploy(branch='master'):
 
     # Restart apache
     sudo('service apache2 restart')
+
+def load_elasticsearch_data(releases=['acs2012_1yr', 'acs2012_3yr', 'acs2012_5yr'], delete_first=False):
+    """ Loads search data into our ElasticSearch index. """
+
+    # The table index data lives in our census-table-metadata repo
+    if not exists('/home/ubuntu/census-table-metadata'):
+        with cd('/home/ubuntu'):
+            run('git clone https://github.com/censusreporter/census-table-metadata.git')
+
+    if delete_first:
+        # Delete any existing data
+        run("curl -XDELETE 'http://localhost:9200/census/'")
+
+    # Bulk-insert the data
+    with cd('/home/ubuntu/census-table-metadata'):
+        for release in releases:
+            run("curl -S --output /dev/null -XPOST 'http://localhost:9200/_bulk' --data-binary @precomputed/%s/census_column_metadata.txt" % release)
+            run("curl -S --output /dev/null -XPOST 'http://localhost:9200/_bulk' --data-binary @precomputed/%s/census_table_metadata.txt" % release)
+
+def load_postgresql_data(releases=['acs2012_1yr', 'acs2012_3yr', 'acs2012_5yr', 'tiger2012'], delete_first=False):
+    """ Loads Census data (including metadata) from the specified releases into PostgreSQL. """
+
+    sudo("psql -d census -c \"COPY public.census_tabulation_metadata FROM '/home/ubuntu/census-table-metadata/precomputed/unified_metadata.csv' WITH csv ENCODING 'utf8' HEADER;\"", user='postgres')
+
+    print "THIS IS INCOMPLETE. I'm only loading a tabulation metadata for now."
