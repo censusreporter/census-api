@@ -7,6 +7,7 @@ root_dir = '/home/www-data'
 code_dir = '%s/api_app' % root_dir
 virtualenv_name = 'api_venv'
 virtualenv_dir = '%s/%s' % (root_dir, virtualenv_name)
+newrelic_app_name = 'Census Reporter API'
 
 def _download_sql_backups(data_to_load):
     """ Creates a new AWS EBS snapshot.
@@ -109,6 +110,14 @@ def _install_apache():
     """ Install and set up apache and mod_wsgi. """
     sudo('apt-get install -q -y apache2 libapache2-mod-wsgi')
     sudo('a2enmod wsgi', warn_only=True)
+
+def install_newrelic(api_key):
+    """ Install the New Relic Python and Server agents using the specified API key. """
+    with cd(code_dir):
+        with prefix('source %s/bin/activate' % virtualenv_dir):
+            sudo('newrelic-admin generate-config %s %s/newrelic.ini' % (api_key, code_dir), user='www-data')
+
+    sudo("sed -i \"s/Python Application/%s/g\" %s/newrelic.ini" % (newrelic_app_name, code_dir), user='www-data')
 
 def install_packages():
     """ Installs OS packages required to run the API. """
