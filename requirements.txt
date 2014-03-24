@@ -1,6 +1,6 @@
 Flask==0.9
 psycopg2==2.5
-newrelic==2.12.0.10
+newrelic==2.16.0.12
 Fabric==1.6.1
 simplejson==3.3.1
 GDAL==1.10.0
