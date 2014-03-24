@@ -2399,6 +2399,11 @@ def data_compare_geographies_within_parent(acs, table_id):
 def healthcheck():
     return 'OK'
 
+@app.route('/robots.txt')
+def robots_txt():
+  response = make_response('User-agent: *\nDisallow: /\n')
+  response.headers["Content-type"] = "text/plain"
+  return response
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
