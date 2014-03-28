@@ -2170,8 +2170,8 @@ def download_specified_data(acs):
                             out_layer.CreateField(ogr.FieldDefn(column_id, ogr.OFTReal))
                             out_layer.CreateField(ogr.FieldDefn(column_id+"e", ogr.OFTReal))
                         else:
-                            out_layer.CreateField(ogr.FieldDefn(column_info['name'], ogr.OFTReal))
-                            out_layer.CreateField(ogr.FieldDefn(column_info['name']+", Error", ogr.OFTReal))
+                            out_layer.CreateField(ogr.FieldDefn(column_id + " - " + column_info['name'], ogr.OFTReal))
+                            out_layer.CreateField(ogr.FieldDefn(column_id + " - " +column_info['name']+", Error", ogr.OFTReal))
 
                 sql = g.cur.mogrify("""SELECT the_geom,full_geoid,display_name
                     FROM tiger2012.census_name_lookup
@@ -2196,8 +2196,8 @@ def download_specified_data(acs):
                                     estimate_col_name = column_id
                                     error_col_name = column_id+"e"
                                 else:
-                                    estimate_col_name = column_info['name']
-                                    error_col_name = column_info['name']+", Error"
+                                    estimate_col_name = column_id + " - " +column_info['name']
+                                    error_col_name = column_id + " - " +column_info['name']+", Error"
 
                                 out_feat.SetField(estimate_col_name, table_estimates[column_id])
                                 out_feat.SetField(error_col_name, table_errors[column_id])
