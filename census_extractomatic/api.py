@@ -1862,28 +1862,28 @@ def expand_geoids(geoid_list, release=None):
 
     # Look for geoid "groups" of the form `child_sumlevel|parent_geoid`.
     # These will expand into a list of geoids like the old comparison endpoint used to
-    geo_ids = []
+    expanded_geoids = []
+    explicit_geoids = []
     for geoid_str in geoid_list:
         geoid_split = geoid_str.split('|')
         if len(geoid_split) == 2 and len(geoid_split[0]) == 3:
             (child_summary_level, parent_geoid) = geoid_split
-            child_geoids = get_child_geoids(parent_geoid, child_summary_level)
-            for child_geoid in child_geoids:
-                geo_ids.append(child_geoid['geoid'])
+            expanded_geoids.extend([child_geoid['geoid'] for child_geoid in get_child_geoids(parent_geoid, child_summary_level)])
         else:
-            geo_ids.append(geoid_str)
+            explicit_geoids.append(geoid_str)
 
-    # Check to make sure the geos requested are valid
-    if not geo_ids:
-        raise ShowDataException("No geo_ids for release %s." % (release))
-
+    # Since the expanded geoids were sourced from the database they don't need to be checked
     valid_geo_ids = []
-    g.cur.execute("SET search_path=%s,public;", [release])
-    g.cur.execute("SELECT geoid FROM geoheader WHERE geoid IN %s;", [tuple(geo_ids)])
-    for geo in g.cur:
-        valid_geo_ids.append(geo['geoid'])
+    valid_geo_ids.extend(expanded_geoids)
 
-    invalid_geo_ids = set(geo_ids) - set(valid_geo_ids)
+    # Check to make sure the geo ids the user entered are valid
+    if explicit_geoids:
+        g.cur.execute("SET search_path=%s,public;", [release])
+        g.cur.execute("SELECT geoid FROM geoheader WHERE geoid IN %s;", [tuple(explicit_geoids)])
+        print g.cur.query
+        valid_geo_ids.extend([geo['geoid'] for geo in g.cur])
+
+    invalid_geo_ids = set(expanded_geoids + explicit_geoids) - set(valid_geo_ids)
     if invalid_geo_ids:
         raise ShowDataException("The %s release doesn't include GeoID(s) %s." % (get_acs_name(release), ','.join(invalid_geo_ids)))
 
