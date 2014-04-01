@@ -1880,7 +1880,6 @@ def expand_geoids(geoid_list, release=None):
     if explicit_geoids:
         g.cur.execute("SET search_path=%s,public;", [release])
         g.cur.execute("SELECT geoid FROM geoheader WHERE geoid IN %s;", [tuple(explicit_geoids)])
-        print g.cur.query
         valid_geo_ids.extend([geo['geoid'] for geo in g.cur])
 
     invalid_geo_ids = set(expanded_geoids + explicit_geoids) - set(valid_geo_ids)
