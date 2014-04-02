@@ -2008,9 +2008,6 @@ def show_specified_data(acs):
                             data[geoid][table_id]['estimate'][col_name] = value
                             data[geoid][table_id]['error'][col_name] = moe_value
 
-                        if not data[geoid][table_id]['estimate']:
-                            raise ShowDataException("No data for table %s, geo %s in ACS %s." % (table_id, geoid, acs))
-
                 resp_data = json.dumps({
                     'tables': table_metadata,
                     'geography': geo_metadata,
