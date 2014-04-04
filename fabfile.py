@@ -106,6 +106,9 @@ def _install_memcached():
     """ Install and start memcached. """
     sudo('apt-get install -q -y memcached')
 
+    sudo("sed -i \"s/^-m 64$/-m 1024 -I 10485760/g\" /etc/memcached.conf")
+    sudo("service memcached restart")
+
 def _install_apache():
     """ Install and set up apache and mod_wsgi. """
     sudo('apt-get install -q -y apache2 libapache2-mod-wsgi')

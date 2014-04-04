@@ -6,6 +6,7 @@ class Production(Config):
     DATABASE_URI = 'postgresql://census:censuspassword@localhost/census'
     MEMCACHE_ADDR = ['127.0.0.1']
     ELASTICSEARCH_HOST = ['localhost:9200']
+    JSONIFY_PRETTYPRINT_REGULAR = False
 
 class Development(Config):
     # For local dev, tunnel to the DB first:
@@ -13,3 +14,4 @@ class Development(Config):
     DATABASE_URI = 'postgresql://census:censuspassword@localhost/census'
     MEMCACHE_ADDR = ['127.0.0.1']
     ELASTICSEARCH_HOST = ['localhost:9200']
+    JSONIFY_PRETTYPRINT_REGULAR = False
