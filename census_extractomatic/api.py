@@ -1886,7 +1886,7 @@ def expand_geoids(geoid_list, release=None):
     if invalid_geo_ids:
         raise ShowDataException("The %s release doesn't include GeoID(s) %s." % (get_acs_name(release), ','.join(invalid_geo_ids)))
 
-    return valid_geo_ids
+    return set(valid_geo_ids)
 
 
 class ShowDataException(Exception):
@@ -1928,8 +1928,8 @@ def show_specified_data(acs):
         # this will include those parent names in the reponse `geography` list
         # but leave them out of the response `data` list
         grouped_geo_ids = [item for item in requested_geo_ids if "|" in item]
-        parents_of_groups = [item_group.split('|')[1] for item_group in grouped_geo_ids]
-        named_geo_ids = valid_geo_ids + parents_of_groups
+        parents_of_groups = set([item_group.split('|')[1] for item_group in grouped_geo_ids])
+        named_geo_ids = valid_geo_ids | parents_of_groups
 
         # Fill in the display name for the geos
         g.cur.execute("SELECT full_geoid,population,display_name FROM tiger2012.census_name_lookup WHERE full_geoid IN %s;", [tuple(named_geo_ids)])
