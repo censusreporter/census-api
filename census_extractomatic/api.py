@@ -1333,7 +1333,7 @@ def geo_tiles(sumlevel, zoom, x, y):
 
         g.cur.execute("""SELECT
                     ST_AsGeoJSON(ST_SimplifyPreserveTopology(
-                        ST_Intersection(ST_Buffer(ST_MakeEnvelope(%s, %s, %s, %s, 4326), 0.01, 'endcap=square'), the_geom),
+                        ST_Intersection(ST_Buffer(ST_MakeEnvelope(%s, %s, %s, %s, 4326), 0.09, 'endcap=square'), the_geom),
                         ST_Perimeter(the_geom) / 2500), 6) as geom,
                     full_geoid,
                     display_name
@@ -2001,9 +2001,6 @@ def show_specified_data(acs):
                         for (col_name, value) in data_iter:
                             col_name = col_name.upper()
                             (moe_name, moe_value) = next(cols_iter)
-
-                            if value is None:
-                                continue
 
                             data[geoid][table_id]['estimate'][col_name] = value
                             data[geoid][table_id]['error'][col_name] = moe_value
