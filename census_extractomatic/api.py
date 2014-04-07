@@ -25,7 +25,7 @@ import zipfile
 import pylibmc
 import mockcache
 import pyes
-from validation import qwarg_validate, NonemptyString, FloatRange, StringList, Bool, OneOf
+from validation import qwarg_validate, NonemptyString, FloatRange, StringList, Bool, OneOf, Integer
 
 
 app = Flask(__name__)
@@ -1246,6 +1246,57 @@ def latest_geo_profile(geoid):
 
 ## GEO LOOKUPS ##
 
+# Example: /1.0/geo/suggest?q=spok
+# Example: /1.0/geo/suggest?q=new+yor
+@app.route("/1.0/geo/suggest")
+@qwarg_validate({
+    'q': {'valid': NonemptyString()},
+})
+@crossdomain(origin='*')
+def geo_suggest():
+    query_dict = {
+        "geo": {
+            "text": request.qwargs.q,
+            "completion": {
+                "field": "name_suggest"
+            }
+        }
+    }
+    results = g.es._send_request('POST', 'tiger2012/_suggest', body=json.dumps(query_dict))
+    return json.dumps({"results": [{'geoid': option['payload'], 'name': option['text']} for option in results['geo'][0]['options']]})
+
+
+# Example: /1.0/geo/elasticsearch?q=chicago,+il
+# Example: /1.0/geo/elasticsearch?q=new+york+city
+@app.route("/1.0/geo/elasticsearch")
+@qwarg_validate({
+    'q': {'valid': NonemptyString()},
+    'start': {'valid': Integer(), 'default': 0},
+    'size': {'valid': Integer(), 'default': 15},
+    'sumlevs': {'valid': StringList(item_validator=OneOf(SUMLEV_NAMES))},
+})
+@crossdomain(origin='*')
+def geo_elasticsearch():
+    q = pyes.query.BoolQuery()
+
+    if request.qwargs.q:
+        q.add_must(pyes.query.FuzzyQuery('names', request.qwargs.q))
+
+    if request.qwargs.sumlevs:
+        q.add_must(pyes.query.MatchQuery('sumlev', request.qwargs.sumlevs))
+
+    q = pyes.query.Search(q, start=request.qwargs.start, size=request.qwargs.size)
+    q.facet.add_term_facet('sumlev')
+
+    results = g.es.search(q)
+    out = []
+    for result in results:
+        result.pop('name_suggest', None)
+        result.pop('names', None)
+        out.append(result)
+    return json.dumps({"results": out, "facets": results.facets})
+
+
 # Example: /1.0/geo/search?q=spok
 # Example: /1.0/geo/search?q=spok&sumlevs=050,160
 @app.route("/1.0/geo/search")
@@ -1522,7 +1573,7 @@ def format_table_elasticsearch_result(obj, backfill_table_details):
     'topics': {'valid': StringList()}
 })
 @crossdomain(origin='*')
-def elasticsearch_table_search():
+def table_elasticsearch():
     if not (request.qwargs.q or request.qwargs.topics):
         abort(400, "Must provide a query term or topics for filtering.")
 

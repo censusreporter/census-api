@@ -73,6 +73,18 @@ class Bool(Validation):
         return "A boolean like 'true' or 'false'"
 
 
+class Integer(Validation):
+    def validate(self, raw):
+        try:
+            res = int(raw)
+        except ValueError:
+            res = False
+        return res
+
+    def help_text(self):
+        return "An integer like '1' or '123'"
+
+
 class OneOf(Validation):
     def __init__(self, collection):
         self._collection = collection
