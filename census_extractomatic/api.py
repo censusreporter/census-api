@@ -437,7 +437,7 @@ def compute_profile_item_levels(geoid):
     sumlevel = geoid_parts[0][:3]
     id_part = geoid_parts[1]
 
-    if sumlevel in ('140', '150', '160', '310', '330', '700', '860', '950', '960', '970'):
+    if sumlevel in ('140', '150', '160', '310', '330', '350', '700', '860', '950', '960', '970'):
         g.cur.execute("""SELECT * FROM tiger2012.census_geo_containment WHERE child_geoid=%s ORDER BY percent_covered ASC""", [geoid])
         for row in g.cur:
             parent_sumlevel_name = SUMLEV_NAMES.get(row['parent_geoid'][:3])['name']
