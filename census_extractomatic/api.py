@@ -270,9 +270,10 @@ def value_rpn_calc(data, rpn_string):
                     # We're dealing with ratios, not pure division.
                     if a == 0 or b == 0:
                         c = 0
+                        c_moe = 0
                     else:
                         c = ops[token](a, b)
-                    c_moe = moe_ratio(a, b, a_moe, b_moe)
+                        c_moe = moe_ratio(a, b, a_moe, b_moe)
                     numerator = a
                     numerator_moe = round(a_moe, 1)
                 else:
