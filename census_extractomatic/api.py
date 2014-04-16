@@ -1282,7 +1282,7 @@ def geo_elasticsearch():
     q = pyes.query.BoolQuery()
 
     if request.qwargs.q:
-        q.add_must(pyes.query.FuzzyQuery('names', request.qwargs.q))
+        q.add_must(pyes.query.MatchQuery('names', request.qwargs.q))
 
     if request.qwargs.sumlevs:
         q.add_must(pyes.query.MatchQuery('sumlev', request.qwargs.sumlevs))
