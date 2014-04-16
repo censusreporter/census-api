@@ -1290,7 +1290,7 @@ def geo_elasticsearch():
     q = pyes.query.Search(q, start=request.qwargs.start, size=request.qwargs.size)
     q.facet.add_term_facet('sumlev')
 
-    results = g.es.search(q)
+    results = g.es.search(q, index='tiger2012', doc_types=['geo'])
     out = []
     for result in results:
         result.pop('name_suggest', None)
