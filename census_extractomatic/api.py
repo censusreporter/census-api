@@ -1554,11 +1554,12 @@ def table_suggest():
     results = g.es._send_request('POST', 'census/_suggest', body=json.dumps(query_dict))
 
     def format_results(result):
-        res = dict(name=result['text'])
+        res = dict(table_title=result['text'])
 
         if 'table_id' in result['payload']:
             res['table_id'] = result['payload']['table_id']
         if 'column_id' in result['payload']:
+            res['column_title'] = result['text']
             res['column_id'] = result['payload']['column_id']
             res['table_title'] = result['payload']['table_title']
 
