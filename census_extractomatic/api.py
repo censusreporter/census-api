@@ -266,14 +266,15 @@ def value_rpn_calc(data, rpn_string):
                     c_moe = None
                 elif token == '/':
                     # Broken out because MOE ratio needs both MOE and estimates
-                    try:
-                        c = ops[token](a, b)
-                        c_moe = moe_ratio(a, b, a_moe, b_moe)
-                        numerator = a
-                        numerator_moe = round(a_moe, 1)
-                    except ZeroDivisionError:
-                        c = None
-                        c_moe = None
+
+                    # We're dealing with ratios, not pure division.
+                    if a == 0 or b == 0:
+                        return 0
+
+                    c = ops[token](a, b)
+                    c_moe = moe_ratio(a, b, a_moe, b_moe)
+                    numerator = a
+                    numerator_moe = round(a_moe, 1)
                 else:
                     c = ops[token](a, b)
                     c_moe = moe_ops[token](a_moe, b_moe)
