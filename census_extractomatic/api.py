@@ -1535,6 +1535,38 @@ def show_specified_geo_data():
 
 ## TABLE LOOKUPS ##
 
+# Example: /1.0/table/suggest?q=pove
+# Example: /1.0/table/suggest?q=norweg
+@app.route("/1.0/table/suggest")
+@qwarg_validate({
+    'q': {'valid': NonemptyString()},
+})
+@crossdomain(origin='*')
+def table_suggest():
+    query_dict = {
+        "table": {
+            "text": request.qwargs.q,
+            "completion": {
+                "field": "name_suggest"
+            }
+        }
+    }
+    results = g.es._send_request('POST', 'census/_suggest', body=json.dumps(query_dict))
+
+    def format_results(result):
+        res = dict(name=result['text'])
+
+        if 'table_id' in result['payload']:
+            res['table_id'] = result['payload']['table_id']
+        if 'column_id' in result['payload']:
+            res['column_id'] = result['payload']['column_id']
+            res['table_title'] = result['payload']['table_title']
+
+        return res
+
+    return json.dumps({"results": [format_results(result) for result in results['table'][0]['options']]})
+
+
 def format_table_elasticsearch_result(obj, backfill_table_details):
     '''internal util for formatting each object in `table_search` API response'''
 
@@ -1572,43 +1604,31 @@ def format_table_elasticsearch_result(obj, backfill_table_details):
 @qwarg_validate({
     'acs': {'valid': OneOf(allowed_acs), 'default': 'acs2012_1yr'},
     'q':   {'valid': NonemptyString()},
-    'topics': {'valid': StringList()}
+    'topics': {'valid': StringList()},
+    'start': {'valid': Integer(), 'default': 0},
+    'size': {'valid': Integer(), 'default': 15},
 })
 @crossdomain(origin='*')
 def table_elasticsearch():
-    if not (request.qwargs.q or request.qwargs.topics):
-        abort(400, "Must provide a query term or topics for filtering.")
-
     q = pyes.query.BoolQuery()
 
-    q.add_must(pyes.query.MatchQuery('release', request.qwargs.acs))
-
     if request.qwargs.q:
-        q.add_should(pyes.query.MatchQuery('table_id', request.qwargs.q))
-        q.add_should(pyes.query.MultiMatchQuery(['table_title', 'column_title'], request.qwargs.q))
-        # q.add_should(pyes.query.NestedQuery('rows', pyes.query.MultiMatchQuery(['column_title', 'column_id'], request.qwargs.q)))
+        q.add_must(pyes.query.FuzzyQuery('names', request.qwargs.q))
 
-    if request.qwargs.topics:
-        q.add_must(pyes.query.MatchQuery('topics', request.qwargs.topics))
+    if request.qwargs.sumlevs:
+        q.add_must(pyes.query.MatchQuery('topics', request.qwargs.topicss))
 
-    s = pyes.query.Search(q)
-    results = g.es.search(s)
+    q = pyes.query.Search(q, start=request.qwargs.start, size=request.qwargs.size)
+    q.facet.add_term_facet('topics')
 
-    # Backfill column results with table data
-    backfill_table_details = {}
-    tables_to_backfill = set()
-    for col in results:
-        if col._meta.type == 'column':
-            tables_to_backfill.add(col.release + col.table_id)
-    if tables_to_backfill:
-        results = g.es.mget(tables_to_backfill, index='census', doc_type='table')
-        if results:
-            for table in results:
-                backfill_table_details[table['table_id']] = table
-
-    results = [format_table_elasticsearch_result(t, backfill_table_details) for t in g.es.search(s)]
-
-    return json.dumps(results)
+    results = g.es.search(q, index='census', doc_types=['table', 'column'], sort='release:desc,weight:desc,_score')
+    out = []
+    for result in results:
+        result.pop('name_suggest', None)
+        result.pop('names', None)
+        result.pop('weight', None)
+        out.append(result)
+    return json.dumps({"results": out, "facets": results.facets})
 
 def format_table_search_result(obj, obj_type):
     '''internal util for formatting each object in `table_search` API response'''
