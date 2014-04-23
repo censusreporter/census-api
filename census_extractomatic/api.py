@@ -1463,7 +1463,7 @@ def geo_parent(geoid):
     if cached:
         parents = cached
     else:
-        parents = filter(lambda i: i['relation']!='this', compute_profile_item_levels(geoid))
+        parents = compute_profile_item_levels(geoid)
         parent_geoids = [p['geoid'] for p in parents]
 
         def build_item(p):
