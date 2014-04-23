@@ -2065,19 +2065,32 @@ def show_specified_data(acs):
 
                 for row in g.cur:
                     geoid = row.pop('geoid')
-                    data[geoid] = OrderedDict()
+                    data_for_geoid = OrderedDict()
 
                     cols_iter = iter(sorted(row.items(), key=lambda tup: tup[0]))
                     for table_id, data_iter in groupby(cols_iter, lambda x: x[0][:-3].upper()):
-                        data[geoid][table_id] = OrderedDict()
-                        data[geoid][table_id]['estimate'] = OrderedDict()
-                        data[geoid][table_id]['error'] = OrderedDict()
+                        table_for_geoid = OrderedDict()
+                        table_for_geoid['estimate'] = OrderedDict()
+                        table_for_geoid['error'] = OrderedDict()
+
+                        this_geo_has_data = False
+
                         for (col_name, value) in data_iter:
                             col_name = col_name.upper()
                             (moe_name, moe_value) = next(cols_iter)
 
-                            data[geoid][table_id]['estimate'][col_name] = value
-                            data[geoid][table_id]['error'][col_name] = moe_value
+                            if value is not None and moe_value is not None:
+                                this_geo_has_data = True
+
+                            table_for_geoid['estimate'][col_name] = value
+                            table_for_geoid['error'][col_name] = moe_value
+
+                        if this_geo_has_data:
+                            data_for_geoid[table_id] = table_for_geoid
+                        else:
+                            raise ShowDataException("The %s release doesn't have data for table %s." % (get_acs_name(acs), table_id))
+
+                    data[geoid] = data_for_geoid
 
                 resp_data = json.dumps({
                     'tables': table_metadata,
