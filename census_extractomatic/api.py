@@ -1287,7 +1287,11 @@ def geo_elasticsearch():
     if request.qwargs.sumlevs:
         q.add_must(pyes.query.MatchQuery('sumlev', request.qwargs.sumlevs))
 
-    q = pyes.query.Search(q, start=request.qwargs.start, size=request.qwargs.size)
+    sorting = [
+        {"importance": "desc"},
+        "_score"
+    ]
+    q = pyes.query.Search(q, sort=sorting, start=request.qwargs.start, size=request.qwargs.size)
     q.facet.add_term_facet('sumlev')
 
     results = g.es.search(q, index='tiger2012', doc_types=['geo'])
