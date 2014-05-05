@@ -2227,6 +2227,7 @@ def download_specified_data(acs):
             if format_info['type'] == 'ogr':
                 import ogr
                 import osr
+                ogr.UseExceptions()
                 db_details = urlparse.urlparse(app.config['DATABASE_URI'])
                 host = db_details.hostname
                 user = db_details.username
