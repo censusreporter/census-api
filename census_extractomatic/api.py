@@ -1762,6 +1762,29 @@ def table_search():
 
     return json.dumps(data)
 
+# Example: /1.0/tabulation/01001
+@app.route("/1.0/tabulation/<tabulation_id>")
+@crossdomain(origin='*')
+def tabulation_details(tabulation_id):
+    g.cur.execute("""SELECT *
+                     FROM census_tabulation_metadata
+                     WHERE tabulation_code=%s""", [tabulation_id])
+
+    row = g.cur.fetchone()
+
+    if not row:
+        abort(400, "Tabulation %s not found." % tabulation_id)
+
+    row['tables_by_release'] = {
+        'one_yr': row.pop('tables_in_one_yr', []),
+        'three_yr': row.pop('tables_in_three_yr', []),
+        'five_yr': row.pop('tables_in_five_yr', []),
+    }
+
+    row.pop('weight', None)
+
+    return json.dumps(row)
+
 # Example: /1.0/table/B01001?release=acs2012_1yr
 @app.route("/1.0/table/<table_id>")
 @qwarg_validate({
