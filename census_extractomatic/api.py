@@ -1467,7 +1467,10 @@ def geo_parent(geoid):
     if cached:
         parents = cached
     else:
-        parents = compute_profile_item_levels(geoid)
+        try:
+            parents = compute_profile_item_levels(geoid)
+        except Exception, e:
+            abort(400, "Could not compute parents: " + e.message)
         parent_geoids = [p['geoid'] for p in parents]
 
         def build_item(p):
