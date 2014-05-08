@@ -1451,7 +1451,7 @@ def geo_tiles(sumlevel, zoom, x, y):
         result = json.dumps(dict(type="FeatureCollection", features=results))
 
         resp = make_response(result)
-        put_in_cache(cache_key, result)
+        put_in_cache(cache_key, result, s3=False)
 
     resp.headers.set('Content-Type', 'application/json')
     resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600*4))
@@ -1497,7 +1497,7 @@ def geo_lookup(geoid):
         result = json.dumps(dict(type="Feature", properties=result, geometry=geom))
 
         resp = make_response(result)
-        put_in_cache(cache_key, result)
+        put_in_cache(cache_key, result, s3=False)
 
     resp.headers.set('Content-Type', 'application/json')
     resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600*4))
@@ -1537,7 +1537,7 @@ def geo_parent(geoid):
         result = json.dumps(dict(parents=parents))
 
         resp = make_response(result)
-        put_in_cache(cache_key, result)
+        put_in_cache(cache_key, result, s3=False)
 
     resp.headers.set('Content-Type', 'application/json')
     resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600*4))
