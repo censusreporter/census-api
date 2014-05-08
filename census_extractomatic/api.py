@@ -161,7 +161,6 @@ supported_formats = {
 def get_from_cache(cache_key, try_s3=True):
     # Try memcache first
     cached = g.cache.get(cache_key)
-    print "Memcache: Get {} was {}".format(cache_key, bool(cached))
 
     if not cached and try_s3:
         # Try S3 next
@@ -172,7 +171,6 @@ def get_from_cache(cache_key, try_s3=True):
             cached = k.get_contents_as_string()
         except S3ResponseError:
             cached = None
-        print "S3: Get {} was {}".format(cache_key, bool(cached))
 
         # TODO Should stick the S3 thing back in memcache
 
@@ -181,16 +179,12 @@ def get_from_cache(cache_key, try_s3=True):
 def put_in_cache(cache_key, value, memcache=True, s3=True, content_type='application/json', ):
     if memcache:
         g.cache.set(cache_key, value)
-        print "Memcache: Set {}".format(cache_key)
 
     if s3:
         b = current_app.s3.get_bucket('embed.censusreporter.org', validate=False)
         k = Key(b, cache_key)
-        headers = {
-            'Content-Type': content_type,
-        }
-        k.set_contents_from_string(value, reduced_redundancy=True, headers=headers, policy='public-read')
-        print "S3: Set {}".format(cache_key)
+        k.metadata['Content-Type'] = content_type
+        k.set_contents_from_string(value, reduced_redundancy=True, policy='public-read')
 
 def crossdomain(origin=None, methods=None, headers=None,
                 max_age=21600, attach_to_all=True,
