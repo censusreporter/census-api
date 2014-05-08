@@ -7,3 +7,4 @@ GDAL==1.10.0
 pylibmc==1.2.3
 mockcache==1.0.1
 pyes==0.90.1
+boto==2.27.0

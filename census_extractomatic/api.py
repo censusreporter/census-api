@@ -25,11 +25,16 @@ import zipfile
 import pylibmc
 import mockcache
 import pyes
+from boto.s3.connection import S3Connection
+from boto.s3.key import Key
+from boto.exception import S3ResponseError
 from validation import qwarg_validate, NonemptyString, FloatRange, StringList, Bool, OneOf, Integer
 
 
 app = Flask(__name__)
 app.config.from_object(os.environ.get('EXTRACTOMATIC_CONFIG_MODULE', 'census_extractomatic.config.Development'))
+
+app.s3 = S3Connection()
 
 if not app.debug:
     import logging
@@ -152,6 +157,40 @@ supported_formats = {
     'xlsx':     {"type": "ogr", "driver": "XLSX"},
     'csv':      {"type": "ogr", "driver": "CSV"},
 }
+
+def get_from_cache(cache_key, try_s3=True):
+    # Try memcache first
+    cached = g.cache.get(cache_key)
+    print "Memcache: Get {} was {}".format(cache_key, bool(cached))
+
+    if not cached and try_s3:
+        # Try S3 next
+        b = current_app.s3.get_bucket('embed.censusreporter.org', validate=False)
+        k = Key(b)
+        k.key = cache_key
+        try:
+            cached = k.get_contents_as_string()
+        except S3ResponseError:
+            cached = None
+        print "S3: Get {} was {}".format(cache_key, bool(cached))
+
+        # TODO Should stick the S3 thing back in memcache
+
+    return cached
+
+def put_in_cache(cache_key, value, memcache=True, s3=True, content_type='application/json', ):
+    if memcache:
+        g.cache.set(cache_key, value)
+        print "Memcache: Set {}".format(cache_key)
+
+    if s3:
+        b = current_app.s3.get_bucket('embed.censusreporter.org', validate=False)
+        k = Key(b, cache_key)
+        headers = {
+            'Content-Type': content_type,
+        }
+        k.set_contents_from_string(value, reduced_redundancy=True, headers=headers, policy='public-read')
+        print "S3: Set {}".format(cache_key)
 
 def crossdomain(origin=None, methods=None, headers=None,
                 max_age=21600, attach_to_all=True,
@@ -1380,10 +1419,10 @@ def geo_tiles(sumlevel, zoom, x, y):
     if sumlevel == '010':
         abort(400, "Don't support US tiles")
 
-    cache_key = str('tigertile%s%s%s%s' % (sumlevel, zoom, x, y))
-    cached = g.cache.get(cache_key)
+    cache_key = str('tiger2012/tile/%s/%s/%s/%s.geojson' % (sumlevel, zoom, x, y))
+    cached = get_from_cache(cache_key)
     if cached:
-        resp = jsonify(type="FeatureCollection", features=cached)
+        resp = make_response(cached)
     else:
         (miny, minx) = num2deg(x, y, zoom)
         (maxy, maxx) = num2deg(x + 1, y + 1, zoom)
@@ -1409,17 +1448,19 @@ def geo_tiles(sumlevel, zoom, x, y):
                 "geometry": json.loads(row['geom'])
             })
 
-        g.cache.set(cache_key, results)
+        result = json.dumps(dict(type="FeatureCollection", features=results))
 
-        resp = jsonify(type="FeatureCollection", features=results)
+        resp = make_response(result)
+        put_in_cache(cache_key, result)
 
+    resp.headers.set('Content-Type', 'application/json')
     resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600*4))
     return resp
 
 # Example: /1.0/geo/tiger2012/04000US53
 @app.route("/1.0/geo/tiger2012/<geoid>")
 @qwarg_validate({
-    'geom': {'valid': Bool()}
+    'geom': {'valid': Bool(), 'default': False}
 })
 @crossdomain(origin='*')
 def geo_lookup(geoid):
@@ -1427,10 +1468,10 @@ def geo_lookup(geoid):
     if len(geoid_parts) is not 2:
         abort(400, 'Invalid GeoID')
 
-    cache_key = str('showtiger%s%s' % (geoid, request.qwargs.geom))
-    cached = g.cache.get(cache_key)
+    cache_key = str('tiger2012/show/%s.json?geom=%s' % (geoid, request.qwargs.geom))
+    cached = get_from_cache(cache_key)
     if cached:
-        result, geom = cached
+        resp = make_response(cached)
     else:
         if request.qwargs.geom:
             g.cur.execute("""SELECT display_name,simple_name,sumlevel,full_geoid,population,aland,awater,
@@ -1453,19 +1494,25 @@ def geo_lookup(geoid):
         if geom:
             geom = json.loads(geom)
 
-        g.cache.set(cache_key, (result, geom))
+        result = json.dumps(dict(type="Feature", properties=result, geometry=geom))
 
-    return jsonify(type="Feature", properties=result, geometry=geom)
+        resp = make_response(result)
+        put_in_cache(cache_key, result)
+
+    resp.headers.set('Content-Type', 'application/json')
+    resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600*4))
+
+    return resp
 
 
 # Example: /1.0/geo/tiger2012/04000US53/parents
 @app.route("/1.0/geo/tiger2012/<geoid>/parents")
 @crossdomain(origin='*')
 def geo_parent(geoid):
-    cache_key = str('tigerparents%s' % geoid)
-    cached = g.cache.get(cache_key)
+    cache_key = str('tiger2012/show/%s.parents.json' % geoid)
+    cached = get_from_cache(cache_key)
     if cached:
-        parents = cached
+        resp = make_response(cached)
     else:
         try:
             parents = compute_profile_item_levels(geoid)
@@ -1487,9 +1534,15 @@ def geo_parent(geoid):
             for parent in parents:
                 parent.update(parent_list[parent['geoid']])
 
-        g.cache.set(cache_key, parents)
+        result = json.dumps(dict(parents=parents))
 
-    return jsonify(parents=parents)
+        resp = make_response(result)
+        put_in_cache(cache_key, result)
+
+    resp.headers.set('Content-Type', 'application/json')
+    resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600*4))
+
+    return resp
 
 
 # Example: /1.0/geo/show/tiger2012?geo_ids=04000US55,04000US56
