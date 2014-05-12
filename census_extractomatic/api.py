@@ -82,7 +82,6 @@ SUMLEV_NAMES = {
     "500": {"name": "congressional district", "plural": "congressional districts", "tiger_table": "cd"},
     "610": {"name": "state senate district", "plural": "state senate districts", "tiger_table": "sldu"},
     "620": {"name": "state house district", "plural": "state house districts", "tiger_table": "sldl"},
-    "700": {"name": "VTD", "plural": "VTDs", "tiger_table": "vtd"},
     "795": {"name": "PUMA", "plural": "PUMAs", "tiger_table": "puma"},
     "850": {"name": "ZCTA3", "plural": "ZCTA3s"},
     "860": {"name": "ZCTA5", "plural": "ZCTA5s", "tiger_table": "zcta5"},
@@ -472,7 +471,7 @@ def compute_profile_item_levels(geoid):
     sumlevel = geoid_parts[0][:3]
     id_part = geoid_parts[1]
 
-    if sumlevel in ('140', '150', '160', '310', '330', '350', '700', '860', '950', '960', '970'):
+    if sumlevel in ('140', '150', '160', '310', '330', '350', '860', '950', '960', '970'):
         g.cur.execute("""SELECT * FROM tiger2012.census_geo_containment WHERE child_geoid=%s ORDER BY percent_covered ASC""", [geoid])
         for row in g.cur:
             parent_sumlevel_name = SUMLEV_NAMES.get(row['parent_geoid'][:3])['name']
@@ -1940,9 +1939,9 @@ def get_child_geoids(parent_geoid, child_summary_level):
         return get_child_geoids_by_coverage(parent_geoid, child_summary_level)
     elif parent_sumlevel == '310' and child_summary_level in ('160', '860'):
         return get_child_geoids_by_coverage(parent_geoid, child_summary_level)
-    elif parent_sumlevel == '040' and child_summary_level in ('310', '700', '860'):
+    elif parent_sumlevel == '040' and child_summary_level in ('310', '860'):
         return get_child_geoids_by_coverage(parent_geoid, child_summary_level)
-    elif parent_sumlevel == '050' and child_summary_level in ('160', '700', '860', '950', '960', '970'):
+    elif parent_sumlevel == '050' and child_summary_level in ('160', '860', '950', '960', '970'):
         return get_child_geoids_by_coverage(parent_geoid, child_summary_level)
     else:
         return get_child_geoids_by_gis(parent_geoid, child_summary_level)
