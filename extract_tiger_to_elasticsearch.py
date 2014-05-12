@@ -698,25 +698,6 @@ def main():
     process_single_sumlev(cur, es, q)
 
 
-    print "Loading VTD..."
-    q = """SELECT
-        ARRAY[
-            vtd.name10 || ', ' || state.stusps
-        ] as names,
-        vtd.name10 || ', ' || state.stusps as display_name,
-        '700' as sumlev,
-        2 * log(b01003.b01003001 + 1) as importance,
-        vtd.geoid10 as geoid,
-        '70000US' || vtd.geoid10 as full_geoid,
-        (b01003.b01003001 :: bigint) as population,
-        (vtd.aland10 :: bigint) as aland,
-        (vtd.awater10 :: bigint) as awater,
-        (vtd.intptlat10 :: double precision) as lat,
-        (vtd.intptlon10 :: double precision) as lon
-    FROM tiger2012.vtd LEFT OUTER JOIN acs2012_5yr.b01003 ON (('70000US' || vtd.geoid10) = b01003.geoid) JOIN tiger2012.state ON (vtd.statefp10=state.statefp);"""
-    process_single_sumlev(cur, es, q)
-
-
     print "Loading country..."
     q = """SELECT
         ARRAY[
