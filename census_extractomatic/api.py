@@ -1315,6 +1315,7 @@ def geo_elasticsearch():
 
     if request.qwargs.q:
         q.add_must(pyes.query.MatchQuery('names', request.qwargs.q, operator='and', fuzziness='1'))
+        q.add_should(pyes.query.MatchQuery('names', request.qwargs.q, type='phrase'))
 
     if request.qwargs.sumlevs:
         q.add_must(pyes.query.MatchQuery('sumlev', request.qwargs.sumlevs))
