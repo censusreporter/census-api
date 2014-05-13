@@ -2293,8 +2293,8 @@ def download_specified_data(acs):
                         if value is not None and moe_value is not None:
                             this_geo_has_data = True
 
-                        table_for_geoid[table_id]['estimate'][col_name] = value
-                        table_for_geoid[table_id]['error'][col_name] = moe_value
+                        table_for_geoid['estimate'][col_name] = value
+                        table_for_geoid['error'][col_name] = moe_value
 
                     if this_geo_has_data:
                         data_for_geoid[table_id] = table_for_geoid
