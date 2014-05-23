@@ -1835,40 +1835,53 @@ def tabulation_details(tabulation_id):
 })
 @crossdomain(origin='*')
 def table_details(table_id):
-    g.cur.execute("SET search_path=%s,public;", [request.qwargs.acs])
+    cache_key = str('tables/%s/%s.json' % (request.qwargs.acs, table_id))
+    cached = get_from_cache(cache_key)
+    if cached:
+        resp = make_response(cached)
+    else:
+        g.cur.execute("SET search_path=%s,public;", [request.qwargs.acs])
 
-    g.cur.execute("""SELECT *
-                     FROM census_table_metadata tab
-                     WHERE table_id=%s""", [table_id])
-    row = g.cur.fetchone()
+        g.cur.execute("""SELECT *
+                         FROM census_table_metadata tab
+                         WHERE table_id=%s""", [table_id])
+        row = g.cur.fetchone()
 
-    if not row:
-        abort(400, "Table %s not found." % table_id.upper())
+        if not row:
+            abort(400, "Table %s not found." % table_id.upper())
 
-    data = OrderedDict([
-        ("table_id", row['table_id']),
-        ("table_title", row['table_title']),
-        ("simple_table_title", row['simple_table_title']),
-        ("subject_area", row['subject_area']),
-        ("universe", row['universe']),
-        ("denominator_column_id", row['denominator_column_id']),
-        ("topics", row['topics'])
-    ])
+        data = OrderedDict([
+            ("table_id", row['table_id']),
+            ("table_title", row['table_title']),
+            ("simple_table_title", row['simple_table_title']),
+            ("subject_area", row['subject_area']),
+            ("universe", row['universe']),
+            ("denominator_column_id", row['denominator_column_id']),
+            ("topics", row['topics'])
+        ])
 
-    g.cur.execute("""SELECT *
-                     FROM census_column_metadata
-                     WHERE table_id=%s""", [row['table_id']])
+        g.cur.execute("""SELECT *
+                         FROM census_column_metadata
+                         WHERE table_id=%s""", [row['table_id']])
 
-    rows = []
-    for row in g.cur:
-        rows.append((row['column_id'], dict(
-            column_title=row['column_title'],
-            indent=row['indent'],
-            parent_column_id=row['parent_column_id']
-        )))
-    data['columns'] = OrderedDict(rows)
+        rows = []
+        for row in g.cur:
+            rows.append((row['column_id'], dict(
+                column_title=row['column_title'],
+                indent=row['indent'],
+                parent_column_id=row['parent_column_id']
+            )))
+        data['columns'] = OrderedDict(rows)
 
-    return json.dumps(data)
+        result = json.dumps(data)
+
+        resp = make_response(result)
+        put_in_cache(cache_key, result)
+
+    resp.headers.set('Content-Type', 'application/json')
+    resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600*4))
+
+    return resp
 
 
 # Example: /1.0/table/compare/rowcounts/B01001?year=2011&sumlevel=050&within=04000US53
