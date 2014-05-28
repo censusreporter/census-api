@@ -1678,6 +1678,7 @@ def table_elasticsearch():
     results = g.es.search(q, index='census', doc_types=['tabulation', 'table', 'column'])
     out = []
     for result in results:
+        result.pop('weight', None)
         out.append(result)
     return json.dumps({"results": out, "facets": results.facets})
 
