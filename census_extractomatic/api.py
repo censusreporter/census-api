@@ -1306,7 +1306,7 @@ def geo_suggest():
 @qwarg_validate({
     'q': {'valid': NonemptyString()},
     'start': {'valid': Integer(), 'default': 0},
-    'size': {'valid': Integer(), 'default': 15},
+    'size': {'valid': Integer(), 'default': 25},
     'sumlevs': {'valid': StringList(item_validator=OneOf(SUMLEV_NAMES))},
 })
 @crossdomain(origin='*')
@@ -1654,7 +1654,7 @@ def format_table_elasticsearch_result(obj, backfill_table_details):
     'q':   {'valid': NonemptyString()},
     'topics': {'valid': StringList()},
     'start': {'valid': Integer(), 'default': 0},
-    'size': {'valid': Integer(), 'default': 15},
+    'size': {'valid': Integer(), 'default': 25},
 })
 @crossdomain(origin='*')
 def table_elasticsearch():
