@@ -6,5 +6,5 @@ simplejson==3.3.1
 GDAL==1.10.0
 pylibmc==1.2.3
 mockcache==1.0.1
-pyes==0.90.1
+pyes==0.99.2
 boto==2.27.0
