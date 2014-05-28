@@ -1319,6 +1319,9 @@ def geo_elasticsearch():
     if request.qwargs.sumlevs:
         q.add_must(pyes.query.MatchQuery('sumlev', request.qwargs.sumlevs))
 
+    if request.qwargs.start < 0:
+        abort(400, "start parameter must be zero or more.")
+
     sorting = [
         {"importance": "desc"},
         "_score"
@@ -1335,7 +1338,7 @@ def geo_elasticsearch():
         out.append(result)
 
     links = {}
-    if request.qwargs.start < results.total:
+    if request.qwargs.start + request.qwargs.size < results.total:
         args = request.args.copy()
         args['start'] = request.qwargs.start + request.qwargs.size
         links['next_page'] = url_for('.geo_elasticsearch', **args)
@@ -1677,6 +1680,9 @@ def table_elasticsearch():
     if request.qwargs.topics:
         q.add_must(pyes.query.MatchQuery('topics', request.qwargs.topics))
 
+    if request.qwargs.start < 0:
+        abort(400, "start parameter must be zero or more.")
+
     f = [
         pyes.query.FunctionScoreQuery.BoostFunction(4.0, pyes.filters.TypeFilter('tabulation')),
         pyes.query.FunctionScoreQuery.BoostFunction(3.0, pyes.filters.TypeFilter('table')),
@@ -1694,7 +1700,7 @@ def table_elasticsearch():
         out.append(result)
 
     links = {}
-    if request.qwargs.start < results.total:
+    if request.qwargs.start + request.qwargs.size < results.total:
         args = request.args.copy()
         args['start'] = request.qwargs.start + request.qwargs.size
         links['next_page'] = url_for('.table_elasticsearch', **args)
