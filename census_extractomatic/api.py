@@ -1661,20 +1661,23 @@ def table_elasticsearch():
     q = pyes.query.BoolQuery()
 
     if request.qwargs.q:
-        q.add_must(pyes.query.MatchQuery('names', request.qwargs.q, operator='and', fuzziness='1'))
+        q.add_must(pyes.query.MultiMatchQuery(['table_title', 'column_title', 'table_id'], request.qwargs.q, operator='and'))
 
-    if request.qwargs.sumlevs:
-        q.add_must(pyes.query.MatchQuery('topics', request.qwargs.topicss))
+    if request.qwargs.topics:
+        q.add_must(pyes.query.MatchQuery('topics', request.qwargs.topics))
+
+    f = [
+        pyes.query.FunctionScoreQuery.BoostFunction(4.0, pyes.filters.TypeFilter('tabulation')),
+        pyes.query.FunctionScoreQuery.BoostFunction(3.0, pyes.filters.TypeFilter('table')),
+    ]
+    q = pyes.query.FunctionScoreQuery(functions=f, query=q)
 
     q = pyes.query.Search(q, start=request.qwargs.start, size=request.qwargs.size)
     q.facet.add_term_facet('topics')
 
-    results = g.es.search(q, index='census', doc_types=['table', 'column'], sort='release:desc,weight:desc,_score')
+    results = g.es.search(q, index='census', doc_types=['tabulation', 'table', 'column'])
     out = []
     for result in results:
-        result.pop('name_suggest', None)
-        result.pop('names', None)
-        result.pop('weight', None)
         out.append(result)
     return json.dumps({"results": out, "facets": results.facets})
 
