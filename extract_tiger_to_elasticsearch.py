@@ -21,12 +21,12 @@ def convert_rows(rows):
         lon = row.pop('lon', None)
         row['location'] = [lon, lat]
 
-        row['name_suggest'] = {
-            'input': row.get('names'),
-            'output': row.get('display_name'),
-            'payload': row.get('full_geoid'),
-            'weight': int(round(row.get('importance'))) if row.get('importance') else 0,
-        }
+        # row['name_suggest'] = {
+        #     'input': row.get('names'),
+        #     'output': row.get('display_name'),
+        #     'payload': row.get('full_geoid'),
+        #     'weight': int(round(row.get('importance'))) if row.get('importance') else 0,
+        # }
 
         yield row
 
