@@ -30,8 +30,7 @@ def convert_rows(rows):
 
         yield row
 
-def process_single_sumlev(cur, es, query):
-    cur.execute(query)
+def process_single_sumlev(cur, es):
 
     for obj in convert_rows(cur):
         es.index(obj, index='tiger2012', doc_type='geo', id=obj['full_geoid'], bulk=True)
@@ -173,7 +172,8 @@ def main():
         (state.intptlon :: double precision) as lon
     FROM tiger2012.state LEFT OUTER JOIN acs2012_5yr.b01003 ON (('04000US' || state.geoid) = b01003.geoid)
     WHERE state.geoid NOT IN ('60', '66', '69', '78');"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
     print "Loading places..."
     q = """SELECT
@@ -192,11 +192,25 @@ def main():
         (place.intptlon :: double precision) as lon
     FROM tiger2012.place LEFT OUTER JOIN acs2012_5yr.b01003 ON (('16000US' || place.geoid) = b01003.geoid) JOIN tiger2012.state USING (statefp)
     WHERE state.geoid NOT IN ('60', '66', '69', '78');"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
-# VALUES (
-# 'New York city, NY', 'New York city', 'new york city ny', '160', '3651000', '16000US3651000', 20, 8128980, 783934135, 429462763, null);
+    print "Loading custom places..."
+    custom = [{
+        'names': ['new york city, ny'],
+        'display_name': 'New York, NY',
+        'sumlev': '160',
+        'importance': 200.5,
+        'geoid': '3651000',
+        'full_geoid': '16000US3651000',
+        'population': '8199221',
+        'aland': 783934135,
+        'awater': 429462763,
+        'lat': 40.6642738,
+        'lon': -73.9385004
+    }]
+    process_single_sumlev(custom, es)
 
 
     print "Loading counties..."
@@ -217,7 +231,8 @@ def main():
         (county.intptlon :: double precision) as lon
     FROM tiger2012.county LEFT OUTER JOIN acs2012_5yr.b01003 ON (('05000US' || county.geoid) = b01003.geoid) JOIN tiger2012.state USING (statefp)
     WHERE state.geoid NOT IN ('60', '66', '69', '78');"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
     print "Loading county subdivisions..."
@@ -237,7 +252,8 @@ def main():
         (cousub.intptlon :: double precision) as lon
     FROM tiger2012.cousub LEFT OUTER JOIN acs2012_5yr.b01003 ON (('06000US' || cousub.geoid) = b01003.geoid) JOIN tiger2012.county USING (statefp, countyfp) JOIN tiger2012.state USING (statefp)
     WHERE state.geoid NOT IN ('60', '66', '69', '78');"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
     print "Loading ZCTA..."
@@ -256,7 +272,8 @@ def main():
         (zcta5.intptlat10 :: double precision) as lat,
         (zcta5.intptlon10 :: double precision) as lon
     FROM tiger2012.zcta5 LEFT OUTER JOIN acs2012_5yr.b01003 ON (('86000US' || zcta5.geoid10) = b01003.geoid);"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
     print "Loading CBSA..."
@@ -275,7 +292,8 @@ def main():
         (cbsa.intptlat :: double precision) as lat,
         (cbsa.intptlon :: double precision) as lon
     FROM tiger2012.cbsa LEFT OUTER JOIN acs2012_5yr.b01003 ON (('31000US' || cbsa.geoid) = b01003.geoid);"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
     print "Loading congressional districts..."
@@ -296,7 +314,8 @@ def main():
         (cd.intptlon :: double precision) as lon
     FROM tiger2012.cd LEFT OUTER JOIN acs2012_5yr.b01003 ON (('50000US' || cd.geoid) = b01003.geoid) JOIN tiger2012.state USING (statefp)
     WHERE state.geoid NOT IN ('60', '66', '69', '78');"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
     print "Loading CSA..."
@@ -315,7 +334,8 @@ def main():
         (csa.intptlat :: double precision) as lat,
         (csa.intptlon :: double precision) as lon
     FROM tiger2012.csa LEFT OUTER JOIN acs2012_5yr.b01003 ON (('33000US' || csa.geoid) = b01003.geoid);"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
     print "Loading elementary school districts..."
@@ -334,7 +354,8 @@ def main():
         (elsd.intptlat :: double precision) as lat,
         (elsd.intptlon :: double precision) as lon
     FROM tiger2012.elsd LEFT OUTER JOIN acs2012_5yr.b01003 ON (('95000US' || elsd.geoid) = b01003.geoid) JOIN tiger2012.state USING (statefp);"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
     print "Loading secondary school districts..."
@@ -353,7 +374,8 @@ def main():
         (scsd.intptlat :: double precision) as lat,
         (scsd.intptlon :: double precision) as lon
     FROM tiger2012.scsd LEFT OUTER JOIN acs2012_5yr.b01003 ON (('96000US' || scsd.geoid) = b01003.geoid) JOIN tiger2012.state USING (statefp);"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
     print "Loading PUMA..."
@@ -372,7 +394,8 @@ def main():
         (puma.intptlat10 :: double precision) as lat,
         (puma.intptlon10 :: double precision) as lon
     FROM tiger2012.puma LEFT OUTER JOIN acs2012_5yr.b01003 ON (('79500US' || puma.geoid10) = b01003.geoid) JOIN tiger2012.state ON (puma.statefp10=state.statefp);"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
     print "Loading state legislative (lower)..."
@@ -391,7 +414,8 @@ def main():
         (sldl.intptlat :: double precision) as lat,
         (sldl.intptlon :: double precision) as lon
     FROM tiger2012.sldl LEFT OUTER JOIN acs2012_5yr.b01003 ON (('62000US' || sldl.geoid) = b01003.geoid) JOIN tiger2012.state USING (statefp);"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
     print "Loading state legislative (upper)..."
@@ -410,7 +434,8 @@ def main():
         (sldu.intptlat :: double precision) as lat,
         (sldu.intptlon :: double precision) as lon
     FROM tiger2012.sldu LEFT OUTER JOIN acs2012_5yr.b01003 ON (('61000US' || sldu.geoid) = b01003.geoid) JOIN tiger2012.state USING (statefp);"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
     print "Loading AIANNH..."
@@ -429,7 +454,8 @@ def main():
         (aiannh.intptlat :: double precision) as lat,
         (aiannh.intptlon :: double precision) as lon
     FROM tiger2012.aiannh LEFT OUTER JOIN acs2012_5yr.b01003 ON (('25000US' || aiannh.geoid) = b01003.geoid);"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
     print "Loading AITS..."
@@ -448,7 +474,8 @@ def main():
         (aits.intptlat :: double precision) as lat,
         (aits.intptlon :: double precision) as lon
     FROM tiger2012.aits LEFT OUTER JOIN acs2012_5yr.b01003 ON (('25100US' || aits.geoid) = b01003.geoid);"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
     print "Loading ANRC..."
@@ -467,7 +494,8 @@ def main():
         (anrc.intptlat :: double precision) as lat,
         (anrc.intptlon :: double precision) as lon
     FROM tiger2012.anrc LEFT OUTER JOIN acs2012_5yr.b01003 ON (('23000US' || anrc.geoid) = b01003.geoid);"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
     print "Loading block groups..."
@@ -486,7 +514,8 @@ def main():
         (bg.intptlat :: double precision) as lat,
         (bg.intptlon :: double precision) as lon
     FROM tiger2012.bg LEFT OUTER JOIN acs2012_5yr.b01003 ON (('15000US' || bg.geoid) = b01003.geoid) JOIN tiger2012.county USING (statefp, countyfp) JOIN tiger2012.state USING (statefp);"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
     print "Loading CNECTA..."
@@ -505,7 +534,8 @@ def main():
         (cnecta.intptlat :: double precision) as lat,
         (cnecta.intptlon :: double precision) as lon
     FROM tiger2012.cnecta LEFT OUTER JOIN acs2012_5yr.b01003 ON (('33500US' || cnecta.geoid) = b01003.geoid);"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
     print "Loading CONCITY..."
@@ -524,7 +554,8 @@ def main():
         (concity.intptlat :: double precision) as lat,
         (concity.intptlon :: double precision) as lon
     FROM tiger2012.concity LEFT OUTER JOIN acs2012_5yr.b01003 ON (('17000US' || concity.geoid) = b01003.geoid) JOIN tiger2012.state USING (statefp);"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
     print "Loading metro divisions..."
@@ -543,7 +574,8 @@ def main():
         (metdiv.intptlat :: double precision) as lat,
         (metdiv.intptlon :: double precision) as lon
     FROM tiger2012.metdiv LEFT OUTER JOIN acs2012_5yr.b01003 ON (('31400US' || metdiv.geoid) = b01003.geoid);"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
     print "Loading NECTA..."
@@ -562,7 +594,8 @@ def main():
         (necta.intptlat :: double precision) as lat,
         (necta.intptlon :: double precision) as lon
     FROM tiger2012.necta LEFT OUTER JOIN acs2012_5yr.b01003 ON (('35000US' || necta.geoid) = b01003.geoid);"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
     print "Loading NECTA divisions..."
@@ -581,7 +614,8 @@ def main():
         (nectadiv.intptlat :: double precision) as lat,
         (nectadiv.intptlon :: double precision) as lon
     FROM tiger2012.nectadiv LEFT OUTER JOIN acs2012_5yr.b01003 ON (('35500US' || nectadiv.geoid) = b01003.geoid);"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
     print "Loading SUBMCD..."
@@ -600,7 +634,8 @@ def main():
         (submcd.intptlat :: double precision) as lat,
         (submcd.intptlon :: double precision) as lon
     FROM tiger2012.submcd LEFT OUTER JOIN acs2012_5yr.b01003 ON (('06700US' || submcd.geoid) = b01003.geoid);"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
     print "Loading TBG..."
@@ -619,7 +654,8 @@ def main():
         (tbg.intptlat :: double precision) as lat,
         (tbg.intptlon :: double precision) as lon
     FROM tiger2012.tbg LEFT OUTER JOIN acs2012_5yr.b01003 ON (('25800US' || tbg.geoid) = b01003.geoid);"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
     print "Loading TTRACT..."
@@ -638,7 +674,8 @@ def main():
         (ttract.intptlat :: double precision) as lat,
         (ttract.intptlon :: double precision) as lon
     FROM tiger2012.ttract LEFT OUTER JOIN acs2012_5yr.b01003 ON (('25600US' || ttract.geoid) = b01003.geoid);"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
     print "Loading TRACT..."
@@ -657,7 +694,8 @@ def main():
         (tract.intptlat :: double precision) as lat,
         (tract.intptlon :: double precision) as lon
     FROM tiger2012.tract LEFT OUTER JOIN acs2012_5yr.b01003 ON (('14000US' || tract.geoid) = b01003.geoid) JOIN tiger2012.county USING (statefp, countyfp) JOIN tiger2012.state USING (statefp);"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
     print "Loading UAC..."
@@ -676,7 +714,8 @@ def main():
         (uac.intptlat10 :: double precision) as lat,
         (uac.intptlon10 :: double precision) as lon
     FROM tiger2012.uac LEFT OUTER JOIN acs2012_5yr.b01003 ON (('40000US' || uac.geoid10) = b01003.geoid);"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
     print "Loading UNSD..."
@@ -695,7 +734,8 @@ def main():
         (unsd.intptlat :: double precision) as lat,
         (unsd.intptlon :: double precision) as lon
     FROM tiger2012.unsd LEFT OUTER JOIN acs2012_5yr.b01003 ON (('97000US' || unsd.geoid) = b01003.geoid) JOIN tiger2012.state USING (statefp);"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
 
     print "Loading country..."
@@ -713,7 +753,8 @@ def main():
         (SELECT SUM(awater) FROM tiger2012.state) as awater,
         (SELECT ST_Y(ST_Centroid(ST_Union(the_geom))) FROM tiger2012.state) as lat,
         (SELECT ST_X(ST_Centroid(ST_Union(the_geom))) FROM tiger2012.state) as lon;"""
-    process_single_sumlev(cur, es, q)
+    cur.execute(q)
+    process_single_sumlev(cur, es)
 
     sys.exit(1)
 
