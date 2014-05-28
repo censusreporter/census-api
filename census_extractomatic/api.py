@@ -3,7 +3,7 @@ from __future__ import division
 
 from flask import Flask
 from flask import abort, request, g
-from flask import make_response, current_app, send_file
+from flask import make_response, current_app, send_file, url_for
 from flask import jsonify
 from werkzeug.exceptions import HTTPException
 from functools import update_wrapper
@@ -1328,12 +1328,24 @@ def geo_elasticsearch():
     q.facet.add_term_facet('sumlev')
 
     results = g.es.search(q, index='tiger2012', doc_types=['geo'])
+
     out = []
     for result in results:
         result.pop('name_suggest', None)
         result.pop('names', None)
         out.append(result)
-    return json.dumps({"results": out, "facets": results.facets})
+
+    links = {}
+    if request.qwargs.start < results.total:
+        args = request.args.copy()
+        args['start'] = request.qwargs.start + request.qwargs.size
+        links['next_page'] = url_for('.geo_elasticsearch', **args)
+    if request.qwargs.start > 0:
+        args = request.args.copy()
+        args['start'] = max(0, request.qwargs.start - request.qwargs.size)
+        links['previous_page'] = url_for('.geo_elasticsearch', **args)
+
+    return json.dumps({"results": out, "facets": results.facets, "links": links})
 
 
 # Example: /1.0/geo/search?q=spok
@@ -1676,11 +1688,23 @@ def table_elasticsearch():
     q.facet.add_term_facet('topics')
 
     results = g.es.search(q, index='census', doc_types=['tabulation', 'table', 'column'])
+
     out = []
     for result in results:
         result.pop('weight', None)
         out.append(result)
-    return json.dumps({"results": out, "facets": results.facets})
+
+    links = {}
+    if request.qwargs.start < results.total:
+        args = request.args.copy()
+        args['start'] = request.qwargs.start + request.qwargs.size
+        links['next_page'] = url_for('.table_elasticsearch', **args)
+    if request.qwargs.start > 0:
+        args = request.args.copy()
+        args['start'] = max(0, request.qwargs.start - request.qwargs.size)
+        links['previous_page'] = url_for('.table_elasticsearch', **args)
+
+    return json.dumps({"results": out, "facets": results.facets, "links": links})
 
 def format_table_search_result(obj, obj_type):
     '''internal util for formatting each object in `table_search` API response'''
