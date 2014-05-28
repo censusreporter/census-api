@@ -55,25 +55,36 @@ def main():
         "settings": {
             "analysis": {
                 "analyzer": {
-                    "suggest_synonyms": {
+                    "synonym_ngram_analyzer": {
                         "type": "custom",
-                        "tokenizer": "lowercase",
-                        "filter": [ "my_synonyms" ]
-                    },
-                    "synonyms_expand": {
-                        "type": "custom",
+                        "tokenizer": "whitespace",
                         "filter": [
-                            "standard",
-                            "lowercase",
+                            "synonym_filter",
+                            "ngram_filter",
                             "stop",
-                            "my_synonyms",
+                            "lowercase",
                         ],
-                        "tokenizer": "standard"
-                    }
+                    },
+                    "synonym_analyzer": {
+                        "type": "custom",
+                        "tokenizer": "whitespace",
+                        "filter": [
+                            "synonym_filter",
+                            "stop",
+                            "lowercase",
+                        ],
+                    },
                 },
                 "filter": {
-                    "my_synonyms": {
+                    "ngram_filter": {
+                        "type": "nGram",
+                        "min_gram": 2,
+                        "max_gram": 20,
+                        "token_chars": [ "letter", "digit" ],
+                    },
+                    "synonym_filter": {
                         "type": "synonym",
+                        "expand": True,
                         "synonyms": [
                             "us, united states",
                              "ak, alaska",
@@ -129,7 +140,7 @@ def main():
                              "wa, washington",
                              "wi, wisconsin",
                              "wv, west virginia",
-                             "wy, wyoming"
+                             "wy, wyoming",
                         ]
                     }
                 }
@@ -140,12 +151,8 @@ def main():
                 "properties": {
                     "names": {
                         "type": "string",
-                        "analyzer": "synonyms_expand"
-                    },
-                    "name_suggest": {
-                        "type": "completion",
-                        "analyzer": "suggest_synonyms",
-                        "payloads": True
+                        "index_analyzer": "synonym_ngram_analyzer",
+                        "search_analyzer": "synonym_analyzer",
                     },
                     "location": {
                         "type": "geo_point"
