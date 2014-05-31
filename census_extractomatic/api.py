@@ -1678,7 +1678,8 @@ def table_elasticsearch():
         q.add_must(pyes.query.MultiMatchQuery(['table_title', 'column_title', 'table_id'], request.qwargs.q, operator='and'))
 
     if request.qwargs.topics:
-        q.add_must(pyes.query.MatchQuery('topics', request.qwargs.topics))
+        for topic in request.qwargs.topics:
+            q.add_must(pyes.query.MatchQuery('topics', topic))
 
     if request.qwargs.start < 0:
         abort(400, "start parameter must be zero or more.")
