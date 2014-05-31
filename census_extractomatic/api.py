@@ -1684,8 +1684,10 @@ def table_elasticsearch():
         abort(400, "start parameter must be zero or more.")
 
     f = [
-        pyes.query.FunctionScoreQuery.BoostFunction(4.0, pyes.filters.TypeFilter('tabulation')),
-        pyes.query.FunctionScoreQuery.BoostFunction(3.0, pyes.filters.TypeFilter('table')),
+        pyes.query.FunctionScoreQuery.BoostFunction(0.01, pyes.filters.PrefixFilter('table_id', 'B99')),
+        pyes.query.FunctionScoreQuery.BoostFunction(0.01, pyes.filters.PrefixFilter('tabulation_code', '99')),
+        pyes.query.FunctionScoreQuery.BoostFunction(1.5, pyes.filters.TypeFilter('tabulation')),
+        pyes.query.FunctionScoreQuery.BoostFunction(1.2, pyes.filters.TypeFilter('table')),
     ]
     q = pyes.query.FunctionScoreQuery(functions=f, query=q)
 
