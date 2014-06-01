@@ -9,7 +9,7 @@ generates JSON output that can be read by other clients. One such client is
 
 ## Endpoints
 
-Think of the American Community Survey as a spreadshet with thousands of columns and hundreds of thousands of rows (geographies). The goal of this API is to make it easy to access any chunk of that spreadsheet with simple HTTP calls and get the result as an easy-to-parse JSON object.
+Think of the American Community Survey as a spreadsheet with thousands of columns and hundreds of thousands of rows (geographies). The goal of this API is to make it easy to access any chunk of that spreadsheet with simple HTTP calls and get the result as an easy-to-parse JSON object.
 
 To continue with the spreadsheet metaphor, the endpoints for this API can be roughly broken into 3 pieces:
 
