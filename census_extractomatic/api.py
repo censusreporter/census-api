@@ -2134,9 +2134,12 @@ def show_specified_data(acs):
     for geo in g.cur:
         geo_metadata[geo['full_geoid']] = {
             'name': geo['display_name'],
-            'parent_geoid': child_parent_map[geo['full_geoid']]
         }
-
+        # let children know who their parents are to distinguish between
+        # groups at the same summary level
+        if geo['full_geoid'] in child_parent_map:
+            geo_metadata[geo['full_geoid']]['parent_geoid'] = child_parent_map[geo['full_geoid']]
+            
     for acs in acs_to_try:
         try:
             g.cur.execute("SET search_path=%s,public;", [acs])
