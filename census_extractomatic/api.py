@@ -1568,7 +1568,7 @@ def geo_parent(geoid):
 })
 @crossdomain(origin='*')
 def show_specified_geo_data():
-    geo_ids = expand_geoids(request.qwargs.geo_ids)
+    geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids)
 
     g.cur.execute("""SELECT full_geoid,display_name,ST_AsGeoJSON(ST_Simplify(the_geom,ST_Perimeter(the_geom) / 2500)) as geom
         FROM tiger2012.census_name_lookup
@@ -2064,11 +2064,15 @@ def expand_geoids(geoid_list, release=None):
     # These will expand into a list of geoids like the old comparison endpoint used to
     expanded_geoids = []
     explicit_geoids = []
+    child_parent_map = {}
     for geoid_str in geoid_list:
         geoid_split = geoid_str.split('|')
         if len(geoid_split) == 2 and len(geoid_split[0]) == 3:
             (child_summary_level, parent_geoid) = geoid_split
-            expanded_geoids.extend([child_geoid['geoid'] for child_geoid in get_child_geoids(parent_geoid, child_summary_level)])
+            child_geoid_list = [child_geoid['geoid'] for child_geoid in get_child_geoids(parent_geoid, child_summary_level)]
+            expanded_geoids.extend(child_geoid_list)
+            for child_geoid in child_geoid_list:
+                child_parent_map[child_geoid] = parent_geoid
         else:
             explicit_geoids.append(geoid_str)
 
@@ -2086,7 +2090,7 @@ def expand_geoids(geoid_list, release=None):
     if invalid_geo_ids:
         raise ShowDataException("The %s release doesn't include GeoID(s) %s." % (get_acs_name(release), ','.join(invalid_geo_ids)))
 
-    return set(valid_geo_ids)
+    return set(valid_geo_ids), child_parent_map
 
 
 class ShowDataException(Exception):
@@ -2112,7 +2116,7 @@ def show_specified_data(acs):
     # valid_geo_ids only contains geos for which we want data
     requested_geo_ids = request.qwargs.geo_ids
     try:
-        valid_geo_ids = expand_geoids(requested_geo_ids)
+        valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids)
     except ShowDataException, e:
         abort(400, e.message)
 
@@ -2129,7 +2133,8 @@ def show_specified_data(acs):
     geo_metadata = OrderedDict()
     for geo in g.cur:
         geo_metadata[geo['full_geoid']] = {
-            "name": geo['display_name'],
+            'name': geo['display_name'],
+            'parent_geoid': child_parent_map[geo['full_geoid']]
         }
 
     for acs in acs_to_try:
@@ -2249,7 +2254,7 @@ def download_specified_data(acs):
         abort(400, 'The %s release isn\'t supported.' % get_acs_name(acs))
 
     try:
-        valid_geo_ids = expand_geoids(request.qwargs.geo_ids)
+        valid_geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids)
     except ShowDataException, e:
         abort(400, e.message)
 
