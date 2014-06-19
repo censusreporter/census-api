@@ -1572,7 +1572,7 @@ def show_specified_geo_data():
 
     g.cur.execute("""SELECT full_geoid,display_name,ST_AsGeoJSON(ST_Simplify(the_geom,ST_Perimeter(the_geom) / 2500)) as geom
         FROM tiger2012.census_name_lookup
-        WHERE full_geoid IN %s;""", [tuple(geo_ids)])
+        WHERE the_geom is not null and full_geoid IN %s;""", [tuple(geo_ids)])
 
     results = []
     valid_geo_ids = []
