@@ -119,7 +119,6 @@ def main():
                              "ak, alaska",
                              "al, alabama",
                              "ar, arkansas",
-                             "as, american samoa",
                              "az, arizona",
                              "ca, california",
                              "co, colorado",
@@ -128,7 +127,6 @@ def main():
                              "de, delaware",
                              "fl, florida",
                              "ga, georgia",
-                             "gu, guam",
                              "hi, hawaii",
                              "ia, iowa",
                              "id, idaho",
@@ -170,6 +168,8 @@ def main():
                              "wi, wisconsin",
                              "wv, west virginia",
                              "wy, wyoming",
+                             "ft, fort",
+                             "st, saint",
                         ]
                     }
                 }
