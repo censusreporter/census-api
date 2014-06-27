@@ -474,24 +474,24 @@ def main():
     process_single_sumlev(cur, es)
 
 
-    print "Loading AIANNH..."
-    q = """SELECT
-        ARRAY[
-            aiannh.namelsad
-        ] as names,
-        aiannh.namelsad as display_name,
-        '250' as sumlev,
-        17 * log(b01003.b01003001 + 1) as importance,
-        aiannh.geoid as geoid,
-        '25000US' || aiannh.geoid as full_geoid,
-        (b01003.b01003001 :: bigint) as population,
-        (aiannh.aland :: bigint) as aland,
-        (aiannh.awater :: bigint) as awater,
-        (aiannh.intptlat :: double precision) as lat,
-        (aiannh.intptlon :: double precision) as lon
-    FROM tiger2012.aiannh LEFT OUTER JOIN acs2012_5yr.b01003 ON (('25000US' || aiannh.geoid) = b01003.geoid);"""
-    cur.execute(q)
-    process_single_sumlev(cur, es)
+    # print "Loading AIANNH..."
+    # q = """SELECT
+    #     ARRAY[
+    #         aiannh.namelsad
+    #     ] as names,
+    #     aiannh.namelsad as display_name,
+    #     '250' as sumlev,
+    #     17 * log(b01003.b01003001 + 1) as importance,
+    #     aiannh.geoid as geoid,
+    #     '25000US' || aiannh.geoid as full_geoid,
+    #     (b01003.b01003001 :: bigint) as population,
+    #     (aiannh.aland :: bigint) as aland,
+    #     (aiannh.awater :: bigint) as awater,
+    #     (aiannh.intptlat :: double precision) as lat,
+    #     (aiannh.intptlon :: double precision) as lon
+    # FROM tiger2012.aiannh LEFT OUTER JOIN acs2012_5yr.b01003 ON (('25000US' || aiannh.geoid) = b01003.geoid);"""
+    # cur.execute(q)
+    # process_single_sumlev(cur, es)
 
 
     print "Loading AITS..."
@@ -674,44 +674,44 @@ def main():
     process_single_sumlev(cur, es)
 
 
-    print "Loading TBG..."
-    q = """SELECT
-        ARRAY[
-            tbg.namelsad
-        ] as names,
-        tbg.namelsad as display_name,
-        '258' as sumlev,
-        7 * log(b01003.b01003001 + 1) as importance,
-        tbg.geoid as geoid,
-        '25800US' || tbg.geoid as full_geoid,
-        (b01003.b01003001 :: bigint) as population,
-        (tbg.aland :: bigint) as aland,
-        (tbg.awater :: bigint) as awater,
-        (tbg.intptlat :: double precision) as lat,
-        (tbg.intptlon :: double precision) as lon
-    FROM tiger2012.tbg LEFT OUTER JOIN acs2012_5yr.b01003 ON (('25800US' || tbg.geoid) = b01003.geoid);"""
-    cur.execute(q)
-    process_single_sumlev(cur, es)
+    # print "Loading TBG..."
+    # q = """SELECT
+    #     ARRAY[
+    #         tbg.namelsad
+    #     ] as names,
+    #     tbg.namelsad as display_name,
+    #     '258' as sumlev,
+    #     7 * log(b01003.b01003001 + 1) as importance,
+    #     tbg.geoid as geoid,
+    #     '25800US' || tbg.geoid as full_geoid,
+    #     (b01003.b01003001 :: bigint) as population,
+    #     (tbg.aland :: bigint) as aland,
+    #     (tbg.awater :: bigint) as awater,
+    #     (tbg.intptlat :: double precision) as lat,
+    #     (tbg.intptlon :: double precision) as lon
+    # FROM tiger2012.tbg LEFT OUTER JOIN acs2012_5yr.b01003 ON (('25800US' || tbg.geoid) = b01003.geoid);"""
+    # cur.execute(q)
+    # process_single_sumlev(cur, es)
 
 
-    print "Loading TTRACT..."
-    q = """SELECT
-        ARRAY[
-            ttract.namelsad
-        ] as names,
-        ttract.namelsad as display_name,
-        '256' as sumlev,
-        6 * log(b01003.b01003001 + 1) as importance,
-        ttract.geoid as geoid,
-        '25600US' || ttract.geoid as full_geoid,
-        (b01003.b01003001 :: bigint) as population,
-        (ttract.aland :: bigint) as aland,
-        (ttract.awater :: bigint) as awater,
-        (ttract.intptlat :: double precision) as lat,
-        (ttract.intptlon :: double precision) as lon
-    FROM tiger2012.ttract LEFT OUTER JOIN acs2012_5yr.b01003 ON (('25600US' || ttract.geoid) = b01003.geoid);"""
-    cur.execute(q)
-    process_single_sumlev(cur, es)
+    # print "Loading TTRACT..."
+    # q = """SELECT
+    #     ARRAY[
+    #         ttract.namelsad
+    #     ] as names,
+    #     ttract.namelsad as display_name,
+    #     '256' as sumlev,
+    #     6 * log(b01003.b01003001 + 1) as importance,
+    #     ttract.geoid as geoid,
+    #     '25600US' || ttract.geoid as full_geoid,
+    #     (b01003.b01003001 :: bigint) as population,
+    #     (ttract.aland :: bigint) as aland,
+    #     (ttract.awater :: bigint) as awater,
+    #     (ttract.intptlat :: double precision) as lat,
+    #     (ttract.intptlon :: double precision) as lon
+    # FROM tiger2012.ttract LEFT OUTER JOIN acs2012_5yr.b01003 ON (('25600US' || ttract.geoid) = b01003.geoid);"""
+    # cur.execute(q)
+    # process_single_sumlev(cur, es)
 
 
     print "Loading TRACT..."
