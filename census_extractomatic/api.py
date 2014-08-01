@@ -2103,12 +2103,7 @@ class ShowDataException(Exception):
 })
 @crossdomain(origin='*')
 def show_specified_data(acs):
-    if acs in allowed_acs:
-        acs_to_try = [acs]
-    elif acs == 'latest':
-        acs_to_try = allowed_acs[:3]
-    else:
-        abort(400, 'The %s release isn\'t supported.' % get_acs_name(acs))
+    acs = validate_acs(acs)
 
     # valid_geo_ids only contains geos for which we want data
     requested_geo_ids = request.qwargs.geo_ids
@@ -2235,7 +2230,15 @@ def show_specified_data(acs):
             continue
     abort(400, str(e))
 
+def validate_acs(acs):
+    if acs in allowed_acs:
+        acs_to_try = [acs]
+    elif acs == 'latest':
+        acs_to_try = allowed_acs[:3]
+    else:
+        abort(400, 'The %s release isn\'t supported.' % get_acs_name(acs))
 
+    return acs
 # Example: /1.0/data/download/acs2012_5yr?format=shp&table_ids=B01001,B01003&geo_ids=04000US55,04000US56
 # Example: /1.0/data/download/latest?table_ids=B01001&geo_ids=160|04000US17,04000US56
 @app.route("/1.0/data/download/<acs>")
@@ -2246,13 +2249,7 @@ def show_specified_data(acs):
 })
 @crossdomain(origin='*')
 def download_specified_data(acs):
-    if acs in allowed_acs:
-        acs_to_try = [acs]
-    elif acs == 'latest':
-        acs_to_try = allowed_acs[:3]
-    else:
-        abort(400, 'The %s release isn\'t supported.' % get_acs_name(acs))
-
+    acs = validate_acs(acs)
     try:
         valid_geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids)
     except ShowDataException, e:
