@@ -1304,7 +1304,19 @@ def geo_suggest():
         }
     }
     results = g.es._send_request('POST', 'tiger2012/_suggest', body=json.dumps(query_dict))
-    return json.dumps({"results": [{'geoid': option['payload'], 'name': option['text']} for option in results['geo'][0]['options']]})
+
+    text = json.dumps({
+        "results": [
+            {
+                'geoid': option['payload'],
+                'name': option['text']
+            } for option in results['geo'][0]['options']
+        ]
+    })
+    resp = make_response(text)
+    resp.headers.set('Content-Type', 'application/json')
+
+    return resp
 
 
 # Example: /1.0/geo/elasticsearch?q=chicago,+il
@@ -1354,7 +1366,15 @@ def geo_elasticsearch():
         args['start'] = max(0, request.qwargs.start - request.qwargs.size)
         links['previous_page'] = url_for('.geo_elasticsearch', **args)
 
-    return json.dumps({"results": out, "facets": results.facets, "links": links})
+    text = json.dumps({
+        "results": out,
+        "facets": results.facets,
+        "links": links
+    })
+    resp = make_response(text)
+    resp.headers.set('Content-Type', 'application/json')
+
+    return resp
 
 
 # Example: /1.0/geo/search?q=spok
@@ -1633,7 +1653,13 @@ def table_suggest():
 
         return res
 
-    return json.dumps({"results": [format_results(result) for result in results['table'][0]['options']]})
+    text = json.dumps({
+        "results": [format_results(result) for result in results['table'][0]['options']]
+    })
+    resp = make_response(text)
+    resp.headers.set('Content-Type', 'application/json')
+
+    return resp
 
 
 def format_table_elasticsearch_result(obj, backfill_table_details):
@@ -1719,7 +1745,15 @@ def table_elasticsearch():
         args['start'] = max(0, request.qwargs.start - request.qwargs.size)
         links['previous_page'] = url_for('.table_elasticsearch', **args)
 
-    return json.dumps({"results": out, "facets": results.facets, "links": links})
+    text = json.dumps({
+        "results": out,
+        "facets": results.facets,
+        "links": links
+    })
+    resp = make_response(text)
+    resp.headers.set('Content-Type', 'application/json')
+
+    return resp
 
 def format_table_search_result(obj, obj_type):
     '''internal util for formatting each object in `table_search` API response'''
@@ -1846,7 +1880,11 @@ def table_search():
                          ORDER BY char_length(tab.table_id), tab.table_id""" % (column_where), column_where_args)
         data.extend([format_table_search_result(column, 'column') for column in g.cur])
 
-    return json.dumps(data)
+    text = json.dumps(data)
+    resp = make_response(text)
+    resp.headers.set('Content-Type', 'application/json')
+
+    return json.dumps(resp)
 
 # Example: /1.0/tabulation/01001
 @app.route("/1.0/tabulation/<tabulation_id>")
@@ -1869,7 +1907,11 @@ def tabulation_details(tabulation_id):
 
     row.pop('weight', None)
 
-    return json.dumps(row)
+    text = json.dumps(row)
+    resp = make_response(text)
+    resp.headers.set('Content-Type', 'application/json')
+
+    return resp
 
 # Example: /1.0/table/B01001?release=acs2012_1yr
 @app.route("/1.0/table/<table_id>")
@@ -1973,7 +2015,11 @@ def table_geo_comparison_rowcount(table_id):
 
         data[acs] = release
 
-    return json.dumps(data)
+    text = json.dumps(data)
+    resp = make_response(text)
+    resp.headers.set('Content-Type', 'application/json')
+
+    return resp
 
 
 ## DATA RETRIEVAL ##
@@ -2136,7 +2182,7 @@ def show_specified_data(acs):
         # groups at the same summary level
         if geo['full_geoid'] in child_parent_map:
             geo_metadata[geo['full_geoid']]['parent_geoid'] = child_parent_map[geo['full_geoid']]
-            
+
     for acs in acs_to_try:
         try:
             g.cur.execute("SET search_path=%s,public;", [acs])
@@ -2617,9 +2663,9 @@ def healthcheck():
 
 @app.route('/robots.txt')
 def robots_txt():
-  response = make_response('User-agent: *\nDisallow: /\n')
-  response.headers["Content-type"] = "text/plain"
-  return response
+    response = make_response('User-agent: *\nDisallow: /\n')
+    response.headers["Content-type"] = "text/plain"
+    return response
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
