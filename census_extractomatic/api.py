@@ -1305,14 +1305,15 @@ def geo_suggest():
     }
     results = g.es._send_request('POST', 'tiger2012/_suggest', body=json.dumps(query_dict))
 
-    text = json.dumps({
-        "results": [
-            {
+    options = []
+    if 'geo' in results:
+        for option in results['geo'][0]['options']:
+            options.append({
                 'geoid': option['payload'],
                 'name': option['text']
-            } for option in results['geo'][0]['options']
-        ]
-    })
+            })
+
+    text = json.dumps(dict(results=options))
     resp = make_response(text)
     resp.headers.set('Content-Type', 'application/json')
 
