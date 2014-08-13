@@ -1693,9 +1693,9 @@ def format_table_elasticsearch_result(obj, backfill_table_details):
     return result
 
 
-# Example: /1.0/table/search?q=norweg
-# Example: /1.0/table/search?q=norweg&topics=age,sex
-# Example: /1.0/table/search?topics=housing,poverty
+# Example: /1.0/table/elasticsearch?q=norweg
+# Example: /1.0/table/elasticsearch?q=norweg&topics=age,sex
+# Example: /1.0/table/elasticsearch?topics=housing,poverty
 @app.route("/1.0/table/elasticsearch")
 @qwarg_validate({
     'acs': {'valid': OneOf(allowed_acs), 'default': 'acs2012_1yr'},
@@ -1885,7 +1885,7 @@ def table_search():
     resp = make_response(text)
     resp.headers.set('Content-Type', 'application/json')
 
-    return json.dumps(resp)
+    return resp
 
 # Example: /1.0/tabulation/01001
 @app.route("/1.0/tabulation/<tabulation_id>")
