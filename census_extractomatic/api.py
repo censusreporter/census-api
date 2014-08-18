@@ -1654,8 +1654,9 @@ def table_suggest():
 
         return res
 
+    results = results.get['table'][0]['options'] if 'table' in results else []
     text = json.dumps({
-        "results": [format_results(result) for result in results['table'][0]['options']]
+        "results": [format_results(result) for result in results]
     })
     resp = make_response(text)
     resp.headers.set('Content-Type', 'application/json')
