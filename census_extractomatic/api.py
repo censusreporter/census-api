@@ -1487,7 +1487,10 @@ def geo_tiles(sumlevel, zoom, x, y):
         result = json.dumps(dict(type="FeatureCollection", features=results))
 
         resp = make_response(result)
-        put_in_cache(cache_key, result)
+        try:
+            put_in_cache(cache_key, result)
+        except Exception as e:
+            app.logger.warn('Skipping cache set for {} because {}'.format(cache_key, e.message))
 
     resp.headers.set('Content-Type', 'application/json')
     resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600*4))
