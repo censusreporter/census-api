@@ -45,14 +45,14 @@ if not app.debug:
 # Allowed ACS's in "best" order (newest and smallest range preferred)
 allowed_acs = [
     'acs2013_1yr',
-    'acs2012_1yr',
+    #'acs2012_1yr',
     'acs2012_3yr',
     'acs2012_5yr',
 ]
 
 ACS_NAMES = {
     'acs2013_1yr': {'name': 'ACS 2013 1-year', 'years': '2013'},
-    'acs2012_1yr': {'name': 'ACS 2012 1-year', 'years': '2012'},
+    #'acs2012_1yr': {'name': 'ACS 2012 1-year', 'years': '2012'},
     'acs2012_3yr': {'name': 'ACS 2012 3-year', 'years': '2010-2012'},
     'acs2012_5yr': {'name': 'ACS 2012 5-year', 'years': '2008-2012'},
 }
