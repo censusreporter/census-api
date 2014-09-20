@@ -1798,7 +1798,7 @@ def format_table_search_result(obj, obj_type):
 })
 @crossdomain(origin='*')
 def table_search():
-    # allow choice of release, default to 2011 1-year
+    # allow choice of release, default to allowed_acs[0]
     acs = request.qwargs.acs
     q = request.qwargs.q
     topics = request.qwargs.topics
