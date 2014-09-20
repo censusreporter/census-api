@@ -3,6 +3,7 @@ import osr
 import urlparse
 
 def ogr_export(database_uri, driver, file_ident, table_metadata, cursor, out_filename, format, valid_geo_ids):
+    """Gnarly list of arguments, but it let us take a bunch of lines out of api.py"""
     ogr.UseExceptions()
     db_details = urlparse.urlparse(database_uri)
     host = db_details.hostname
