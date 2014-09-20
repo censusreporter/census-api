@@ -8,9 +8,12 @@ To continue with the spreadsheet metaphor, the endpoints for this API can be rou
 2. information about geographies (rows)
 3. data at the intersection of one or more of the above
 
+Endpoints labeled *experimental* depend on our project to implement ElasticSearch for CensusReporter data, and may change API and/or return imperfect results. 
+
 ### Column, Table, and Tabulations
 
 #### `GET /1.0/table/suggest`
+*experimental*
 
  Query Argument | Type   | Required? | Description
 :---------------|:-------|:----------|:-----------
@@ -38,6 +41,7 @@ $ curl "http://api.censusreporter.org/1.0/table/suggest?q=esoteric+word"
 ```
 
 #### `GET /1.0/table/elasticsearch`
+*experimental*
 
  Query Argument | Type   | Required? | Description
 :---------------|:-------|:----------|:-----------
@@ -177,6 +181,7 @@ $ curl "http://api.censusreporter.org/1.0/table/B01001A"
 ### Geography
 
 #### `GET /1.0/geo/suggest`
+*experimental*
 
  Query Argument | Type   | Required? | Description
 :---------------|:-------|:----------|:-----------
@@ -214,6 +219,7 @@ $ curl "http://api.censusreporter.org/1.0/geo/suggest?q=chicag"
 ```
 
 #### `GET /1.0/geo/elasticsearch`
+*experimental*
 
  Query Argument | Type   | Required? | Description
 :---------------|:-------|:----------|:-----------
