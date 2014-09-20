@@ -45,14 +45,12 @@ if not app.debug:
 # Allowed ACS's in "best" order (newest and smallest range preferred)
 allowed_acs = [
     'acs2013_1yr',
-    #'acs2012_1yr',
     'acs2012_3yr',
     'acs2012_5yr',
 ]
 
 ACS_NAMES = {
     'acs2013_1yr': {'name': 'ACS 2013 1-year', 'years': '2013'},
-    #'acs2012_1yr': {'name': 'ACS 2012 1-year', 'years': '2012'},
     'acs2012_3yr': {'name': 'ACS 2012 3-year', 'years': '2010-2012'},
     'acs2012_5yr': {'name': 'ACS 2012 5-year', 'years': '2008-2012'},
 }
@@ -1704,7 +1702,7 @@ def format_table_elasticsearch_result(obj, backfill_table_details):
 # Example: /1.0/table/elasticsearch?topics=housing,poverty
 @app.route("/1.0/table/elasticsearch")
 @qwarg_validate({
-    'acs': {'valid': OneOf(allowed_acs), 'default': 'acs2012_1yr'},
+    'acs': {'valid': OneOf(allowed_acs), 'default': allowed_acs[0]},
     'q':   {'valid': NonemptyString()},
     'topics': {'valid': StringList()},
     'start': {'valid': Integer(), 'default': 0},
@@ -1794,7 +1792,7 @@ def format_table_search_result(obj, obj_type):
 # Example: /1.0/table/search?topics=housing,poverty
 @app.route("/1.0/table/search")
 @qwarg_validate({
-    'acs': {'valid': OneOf(allowed_acs), 'default': 'acs2012_1yr'},
+    'acs': {'valid': OneOf(allowed_acs), 'default': allowed_acs[0]},
     'q':   {'valid': NonemptyString()},
     'topics': {'valid': StringList()}
 })
@@ -1920,13 +1918,14 @@ def tabulation_details(tabulation_id):
 
     return resp
 
-# Example: /1.0/table/B01001?release=acs2012_1yr
+# Example: /1.0/table/B28001?release=acs2013_1yr
 @app.route("/1.0/table/<table_id>")
 @qwarg_validate({
-    'acs': {'valid': OneOf(allowed_acs), 'default': 'acs2012_1yr'}
+    'acs': {'valid': OneOf(allowed_acs), 'default': allowed_acs[0]}
 })
 @crossdomain(origin='*')
 def table_details(table_id):
+    import pdb; pdb.set_trace()
     cache_key = str('tables/%s/%s.json' % (request.qwargs.acs, table_id))
     cached = get_from_cache(cache_key)
     if cached:
