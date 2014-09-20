@@ -1925,7 +1925,6 @@ def tabulation_details(tabulation_id):
 })
 @crossdomain(origin='*')
 def table_details(table_id):
-    import pdb; pdb.set_trace()
     cache_key = str('tables/%s/%s.json' % (request.qwargs.acs, table_id))
     cached = get_from_cache(cache_key)
     if cached:
