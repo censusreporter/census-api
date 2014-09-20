@@ -2404,11 +2404,10 @@ def download_specified_data(acs):
             file_ident = "%s_%s_%s" % (acs, next(iter(valid_table_ids)), next(iter(valid_geo_ids)))
             inner_path = os.path.join(temp_path, file_ident)
             os.mkdir(inner_path)
-            out_filename = os.path.join(inner_path, '%s.%s' % (file_ident, request.qwargs.format))
             format_info = supported_formats.get(request.qwargs.format)
 
             if format_info['type'] == 'ogr':
-                ogr_export(app.config['DATABASE_URI'], format_info['driver'],file_ident, table_metadata, g.cur, out_filename, request.qwargs.format, request.qwargs.format)
+                ogr_export(app.config['DATABASE_URI'], format_info['driver'],file_ident, table_metadata, g.cur, request.qwargs.format, valid_geo_ids, inner_path)
 
             metadata_dict = {
                 'release': {
