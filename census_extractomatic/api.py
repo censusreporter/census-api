@@ -1571,7 +1571,7 @@ def geo_parent(geoid):
             parent_list = dict([build_item(p) for p in g.cur])
 
             for parent in parents:
-                parent.update(parent_list[parent['geoid']])
+                parent.update(parent_list.get(parent['geoid'], {}))
 
         result = json.dumps(dict(parents=parents))
 
