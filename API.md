@@ -8,7 +8,7 @@ To continue with the spreadsheet metaphor, the endpoints for this API can be rou
 2. information about geographies (rows)
 3. data at the intersection of one or more of the above
 
-Endpoints labeled *experimental* depend on our project to implement ElasticSearch for CensusReporter data, and may change API and/or return imperfect results. 
+Endpoints labeled *experimental* depend on our project to implement ElasticSearch for CensusReporter data, and may change API and/or return imperfect results.
 
 ### Column, Table, and Tabulations
 
@@ -75,11 +75,11 @@ $ curl "http://api.censusreporter.org/1.0/table/elasticsearch?q=children+in+pove
     "results": [
         {
             "table_title": "Poverty Status in the Past 12 Months of Related Children Under 18 Years by Family Type by Age of Related Children Under 18 Years",
-            "uid": "acs2012_5yr_B17006",
+            "uid": "acs2013_5yr_B17006",
             "universe": "Related Children Under 18 Years",
             "denominator_column_id": "B17006001",
             "table_id": "B17006",
-            "release": "acs2012_5yr",
+            "release": "acs2013_5yr",
             "topics": [
                 "families",
                 "age",
@@ -267,7 +267,7 @@ $ curl "http://api.censusreporter.org/1.0/geo/elasticsearch?q=evanston+il"
 }
 ```
 
-#### `GET /1.0/geo/tiger2012/tiles/<sumlevel>/<zoom>/<x>/<y>.geojson`
+#### `GET /1.0/geo/tiger2013/tiles/<sumlevel>/<zoom>/<x>/<y>.geojson`
 
  URL Argument    | Type   | Required? | Description
 :----------------|:-------|:----------|:-----------
@@ -278,7 +278,7 @@ $ curl "http://api.censusreporter.org/1.0/geo/elasticsearch?q=evanston+il"
 
 Returns a [GeoJSON](http://geojson.org/) representation of all geographies at summary level `sumlevel` and contained within a [map tile](http://www.maptiler.org/google-maps-coordinates-tile-bounds-projection/) specified by the `zoom`, `x`, and `y` parameters. You can use this to create a map of Census geographies on top of an existing map. The returned GeoJSON data includes attributes for the name and geoid of the geography.
 
-#### `GET /1.0/geo/tiger2012/<geoid>`
+#### `GET /1.0/geo/tiger2013/<geoid>`
 
  URL Argument    | Type   | Required? | Description
 :----------------|:-------|:----------|:-----------
@@ -292,7 +292,7 @@ Returns a [GeoJSON](http://geojson.org/) representation of the specified Census 
 
 Examples:
 ```bash
-$ curl "http://api.censusreporter.org/1.0/geo/tiger2012/04000US55"
+$ curl "http://api.censusreporter.org/1.0/geo/tiger2013/04000US55"
 {
     "geometry": null,
     "type": "Feature",
@@ -307,7 +307,7 @@ $ curl "http://api.censusreporter.org/1.0/geo/tiger2012/04000US55"
     }
 }
 
-$ curl "http://api.censusreporter.org/1.0/geo/tiger2012/04000US55?geom=true"
+$ curl "http://api.censusreporter.org/1.0/geo/tiger2013/04000US55?geom=true"
 {
     "geometry": {
         "type": "MultiPolygon",
@@ -336,7 +336,7 @@ $ curl "http://api.censusreporter.org/1.0/geo/tiger2012/04000US55?geom=true"
 }
 ```
 
-#### `GET /1.0/geo/tiger2012/<geoid>/parents`
+#### `GET /1.0/geo/tiger2013/<geoid>/parents`
 
  URL Argument    | Type   | Required? | Description
 :----------------|:-------|:----------|:-----------
@@ -350,7 +350,7 @@ This endpoint will also return the specified geography with a `relation` of `thi
 
 Examples:
 ```bash
-$ curl "http://api.censusreporter.org/1.0/geo/tiger2012/04000US55/parents"
+$ curl "http://api.censusreporter.org/1.0/geo/tiger2013/04000US55/parents"
 {
     "parents": [
         {
@@ -370,7 +370,7 @@ $ curl "http://api.censusreporter.org/1.0/geo/tiger2012/04000US55/parents"
     ]
 }
 
-$ curl "http://api.censusreporter.org/1.0/geo/tiger2012/16000US1714000/parents"
+$ curl "http://api.censusreporter.org/1.0/geo/tiger2013/16000US1714000/parents"
 {
     "parents": [
         {
@@ -419,7 +419,7 @@ $ curl "http://api.censusreporter.org/1.0/geo/tiger2012/16000US1714000/parents"
 }
 ```
 
-#### `GET /1.0/geo/show/tiger2012`
+#### `GET /1.0/geo/show/tiger2013`
 
  Query Argument | Type   | Required? | Description
 :---------------|:-------|:----------|:-----------
@@ -453,9 +453,9 @@ Examples:
 $ curl "http://api.censusreporter.org/1.0/data/show/latest?table_ids=B13016&geo_ids=04000US55"
 {
     "release": {
-        "id": "acs2012_1yr",
-        "name": "ACS 2012 1-year",
-        "years": "2012"
+        "id": "acs2013_1yr",
+        "name": "ACS 2013 1-year",
+        "years": "2013"
     },
     "tables": {
         "B13016": {
