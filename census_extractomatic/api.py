@@ -1455,7 +1455,7 @@ def geo_tiles(sumlevel, zoom, x, y):
     if sumlevel == '010':
         abort(400, "Don't support US tiles")
 
-    cache_key = str('tiger2013/tiles/%s/%s/%s/%s.geojson' % (sumlevel, zoom, x, y))
+    cache_key = str('1.0/geo/tiger2013/tiles/%s/%s/%s/%s.geojson' % (sumlevel, zoom, x, y))
     cached = get_from_cache(cache_key)
     if cached:
         resp = make_response(cached)
@@ -1507,7 +1507,7 @@ def geo_lookup(geoid):
     if len(geoid_parts) is not 2:
         abort(400, 'Invalid GeoID')
 
-    cache_key = str('tiger2013/show/%s.json?geom=%s' % (geoid, request.qwargs.geom))
+    cache_key = str('1.0/geo/tiger2013/show/%s.json?geom=%s' % (geoid, request.qwargs.geom))
     cached = get_from_cache(cache_key)
     if cached:
         resp = make_response(cached)
