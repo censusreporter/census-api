@@ -479,7 +479,7 @@ def compute_profile_item_levels(geoid):
     id_part = geoid_parts[1]
 
     if sumlevel in ('140', '150', '160', '310', '330', '350', '860', '950', '960', '970'):
-        g.cur.execute("""SELECT * FROM tiger2012.census_geo_containment WHERE child_geoid=%s ORDER BY percent_covered ASC""", [geoid])
+        g.cur.execute("""SELECT * FROM tiger2013.census_geo_containment WHERE child_geoid=%s ORDER BY percent_covered ASC""", [geoid])
         for row in g.cur:
             parent_sumlevel_name = SUMLEV_NAMES.get(row['parent_geoid'][:3])['name']
 
@@ -534,7 +534,7 @@ def geo_profile(acs, geoid):
     doc['geography']['census_release'] = acs_name
 
     g.cur.execute("""SELECT DISTINCT full_geoid,sumlevel,display_name,simple_name,aland
-                     FROM tiger2012.census_name_lookup
+                     FROM tiger2013.census_name_lookup
                      WHERE full_geoid IN %s;""", [tuple(comparison_geoids)])
 
     def convert_geography_data(row):
@@ -1414,13 +1414,13 @@ def geo_search():
 
     if with_geom:
         sql = """SELECT DISTINCT geoid,sumlevel,population,display_name,full_geoid,priority,ST_AsGeoJSON(ST_Simplify(the_geom,0.001)) as geom
-            FROM tiger2012.census_name_lookup
+            FROM tiger2013.census_name_lookup
             WHERE %s
             ORDER BY priority, population DESC NULLS LAST
             LIMIT 25;""" % (where)
     else:
         sql = """SELECT DISTINCT geoid,sumlevel,population,display_name,full_geoid,priority
-            FROM tiger2012.census_name_lookup
+            FROM tiger2013.census_name_lookup
             WHERE %s
             ORDER BY priority, population DESC NULLS LAST
             LIMIT 25;""" % (where)
@@ -1446,8 +1446,8 @@ def num2deg(xtile, ytile, zoom):
   return (lat_deg, lon_deg)
 
 
-# Example: /1.0/geo/tiger2012/tiles/160/10/261/373.geojson
-@app.route("/1.0/geo/tiger2012/tiles/<sumlevel>/<int:zoom>/<int:x>/<int:y>.geojson")
+# Example: /1.0/geo/tiger2013/tiles/160/10/261/373.geojson
+@app.route("/1.0/geo/tiger2013/tiles/<sumlevel>/<int:zoom>/<int:x>/<int:y>.geojson")
 @crossdomain(origin='*')
 def geo_tiles(sumlevel, zoom, x, y):
     if sumlevel not in SUMLEV_NAMES:
@@ -1455,7 +1455,7 @@ def geo_tiles(sumlevel, zoom, x, y):
     if sumlevel == '010':
         abort(400, "Don't support US tiles")
 
-    cache_key = str('tiger2012/tile/%s/%s/%s/%s.geojson' % (sumlevel, zoom, x, y))
+    cache_key = str('tiger2013/tile/%s/%s/%s/%s.geojson' % (sumlevel, zoom, x, y))
     cached = get_from_cache(cache_key)
     if cached:
         resp = make_response(cached)
@@ -1469,7 +1469,7 @@ def geo_tiles(sumlevel, zoom, x, y):
                         ST_Perimeter(the_geom) / 2500), 6) as geom,
                     full_geoid,
                     display_name
-                FROM tiger2012.census_name_lookup
+                FROM tiger2013.census_name_lookup
                 WHERE sumlevel=%s AND ST_Intersects(ST_MakeEnvelope(%s, %s, %s, %s, 4326), the_geom)""",
                 [minx, miny, maxx, maxy, sumlevel, minx, miny, maxx, maxy])
 
@@ -1496,8 +1496,8 @@ def geo_tiles(sumlevel, zoom, x, y):
     resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600*4))
     return resp
 
-# Example: /1.0/geo/tiger2012/04000US53
-@app.route("/1.0/geo/tiger2012/<geoid>")
+# Example: /1.0/geo/tiger2013/04000US53
+@app.route("/1.0/geo/tiger2013/<geoid>")
 @qwarg_validate({
     'geom': {'valid': Bool(), 'default': False}
 })
@@ -1507,7 +1507,7 @@ def geo_lookup(geoid):
     if len(geoid_parts) is not 2:
         abort(400, 'Invalid GeoID')
 
-    cache_key = str('tiger2012/show/%s.json?geom=%s' % (geoid, request.qwargs.geom))
+    cache_key = str('tiger2013/show/%s.json?geom=%s' % (geoid, request.qwargs.geom))
     cached = get_from_cache(cache_key)
     if cached:
         resp = make_response(cached)
@@ -1515,12 +1515,12 @@ def geo_lookup(geoid):
         if request.qwargs.geom:
             g.cur.execute("""SELECT display_name,simple_name,sumlevel,full_geoid,population,aland,awater,
                 ST_AsGeoJSON(ST_Simplify(the_geom,ST_Perimeter(the_geom) / 1700)) as geom
-                FROM tiger2012.census_name_lookup
+                FROM tiger2013.census_name_lookup
                 WHERE full_geoid=%s
                 LIMIT 1""", [geoid])
         else:
             g.cur.execute("""SELECT display_name,simple_name,sumlevel,full_geoid,population,aland,awater
-                FROM tiger2012.census_name_lookup
+                FROM tiger2013.census_name_lookup
                 WHERE full_geoid=%s
                 LIMIT 1""", [geoid])
 
@@ -1544,11 +1544,11 @@ def geo_lookup(geoid):
     return resp
 
 
-# Example: /1.0/geo/tiger2012/04000US53/parents
-@app.route("/1.0/geo/tiger2012/<geoid>/parents")
+# Example: /1.0/geo/tiger2013/04000US53/parents
+@app.route("/1.0/geo/tiger2013/<geoid>/parents")
 @crossdomain(origin='*')
 def geo_parent(geoid):
-    cache_key = str('tiger2012/show/%s.parents.json' % geoid)
+    cache_key = str('tiger2013/show/%s.parents.json' % geoid)
     cached = get_from_cache(cache_key)
     if cached:
         resp = make_response(cached)
@@ -1567,7 +1567,7 @@ def geo_parent(geoid):
             })
 
         if parent_geoids:
-            g.cur.execute("SELECT display_name,sumlevel,full_geoid FROM tiger2012.census_name_lookup WHERE full_geoid IN %s ORDER BY sumlevel DESC", [tuple(parent_geoids)])
+            g.cur.execute("SELECT display_name,sumlevel,full_geoid FROM tiger2013.census_name_lookup WHERE full_geoid IN %s ORDER BY sumlevel DESC", [tuple(parent_geoids)])
             parent_list = dict([build_item(p) for p in g.cur])
 
             for parent in parents:
@@ -1584,9 +1584,9 @@ def geo_parent(geoid):
     return resp
 
 
-# Example: /1.0/geo/show/tiger2012?geo_ids=04000US55,04000US56
-# Example: /1.0/geo/show/tiger2012?geo_ids=160|04000US17,04000US56
-@app.route("/1.0/geo/show/tiger2012")
+# Example: /1.0/geo/show/tiger2013?geo_ids=04000US55,04000US56
+# Example: /1.0/geo/show/tiger2013?geo_ids=160|04000US17,04000US56
+@app.route("/1.0/geo/show/tiger2013")
 @qwarg_validate({
     'geo_ids': {'valid': StringList(), 'required': True},
 })
@@ -1595,7 +1595,7 @@ def show_specified_geo_data():
     geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids)
 
     g.cur.execute("""SELECT full_geoid,display_name,ST_AsGeoJSON(ST_Simplify(the_geom,ST_Perimeter(the_geom) / 2500)) as geom
-        FROM tiger2012.census_name_lookup
+        FROM tiger2013.census_name_lookup
         WHERE the_geom is not null and full_geoid IN %s;""", [tuple(geo_ids)])
 
     results = []
@@ -2061,7 +2061,7 @@ def get_child_geoids_by_coverage(parent_geoid, child_summary_level):
     # Use the "worst"/biggest ACS to find all child geoids
     g.cur.execute("SET search_path=%s,public;", [allowed_acs[-1]])
     g.cur.execute("""SELECT geoid, name
-        FROM tiger2012.census_geo_containment, geoheader
+        FROM tiger2013.census_geo_containment, geoheader
         WHERE geoheader.geoid = census_geo_containment.child_geoid and census_geo_containment.parent_geoid = %s AND census_geo_containment.child_geoid LIKE %s""", [parent_geoid, child_summary_level+'%'])
     rowdicts = []
     seen_geoids = set()
@@ -2075,8 +2075,8 @@ def get_child_geoids_by_gis(parent_geoid, child_summary_level):
     parent_sumlevel = parent_geoid[0:3]
     child_geoids = []
     g.cur.execute("""SELECT child.full_geoid
-        FROM tiger2012.census_name_lookup parent
-        JOIN tiger2012.census_name_lookup child ON ST_Intersects(parent.the_geom, child.the_geom) AND child.sumlevel=%s
+        FROM tiger2013.census_name_lookup parent
+        JOIN tiger2013.census_name_lookup child ON ST_Intersects(parent.the_geom, child.the_geom) AND child.sumlevel=%s
         WHERE parent.full_geoid=%s AND parent.sumlevel=%s;""", [child_summary_level, parent_geoid, parent_sumlevel])
     child_geoids = [r['full_geoid'] for r in g.cur]
 
@@ -2176,7 +2176,7 @@ def show_specified_data(acs):
     named_geo_ids = valid_geo_ids | parents_of_groups
 
     # Fill in the display name for the geos
-    g.cur.execute("SELECT full_geoid,population,display_name FROM tiger2012.census_name_lookup WHERE full_geoid IN %s;", [tuple(named_geo_ids)])
+    g.cur.execute("SELECT full_geoid,population,display_name FROM tiger2013.census_name_lookup WHERE full_geoid IN %s;", [tuple(named_geo_ids)])
 
     geo_metadata = OrderedDict()
     for geo in g.cur:
@@ -2310,7 +2310,7 @@ def download_specified_data(acs):
         abort(400, e.message)
 
     # Fill in the display name for the geos
-    g.cur.execute("SELECT full_geoid,population,display_name FROM tiger2012.census_name_lookup WHERE full_geoid IN %s;", [tuple(valid_geo_ids)])
+    g.cur.execute("SELECT full_geoid,population,display_name FROM tiger2013.census_name_lookup WHERE full_geoid IN %s;", [tuple(valid_geo_ids)])
 
     geo_metadata = OrderedDict()
     for geo in g.cur:
@@ -2441,7 +2441,7 @@ def download_specified_data(acs):
                             out_layer.CreateField(ogr.FieldDefn(column_id + " - " +column_info['name']+", Error", ogr.OFTReal))
 
                 sql = g.cur.mogrify("""SELECT the_geom,full_geoid,display_name
-                    FROM tiger2012.census_name_lookup
+                    FROM tiger2013.census_name_lookup
                     WHERE full_geoid IN %s
                     ORDER BY full_geoid""", [tuple(valid_geo_ids)])
                 in_layer = conn.ExecuteSQL(sql)
@@ -2581,7 +2581,7 @@ def data_compare_geographies_within_parent(acs, table_id):
     if request.qwargs.geom:
         # get the parent geometry and add to API response
         g.cur.execute("""SELECT ST_AsGeoJSON(ST_Simplify(the_geom,0.001), 5) as geometry
-            FROM tiger2012.census_name_lookup
+            FROM tiger2013.census_name_lookup
             WHERE full_geoid=%s;""", [parent_geoid])
         parent_geometry = g.cur.fetchone()
         try:
@@ -2592,7 +2592,7 @@ def data_compare_geographies_within_parent(acs, table_id):
 
         # get the child geometries and store for later
         g.cur.execute("""SELECT geoid, ST_AsGeoJSON(ST_Simplify(the_geom,0.001), 5) as geometry
-            FROM tiger2012.census_name_lookup
+            FROM tiger2013.census_name_lookup
             WHERE full_geoid IN %s
             ORDER BY full_geoid;""", [tuple(child_geoid_list)])
         child_geodata = g.cur.fetchall()
