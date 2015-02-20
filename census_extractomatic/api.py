@@ -1408,6 +1408,8 @@ def geo_search():
     else:
         abort(400, "Must provide either a lat/lon OR a query term.")
 
+    where += " AND lower(display_name) not like '%%not defined%%' "
+
     if sumlevs:
         where += " AND sumlevel IN %s"
         where_args.append(tuple(sumlevs))
