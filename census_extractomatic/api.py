@@ -1415,7 +1415,7 @@ def geo_search():
         where_args.append(tuple(sumlevs))
 
     if with_geom:
-        sql = """SELECT DISTINCT geoid,sumlevel,population,display_name,full_geoid,priority,ST_AsGeoJSON(ST_Simplify(geom,0.001)) as geom
+        sql = """SELECT DISTINCT geoid,sumlevel,population,display_name,full_geoid,priority,ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001)) as geom
             FROM tiger2013.census_name_lookup
             WHERE %s
             ORDER BY priority, population DESC NULLS LAST
@@ -1516,7 +1516,7 @@ def geo_lookup(geoid):
     else:
         if request.qwargs.geom:
             g.cur.execute("""SELECT display_name,simple_name,sumlevel,full_geoid,population,aland,awater,
-                ST_AsGeoJSON(ST_Simplify(geom,ST_Perimeter(geom) / 1700)) as geom
+                ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,ST_Perimeter(geom) / 1700)) as geom
                 FROM tiger2013.census_name_lookup
                 WHERE full_geoid=%s
                 LIMIT 1""", [geoid])
@@ -1596,7 +1596,7 @@ def geo_parent(geoid):
 def show_specified_geo_data():
     geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids)
 
-    g.cur.execute("""SELECT full_geoid,display_name,ST_AsGeoJSON(ST_Simplify(geom,ST_Perimeter(geom) / 2500)) as geom
+    g.cur.execute("""SELECT full_geoid,display_name,ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,ST_Perimeter(geom) / 2500)) as geom
         FROM tiger2013.census_name_lookup
         WHERE geom is not null and full_geoid IN %s;""", [tuple(geo_ids)])
 
@@ -2582,7 +2582,7 @@ def data_compare_geographies_within_parent(acs, table_id):
     child_geodata_map = {}
     if request.qwargs.geom:
         # get the parent geometry and add to API response
-        g.cur.execute("""SELECT ST_AsGeoJSON(ST_Simplify(geom,0.001), 5) as geometry
+        g.cur.execute("""SELECT ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geometry
             FROM tiger2013.census_name_lookup
             WHERE full_geoid=%s;""", [parent_geoid])
         parent_geometry = g.cur.fetchone()
@@ -2593,7 +2593,7 @@ def data_compare_geographies_within_parent(acs, table_id):
             pass
 
         # get the child geometries and store for later
-        g.cur.execute("""SELECT geoid, ST_AsGeoJSON(ST_Simplify(geom,0.001), 5) as geometry
+        g.cur.execute("""SELECT geoid, ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geometry
             FROM tiger2013.census_name_lookup
             WHERE full_geoid IN %s
             ORDER BY full_geoid;""", [tuple(child_geoid_list)])
