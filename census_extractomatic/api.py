@@ -2170,6 +2170,9 @@ def show_specified_data(acs):
     except ShowDataException, e:
         abort(400, e.message)
 
+    if not valid_geo_ids:
+        abort(400, 'None of the geo_ids specified were valid: %s' % ', '.join(requested_geo_ids))
+
     # expand_geoids has validated parents of groups by getting children;
     # this will include those parent names in the reponse `geography` list
     # but leave them out of the response `data` list
