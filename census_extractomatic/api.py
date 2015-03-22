@@ -1596,7 +1596,12 @@ def geo_parent(geoid):
 def show_specified_geo_data():
     geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids)
 
-    g.cur.execute("""SELECT full_geoid,display_name,ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,ST_Perimeter(geom) / 2500)) as geom
+    g.cur.execute("""SELECT full_geoid,
+                            display_name,
+                            aland,
+                            awater,
+                            population,
+                            ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,ST_Perimeter(geom) / 2500)) as geom
         FROM tiger2013.census_name_lookup
         WHERE geom is not null and full_geoid IN %s;""", [tuple(geo_ids)])
 
@@ -1608,7 +1613,10 @@ def show_specified_geo_data():
             "type": "Feature",
             "properties": {
                 "geoid": row['full_geoid'],
-                "name": row['display_name']
+                "name": row['display_name'],
+                "aland": row['aland'],
+                "awater": row['awater'],
+                "2013_population_estimate": row['population'],
             },
             "geometry": json.loads(row['geom'])
         })
