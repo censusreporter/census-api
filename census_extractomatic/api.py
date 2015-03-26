@@ -1596,6 +1596,10 @@ def geo_parent(geoid):
 def show_specified_geo_data():
     geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids)
 
+    max_geoids = current_app.config.get('MAX_GEOIDS_TO_SHOW', 1000)
+    if len(geo_ids) > max_geoids:
+        abort(400, 'You requested %s geoids. The maximum is %s. Please contact us for bulk data.' % (len(geo_ids), max_geoids))
+
     g.cur.execute("""SELECT full_geoid,
                             display_name,
                             aland,
@@ -2181,6 +2185,10 @@ def show_specified_data(acs):
     if not valid_geo_ids:
         abort(400, 'None of the geo_ids specified were valid: %s' % ', '.join(requested_geo_ids))
 
+    max_geoids = current_app.config.get('MAX_GEOIDS_TO_SHOW', 1000)
+    if len(valid_geo_ids) > max_geoids:
+        abort(400, 'You requested %s geoids. The maximum is %s. Please contact us for bulk data.' % (len(valid_geo_ids), max_geoids))
+
     # expand_geoids has validated parents of groups by getting children;
     # this will include those parent names in the reponse `geography` list
     # but leave them out of the response `data` list
@@ -2321,6 +2329,10 @@ def download_specified_data(acs):
         valid_geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids)
     except ShowDataException, e:
         abort(400, e.message)
+
+    max_geoids = current_app.config.get('MAX_GEOIDS_TO_DOWNLOAD', 1000)
+    if len(valid_geo_ids) > max_geoids:
+        abort(400, 'You requested %s geoids. The maximum is %s. Please contact us for bulk data.' % (len(valid_geo_ids), max_geoids))
 
     # Fill in the display name for the geos
     g.cur.execute("SELECT full_geoid,population,display_name FROM tiger2013.census_name_lookup WHERE full_geoid IN %s;", [tuple(valid_geo_ids)])
