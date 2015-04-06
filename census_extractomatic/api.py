@@ -405,6 +405,7 @@ def before_request():
     )
 
     g.cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    g.cur.execute('SET statement_timeout=20000;')
 
     g.es = pyes.ES(app.config.get('ELASTICSEARCH_HOST'), timeout=2)
 
