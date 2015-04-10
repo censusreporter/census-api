@@ -230,6 +230,7 @@ def crossdomain(origin=None, methods=None, headers=None,
             return resp
 
         f.provide_automatic_options = False
+        f.required_methods = ['OPTIONS']
         return update_wrapper(wrapped_function, f)
     return decorator
 
