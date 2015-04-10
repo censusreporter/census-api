@@ -406,6 +406,7 @@ def before_request():
     )
 
     g.cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    g.cur.execute('SET statement_timeout=20000;')
 
     g.es = pyes.ES(app.config.get('ELASTICSEARCH_HOST'), timeout=2)
 
@@ -1597,7 +1598,16 @@ def geo_parent(geoid):
 def show_specified_geo_data():
     geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids)
 
-    g.cur.execute("""SELECT full_geoid,display_name,ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,ST_Perimeter(geom) / 2500)) as geom
+    max_geoids = current_app.config.get('MAX_GEOIDS_TO_SHOW', 1000)
+    if len(geo_ids) > max_geoids:
+        abort(400, 'You requested %s geoids. The maximum is %s. Please contact us for bulk data.' % (len(geo_ids), max_geoids))
+
+    g.cur.execute("""SELECT full_geoid,
+                            display_name,
+                            aland,
+                            awater,
+                            population,
+                            ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,ST_Perimeter(geom) / 2500)) as geom
         FROM tiger2013.census_name_lookup
         WHERE geom is not null and full_geoid IN %s;""", [tuple(geo_ids)])
 
@@ -1609,7 +1619,10 @@ def show_specified_geo_data():
             "type": "Feature",
             "properties": {
                 "geoid": row['full_geoid'],
-                "name": row['display_name']
+                "name": row['display_name'],
+                "aland": row['aland'],
+                "awater": row['awater'],
+                "2013_population_estimate": row['population'],
             },
             "geometry": json.loads(row['geom'])
         })
@@ -2171,6 +2184,13 @@ def show_specified_data(acs):
     except ShowDataException, e:
         abort(400, e.message)
 
+    if not valid_geo_ids:
+        abort(400, 'None of the geo_ids specified were valid: %s' % ', '.join(requested_geo_ids))
+
+    max_geoids = current_app.config.get('MAX_GEOIDS_TO_SHOW', 1000)
+    if len(valid_geo_ids) > max_geoids:
+        abort(400, 'You requested %s geoids. The maximum is %s. Please contact us for bulk data.' % (len(valid_geo_ids), max_geoids))
+
     # expand_geoids has validated parents of groups by getting children;
     # this will include those parent names in the reponse `geography` list
     # but leave them out of the response `data` list
@@ -2311,6 +2331,10 @@ def download_specified_data(acs):
         valid_geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids)
     except ShowDataException, e:
         abort(400, e.message)
+
+    max_geoids = current_app.config.get('MAX_GEOIDS_TO_DOWNLOAD', 1000)
+    if len(valid_geo_ids) > max_geoids:
+        abort(400, 'You requested %s geoids. The maximum is %s. Please contact us for bulk data.' % (len(valid_geo_ids), max_geoids))
 
     # Fill in the display name for the geos
     g.cur.execute("SELECT full_geoid,population,display_name FROM tiger2013.census_name_lookup WHERE full_geoid IN %s;", [tuple(valid_geo_ids)])
