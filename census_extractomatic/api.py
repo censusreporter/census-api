@@ -406,7 +406,7 @@ def before_request():
     )
 
     g.cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    g.cur.execute('SET statement_timeout=20000;')
+    g.cur.execute('SET statement_timeout=25000;')
 
     g.es = pyes.ES(app.config.get('ELASTICSEARCH_HOST'), timeout=2)
 
@@ -1598,7 +1598,7 @@ def geo_parent(geoid):
 def show_specified_geo_data():
     geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids)
 
-    max_geoids = current_app.config.get('MAX_GEOIDS_TO_SHOW', 1000)
+    max_geoids = current_app.config.get('MAX_GEOIDS_TO_SHOW', 3000)
     if len(geo_ids) > max_geoids:
         abort(400, 'You requested %s geoids. The maximum is %s. Please contact us for bulk data.' % (len(geo_ids), max_geoids))
 

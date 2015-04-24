@@ -7,8 +7,8 @@ class Production(Config):
     MEMCACHE_ADDR = ['127.0.0.1']
     ELASTICSEARCH_HOST = ['localhost:9200']
     JSONIFY_PRETTYPRINT_REGULAR = False
-    MAX_GEOIDS_TO_SHOW = 1000
-    MAX_GEOIDS_TO_DOWNLOAD = 1000
+    MAX_GEOIDS_TO_SHOW = 3000
+    MAX_GEOIDS_TO_DOWNLOAD = 3000
 
 class Development(Config):
     # For local dev, tunnel to the DB first:
