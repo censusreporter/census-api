@@ -4,7 +4,7 @@ from __future__ import division
 from flask import Flask
 from flask import abort, request, g
 from flask import make_response, current_app, send_file, url_for
-from flask import jsonify
+from flask import jsonify, redirect
 from werkzeug.exceptions import HTTPException
 from functools import update_wrapper
 from itertools import groupby
@@ -2698,6 +2698,10 @@ def robots_txt():
     response = make_response('User-agent: *\nDisallow: /\n')
     response.headers["Content-type"] = "text/plain"
     return response
+
+@app.route('/')
+def index():
+    return redirect('https://github.com/censusreporter/census-api/blob/master/API.md')
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
