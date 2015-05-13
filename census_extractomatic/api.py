@@ -2171,15 +2171,17 @@ class ShowDataException(Exception):
 def show_specified_data(acs):
     if acs in allowed_acs:
         acs_to_try = [acs]
+        expand_geoids_with = acs
     elif acs == 'latest':
-        acs_to_try = allowed_acs[:3]
+        acs_to_try = allowed_acs[:3]  # The first three releases
+        expand_geoids_with = allowed_acs[2]  # The third (biggest) release
     else:
         abort(400, 'The %s release isn\'t supported.' % get_acs_name(acs))
 
     # valid_geo_ids only contains geos for which we want data
     requested_geo_ids = request.qwargs.geo_ids
     try:
-        valid_geo_ids, child_parent_map = expand_geoids(acs_to_try, requested_geo_ids)
+        valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release=expand_geoids_with)
     except ShowDataException, e:
         abort(400, e.message)
 
@@ -2321,13 +2323,15 @@ def show_specified_data(acs):
 def download_specified_data(acs):
     if acs in allowed_acs:
         acs_to_try = [acs]
+        expand_geoids_with = acs
     elif acs == 'latest':
-        acs_to_try = allowed_acs[:3]
+        acs_to_try = allowed_acs[:3]  # The first three releases
+        expand_geoids_with = allowed_acs[2]  # The third (biggest) release
     else:
         abort(400, 'The %s release isn\'t supported.' % get_acs_name(acs))
 
     try:
-        valid_geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids)
+        valid_geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids, release=expand_geoids_with)
     except ShowDataException, e:
         abort(400, e.message)
 
