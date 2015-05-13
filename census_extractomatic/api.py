@@ -2046,26 +2046,25 @@ def table_geo_comparison_rowcount(table_id):
 ## DATA RETRIEVAL ##
 
 # get geoheader data for children at the requested summary level
-def get_child_geoids(parent_geoid, child_summary_level):
+def get_child_geoids(release, parent_geoid, child_summary_level):
     parent_sumlevel = parent_geoid[0:3]
     if parent_sumlevel == '010':
-        return get_all_child_geoids(child_summary_level)
+        return get_all_child_geoids(release, child_summary_level)
     elif parent_sumlevel in PARENT_CHILD_CONTAINMENT and child_summary_level in PARENT_CHILD_CONTAINMENT[parent_sumlevel]:
-        return get_child_geoids_by_prefix(parent_geoid, child_summary_level)
+        return get_child_geoids_by_prefix(release, parent_geoid, child_summary_level)
     elif parent_sumlevel == '160' and child_summary_level in ('140', '150'):
-        return get_child_geoids_by_coverage(parent_geoid, child_summary_level)
+        return get_child_geoids_by_coverage(release, parent_geoid, child_summary_level)
     elif parent_sumlevel == '310' and child_summary_level in ('160', '860'):
-        return get_child_geoids_by_coverage(parent_geoid, child_summary_level)
+        return get_child_geoids_by_coverage(release, parent_geoid, child_summary_level)
     elif parent_sumlevel == '040' and child_summary_level in ('310', '860'):
-        return get_child_geoids_by_coverage(parent_geoid, child_summary_level)
+        return get_child_geoids_by_coverage(release, parent_geoid, child_summary_level)
     elif parent_sumlevel == '050' and child_summary_level in ('160', '860', '950', '960', '970'):
-        return get_child_geoids_by_coverage(parent_geoid, child_summary_level)
+        return get_child_geoids_by_coverage(release, parent_geoid, child_summary_level)
     else:
-        return get_child_geoids_by_gis(parent_geoid, child_summary_level)
+        return get_child_geoids_by_gis(release, parent_geoid, child_summary_level)
 
-def get_all_child_geoids(child_summary_level):
-    # Use the "worst"/biggest ACS to find all child geoids
-    g.cur.execute("SET search_path=%s,public;", [allowed_acs[-1]])
+def get_all_child_geoids(release, child_summary_level):
+    g.cur.execute("SET search_path=%s,public;", [release])
     g.cur.execute("""SELECT geoid,name
         FROM geoheader
         WHERE sumlevel=%s AND component='00' AND geoid NOT IN ('04000US72')
@@ -2073,9 +2072,9 @@ def get_all_child_geoids(child_summary_level):
 
     return g.cur.fetchall()
 
-def get_child_geoids_by_coverage(parent_geoid, child_summary_level):
+def get_child_geoids_by_coverage(release, parent_geoid, child_summary_level):
     # Use the "worst"/biggest ACS to find all child geoids
-    g.cur.execute("SET search_path=%s,public;", [allowed_acs[-1]])
+    g.cur.execute("SET search_path=%s,public;", [release])
     g.cur.execute("""SELECT geoid, name
         FROM tiger2013.census_geo_containment, geoheader
         WHERE geoheader.geoid = census_geo_containment.child_geoid and census_geo_containment.parent_geoid = %s AND census_geo_containment.child_geoid LIKE %s""", [parent_geoid, child_summary_level+'%'])
@@ -2087,7 +2086,7 @@ def get_child_geoids_by_coverage(parent_geoid, child_summary_level):
             seen_geoids.add(row['geoid'])
     return rowdicts
 
-def get_child_geoids_by_gis(parent_geoid, child_summary_level):
+def get_child_geoids_by_gis(release, parent_geoid, child_summary_level):
     parent_sumlevel = parent_geoid[0:3]
     child_geoids = []
     g.cur.execute("""SELECT child.full_geoid
@@ -2098,7 +2097,7 @@ def get_child_geoids_by_gis(parent_geoid, child_summary_level):
 
     if child_geoids:
         # Use the "worst"/biggest ACS to find all child geoids
-        g.cur.execute("SET search_path=%s,public;", [allowed_acs[-1]])
+        g.cur.execute("SET search_path=%s,public;", [release])
         g.cur.execute("""SELECT geoid,name
             FROM geoheader
             WHERE geoid IN %s
@@ -2108,11 +2107,11 @@ def get_child_geoids_by_gis(parent_geoid, child_summary_level):
         return []
 
 
-def get_child_geoids_by_prefix(parent_geoid, child_summary_level):
+def get_child_geoids_by_prefix(release, parent_geoid, child_summary_level):
     child_geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid.split('US')[1])
 
     # Use the "worst"/biggest ACS to find all child geoids
-    g.cur.execute("SET search_path=%s,public;", [allowed_acs[-1]])
+    g.cur.execute("SET search_path=%s,public;", [release])
     g.cur.execute("""SELECT geoid,name
         FROM geoheader
         WHERE geoid LIKE %s AND name NOT LIKE %s
@@ -2133,7 +2132,7 @@ def expand_geoids(geoid_list, release=None):
         geoid_split = geoid_str.split('|')
         if len(geoid_split) == 2 and len(geoid_split[0]) == 3:
             (child_summary_level, parent_geoid) = geoid_split
-            child_geoid_list = [child_geoid['geoid'] for child_geoid in get_child_geoids(parent_geoid, child_summary_level)]
+            child_geoid_list = [child_geoid['geoid'] for child_geoid in get_child_geoids(release, parent_geoid, child_summary_level)]
             expanded_geoids.extend(child_geoid_list)
             for child_geoid in child_geoid_list:
                 child_parent_map[child_geoid] = parent_geoid
@@ -2180,7 +2179,7 @@ def show_specified_data(acs):
     # valid_geo_ids only contains geos for which we want data
     requested_geo_ids = request.qwargs.geo_ids
     try:
-        valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids)
+        valid_geo_ids, child_parent_map = expand_geoids(acs_to_try, requested_geo_ids)
     except ShowDataException, e:
         abort(400, e.message)
 
