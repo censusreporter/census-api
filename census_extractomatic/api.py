@@ -1417,7 +1417,7 @@ def geo_search():
         where_args.append(tuple(sumlevs))
 
     if with_geom:
-        sql = """SELECT DISTINCT geoid,sumlevel,population,display_name,full_geoid,priority,ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001)) as geom
+        sql = """SELECT DISTINCT geoid,sumlevel,population,display_name,full_geoid,priority,ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geom
             FROM tiger2013.census_name_lookup
             WHERE %s
             ORDER BY priority, population DESC NULLS LAST
@@ -1470,7 +1470,7 @@ def geo_tiles(sumlevel, zoom, x, y):
         g.cur.execute("""SELECT
                     ST_AsGeoJSON(ST_SimplifyPreserveTopology(
                         ST_Intersection(ST_Buffer(ST_MakeEnvelope(%s, %s, %s, %s, 4326), 0.09, 'endcap=square'), geom),
-                        ST_Perimeter(geom) / 2500), 6) as geom,
+                        ST_Perimeter(geom) / 2500), 5) as geom,
                     full_geoid,
                     display_name
                 FROM tiger2013.census_name_lookup
@@ -1518,7 +1518,7 @@ def geo_lookup(geoid):
     else:
         if request.qwargs.geom:
             g.cur.execute("""SELECT display_name,simple_name,sumlevel,full_geoid,population,aland,awater,
-                ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,ST_Perimeter(geom) / 1700)) as geom
+                ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,ST_Perimeter(geom) / 1700), 5) as geom
                 FROM tiger2013.census_name_lookup
                 WHERE full_geoid=%s
                 LIMIT 1""", [geoid])
@@ -1607,7 +1607,7 @@ def show_specified_geo_data():
                             aland,
                             awater,
                             population,
-                            ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,ST_Perimeter(geom) / 2500)) as geom
+                            ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,ST_Perimeter(geom) / 2500), 5) as geom
         FROM tiger2013.census_name_lookup
         WHERE geom is not null and full_geoid IN %s;""", [tuple(geo_ids)])
 
