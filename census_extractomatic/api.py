@@ -1934,24 +1934,37 @@ def tabulation_details(tabulation_id):
 
     return resp
 
+def table_metadata(table_id, release):
+    if release not in allowed_acs:
+        abort(400, "Invalid release [%s]" % release)
+
+    g.cur.execute("SET search_path=%s,public;", [release])
+
+    g.cur.execute("""SELECT *
+                     FROM census_table_metadata tab
+                     WHERE table_id=%s""", [table_id])
+    return g.cur.fetchone()
+
 # Example: /1.0/table/B28001?release=acs2013_1yr
 @app.route("/1.0/table/<table_id>")
 @qwarg_validate({
-    'acs': {'valid': OneOf(allowed_acs), 'default': allowed_acs[0]}
+    'acs': {'valid': OneOf(allowed_acs), 'default': 'latest'}
 })
 @crossdomain(origin='*')
 def table_details(table_id):
-    cache_key = str('tables/%s/%s.json' % (request.qwargs.acs, table_id))
+    release = request.qwargs.acs
+    cache_key = str('tables/%s/%s.json' % (release, table_id))
     cached = get_from_cache(cache_key)
     if cached:
         resp = make_response(cached)
     else:
-        g.cur.execute("SET search_path=%s,public;", [request.qwargs.acs])
 
-        g.cur.execute("""SELECT *
-                         FROM census_table_metadata tab
-                         WHERE table_id=%s""", [table_id])
-        row = g.cur.fetchone()
+        if release != 'latest':
+            row = table_metadata(table_id, release)
+        else:
+            for release in allowed_acs:
+                row = table_metadata(table_id, release)
+                if row: break
 
         if not row:
             abort(400, "Table %s not found." % table_id.upper())
