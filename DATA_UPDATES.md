@@ -2,33 +2,32 @@ Adding new data release
 =======================
 
 - Update census-table-metadata:
-    - Makefile
+    1. Makefile
         - add new line in `all` section
         - add new `clean-all` step
         - add `_merge_5_6.xls` and `_table_shells.xls` download steps
         - add `census_table_metadata.csv` step
-    - census_metadata.sql
+    2. census_metadata.sql
         - add table/column metadata creates
-    - census_metadata_drop.sql
+    3. census_metadata_drop.sql
         - add table/column metadata drops
-    - census_metadata_load.sql
+    4. census_metadata_load.sql
         - add COPYs
-
-    - Erata with table metadata:
+    5. Handle errata with table metadata:
         - Discover that the shells .xls file they include is actually an .xlsx and that python xlrd can't read the formatting info
             - Use Excel to save it as a normal .xls and replace the file
         - Discover that Census added a worksheet to the shells .xls file that is formatted completely differently
             - Use Excel to move Sheet2 before Sheet1
         - The `ACS_1yr_Seq_Table_Number_Lookup.xls` for 2014 does not reflect the changes in [the new survey](https://www.census.gov/programs-surveys/acs/technical-documentation/table-and-geography-changes/2014/1-year.html), but the [text/CSV version](http://www2.census.gov/programs-surveys/acs/summary_file/2014/documentation/user_tools/ACS_1yr_Seq_Table_Number_Lookup.txt) does so I converted it to an XLS with Excel so that the rest of my existing process would work
 
-    - Generate the 'precomputed' metadata stuff. From census-table-metadata:
+    6. Generate the 'precomputed' metadata stuff. From census-table-metadata:
         - make
         - git add precomputed/acs2013_1yr
         - git commit
         - git push
 
 - Update census-postgres-scripts
-    - (If you're running under embargo, you can create these files but you will have to download the files from the embargo site manually and put them in e.g. /mnt/tmp/acs2013_1yr, then unzip them)
+    1. (If you're running under embargo, you can create these files but you will have to download the files from the embargo site manually and put them in e.g. /mnt/tmp/acs2013_1yr, then unzip them)
     - make a copy of a 02_download script and modify it for the new release
     - make a copy of a 03_import script and modify it for the new release
     - commit the update
