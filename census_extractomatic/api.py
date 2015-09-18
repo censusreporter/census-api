@@ -44,13 +44,13 @@ if not app.debug:
 
 # Allowed ACS's in "best" order (newest and smallest range preferred)
 allowed_acs = [
-    'acs2013_1yr',
+    'acs2014_1yr',
     'acs2013_3yr',
     'acs2013_5yr',
 ]
 
 ACS_NAMES = {
-    'acs2013_1yr': {'name': 'ACS 2013 1-year', 'years': '2013'},
+    'acs2014_1yr': {'name': 'ACS 2013 1-year', 'years': '2013'},
     'acs2013_3yr': {'name': 'ACS 2013 3-year', 'years': '2011-2013'},
     'acs2013_5yr': {'name': 'ACS 2013 5-year', 'years': '2009-2013'},
 }
@@ -1945,7 +1945,7 @@ def table_metadata(table_id, release):
                      WHERE table_id=%s""", [table_id])
     return g.cur.fetchone()
 
-# Example: /1.0/table/B28001?release=acs2013_1yr
+# Example: /1.0/table/B28001?release=acs2014_1yr
 @app.route("/1.0/table/<table_id>")
 @qwarg_validate({
     'acs': {'valid': OneOf(allowed_acs), 'default': 'latest'}
