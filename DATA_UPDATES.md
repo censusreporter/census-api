@@ -19,6 +19,7 @@ Adding new data release
 
     - Discover that Census added a worksheet to the shells .xls file that is formatted completely differently
         - Use Excel to move Sheet2 before Sheet1
+    - The `ACS_1yr_Seq_Table_Number_Lookup.xls` for 2014 does not reflect the changes in [the new survey](https://www.census.gov/programs-surveys/acs/technical-documentation/table-and-geography-changes/2014/1-year.html), but the [text/CSV version](http://www2.census.gov/programs-surveys/acs/summary_file/2014/documentation/user_tools/ACS_1yr_Seq_Table_Number_Lookup.txt) does
 
     - Generate the 'precomputed' metadata stuff. From census-table-metadata:
         - make
