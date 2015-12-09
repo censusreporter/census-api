@@ -495,7 +495,7 @@ def compute_profile_item_levels(geoid):
 
     if sumlevel in ('140', '150', '160', '310', '330', '350', '860', '950', '960', '970'):
         result = db.session.execute(
-            """SELECT * FROM tiger2013.census_geo_containment
+            """SELECT * FROM tiger2014.census_geo_containment
                WHERE child_geoid=:geoid
                ORDER BY percent_covered ASC
             """,
@@ -555,7 +555,7 @@ def geo_profile(acs, geoid):
 
     result = db.session.execute(
         """SELECT DISTINCT full_geoid,sumlevel,display_name,simple_name,aland
-           FROM tiger2013.census_name_lookup
+           FROM tiger2014.census_name_lookup
            WHERE full_geoid IN :geoids;""",
         {'geoids': tuple(comparison_geoids)}
     )
@@ -1439,13 +1439,13 @@ def geo_search():
 
     if with_geom:
         sql = """SELECT DISTINCT geoid,sumlevel,population,display_name,full_geoid,priority,ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geom
-            FROM tiger2013.census_name_lookup
+            FROM tiger2014.census_name_lookup
             WHERE %s
             ORDER BY priority, population DESC NULLS LAST
             LIMIT 25;""" % (where)
     else:
         sql = """SELECT DISTINCT geoid,sumlevel,population,display_name,full_geoid,priority
-            FROM tiger2013.census_name_lookup
+            FROM tiger2014.census_name_lookup
             WHERE %s
             ORDER BY priority, population DESC NULLS LAST
             LIMIT 25;""" % (where)
@@ -1471,8 +1471,8 @@ def num2deg(xtile, ytile, zoom):
     return (lat_deg, lon_deg)
 
 
-# Example: /1.0/geo/tiger2013/tiles/160/10/261/373.geojson
-@app.route("/1.0/geo/tiger2013/tiles/<sumlevel>/<int:zoom>/<int:x>/<int:y>.geojson")
+# Example: /1.0/geo/tiger2014/tiles/160/10/261/373.geojson
+@app.route("/1.0/geo/tiger2014/tiles/<sumlevel>/<int:zoom>/<int:x>/<int:y>.geojson")
 @crossdomain(origin='*')
 def geo_tiles(sumlevel, zoom, x, y):
     if sumlevel not in SUMLEV_NAMES:
@@ -1480,7 +1480,7 @@ def geo_tiles(sumlevel, zoom, x, y):
     if sumlevel == '010':
         abort(400, "Don't support US tiles")
 
-    cache_key = str('1.0/geo/tiger2013/tiles/%s/%s/%s/%s.geojson' % (sumlevel, zoom, x, y))
+    cache_key = str('1.0/geo/tiger2014/tiles/%s/%s/%s/%s.geojson' % (sumlevel, zoom, x, y))
     cached = get_from_cache(cache_key)
     if cached:
         resp = make_response(cached)
@@ -1495,7 +1495,7 @@ def geo_tiles(sumlevel, zoom, x, y):
                     ST_Perimeter(geom) / 2500), 6) as geom,
                 full_geoid,
                 display_name
-               FROM tiger2013.census_name_lookup
+               FROM tiger2014.census_name_lookup
                WHERE sumlevel=:sumlev AND ST_Intersects(ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 4326), geom)""",
             {'minx': minx, 'miny': miny, 'maxx': maxx, 'maxy': maxy, 'sumlev': sumlevel}
         )
@@ -1524,8 +1524,8 @@ def geo_tiles(sumlevel, zoom, x, y):
     return resp
 
 
-# Example: /1.0/geo/tiger2013/04000US53
-@app.route("/1.0/geo/tiger2013/<geoid>")
+# Example: /1.0/geo/tiger2014/04000US53
+@app.route("/1.0/geo/tiger2014/<geoid>")
 @qwarg_validate({
     'geom': {'valid': Bool(), 'default': False}
 })
@@ -1535,7 +1535,7 @@ def geo_lookup(geoid):
     if len(geoid_parts) is not 2:
         abort(400, 'Invalid GeoID')
 
-    cache_key = str('1.0/geo/tiger2013/show/%s.json?geom=%s' % (geoid, request.qwargs.geom))
+    cache_key = str('1.0/geo/tiger2014/show/%s.json?geom=%s' % (geoid, request.qwargs.geom))
     cached = get_from_cache(cache_key)
     if cached:
         resp = make_response(cached)
@@ -1544,7 +1544,7 @@ def geo_lookup(geoid):
             result = db.session.execute(
                 """SELECT display_name,simple_name,sumlevel,full_geoid,population,aland,awater,
                    ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,ST_Perimeter(geom) / 1700)) as geom
-                   FROM tiger2013.census_name_lookup
+                   FROM tiger2014.census_name_lookup
                    WHERE full_geoid=:geoid
                    LIMIT 1""",
                 {'geoid': geoid}
@@ -1552,7 +1552,7 @@ def geo_lookup(geoid):
         else:
             result = db.session.execute(
                 """SELECT display_name,simple_name,sumlevel,full_geoid,population,aland,awater
-                   FROM tiger2013.census_name_lookup
+                   FROM tiger2014.census_name_lookup
                    WHERE full_geoid=:geoid
                    LIMIT 1""",
                 {'geoid': geoid}
@@ -1578,11 +1578,11 @@ def geo_lookup(geoid):
     return resp
 
 
-# Example: /1.0/geo/tiger2013/04000US53/parents
-@app.route("/1.0/geo/tiger2013/<geoid>/parents")
+# Example: /1.0/geo/tiger2014/04000US53/parents
+@app.route("/1.0/geo/tiger2014/<geoid>/parents")
 @crossdomain(origin='*')
 def geo_parent(geoid):
-    cache_key = str('tiger2013/show/%s.parents.json' % geoid)
+    cache_key = str('tiger2014/show/%s.parents.json' % geoid)
     cached = get_from_cache(cache_key)
     if cached:
         resp = make_response(cached)
@@ -1603,7 +1603,7 @@ def geo_parent(geoid):
         if parent_geoids:
             result = db.session.execute(
                 """SELECT display_name,sumlevel,full_geoid
-                   FROM tiger2013.census_name_lookup
+                   FROM tiger2014.census_name_lookup
                    WHERE full_geoid IN :geoids
                    ORDER BY sumlevel DESC""",
                 {'geoids': tuple(parent_geoids)}
@@ -1624,9 +1624,9 @@ def geo_parent(geoid):
     return resp
 
 
-# Example: /1.0/geo/show/tiger2013?geo_ids=04000US55,04000US56
-# Example: /1.0/geo/show/tiger2013?geo_ids=160|04000US17,04000US56
-@app.route("/1.0/geo/show/tiger2013")
+# Example: /1.0/geo/show/tiger2014?geo_ids=04000US55,04000US56
+# Example: /1.0/geo/show/tiger2014?geo_ids=160|04000US17,04000US56
+@app.route("/1.0/geo/show/tiger2014")
 @qwarg_validate({
     'geo_ids': {'valid': StringList(), 'required': True},
 })
@@ -1645,7 +1645,7 @@ def show_specified_geo_data():
             awater,
             population,
             ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,ST_Perimeter(geom) / 2500)) as geom
-           FROM tiger2013.census_name_lookup
+           FROM tiger2014.census_name_lookup
            WHERE geom is not null and full_geoid IN :geoids;""",
         {'geoids': tuple(geo_ids)}
     )
@@ -2152,7 +2152,7 @@ def get_child_geoids_by_coverage(release, parent_geoid, child_summary_level):
     db.session.execute("SET search_path=:acs,public;", {'acs': release})
     result = db.session.execute(
         """SELECT geoid, name
-           FROM tiger2013.census_geo_containment, geoheader
+           FROM tiger2014.census_geo_containment, geoheader
            WHERE geoheader.geoid = census_geo_containment.child_geoid
              AND census_geo_containment.parent_geoid = :parent_geoid
              AND census_geo_containment.child_geoid LIKE :child_geoids""",
@@ -2174,8 +2174,8 @@ def get_child_geoids_by_gis(release, parent_geoid, child_summary_level):
     child_geoids = []
     result = db.session.execute(
         """SELECT child.full_geoid
-           FROM tiger2013.census_name_lookup parent
-           JOIN tiger2013.census_name_lookup child ON ST_Intersects(parent.geom, child.geom) AND child.sumlevel=:child_sumlevel
+           FROM tiger2014.census_name_lookup parent
+           JOIN tiger2014.census_name_lookup child ON ST_Intersects(parent.geom, child.geom) AND child.sumlevel=:child_sumlevel
            WHERE parent.full_geoid=:parent_geoid AND parent.sumlevel=:parent_sumlevel""",
         {'child_sumlevel': child_summary_level, 'parent_geoid': parent_geoid, 'parent_sumlevel': parent_sumlevel}
     )
@@ -2300,7 +2300,7 @@ def show_specified_data(acs):
     # Fill in the display name for the geos
     result = db.session.execute(
         """SELECT full_geoid,population,display_name
-           FROM tiger2013.census_name_lookup
+           FROM tiger2014.census_name_lookup
            WHERE full_geoid IN :geoids;""",
         {'geoids': tuple(named_geo_ids)}
     )
@@ -2454,7 +2454,7 @@ def download_specified_data(acs):
         """SELECT full_geoid,
                   population,
                   display_name
-           FROM tiger2013.census_name_lookup
+           FROM tiger2014.census_name_lookup
            WHERE full_geoid IN :geo_ids;""",
         {'geo_ids': tuple(valid_geo_ids)}
     )
@@ -2595,7 +2595,7 @@ def download_specified_data(acs):
                             out_layer.CreateField(ogr.FieldDefn(column_id + " - " + column_info['name']+", Error", ogr.OFTReal))
 
                 sql = """SELECT geom,full_geoid,display_name
-                         FROM tiger2013.census_name_lookup
+                         FROM tiger2014.census_name_lookup
                          WHERE full_geoid IN %s
                          ORDER BY full_geoid""" % ', '.join("'%s'" % g for g in valid_geo_ids)
                 in_layer = conn.ExecuteSQL(sql)
@@ -2746,7 +2746,7 @@ def data_compare_geographies_within_parent(acs, table_id):
         # get the parent geometry and add to API response
         result = db.session.execute(
             """SELECT ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geometry
-               FROM tiger2013.census_name_lookup
+               FROM tiger2014.census_name_lookup
                WHERE full_geoid=:geo_ids;""",
             {'geo_ids': parent_geoid}
         )
@@ -2760,7 +2760,7 @@ def data_compare_geographies_within_parent(acs, table_id):
         # get the child geometries and store for later
         result = db.session.execute(
             """SELECT geoid, ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geometry
-               FROM tiger2013.census_name_lookup
+               FROM tiger2014.census_name_lookup
                WHERE full_geoid IN :geo_ids
                ORDER BY full_geoid;""",
             {'geo_ids': tuple(child_geoid_list)}
