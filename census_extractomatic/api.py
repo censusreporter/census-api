@@ -45,14 +45,14 @@ if not app.debug:
 # Allowed ACS's in "best" order (newest and smallest range preferred)
 allowed_acs = [
     'acs2014_1yr',
+    'acs2014_5yr',
     'acs2013_3yr',
-    'acs2013_5yr',
 ]
 
 ACS_NAMES = {
     'acs2014_1yr': {'name': 'ACS 2014 1-year', 'years': '2014'},
+    'acs2014_5yr': {'name': 'ACS 2014 5-year', 'years': '2010-2014'},
     'acs2013_3yr': {'name': 'ACS 2013 3-year', 'years': '2011-2013'},
-    'acs2013_5yr': {'name': 'ACS 2013 5-year', 'years': '2009-2013'},
 }
 
 PARENT_CHILD_CONTAINMENT = {
