@@ -3,7 +3,7 @@ class Config(object):
 
 
 class Production(Config):
-    SQLALCHEMY_DATABASE_URI = 'postgresql://census:censuspassword@localhost/census'
+    SQLALCHEMY_DATABASE_URI = 'postgresql://census:censuspassword@cr-prod.c7wefhiuybfb.us-east-1.rds.amazonaws.com:5432/census'
     MEMCACHE_ADDR = ['127.0.0.1']
     ELASTICSEARCH_HOST = ['localhost:9200']
     JSONIFY_PRETTYPRINT_REGULAR = False

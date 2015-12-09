@@ -96,8 +96,8 @@ def _install_libgdal():
 def _install_elasticsearch():
     """ Install and start ElasticSearch. """
     sudo('apt-get install -q -y openjdk-7-jre-headless')
-    run('wget --quiet --continue https://download.elastic.co/elasticsearch/elasticsearch/elasticsearch-1.7.2.deb')
-    sudo('dpkg -i elasticsearch-1.7.2')
+    run('wget --quiet --continue https://download.elasticsearch.org/elasticsearch/release/org/elasticsearch/distribution/deb/elasticsearch/2.1.0/elasticsearch-2.1.0.deb')
+    sudo('dpkg -i elasticsearch-2.1.0.deb')
     sudo('mkdir -p /vol/elasticsearch')
     sudo('chown elasticsearch:elasticsearch /vol/elasticsearch')
     append('/etc/elasticsearch/elasticsearch.yml', 'path.data: /vol/elasticsearch', use_sudo=True)
@@ -130,8 +130,8 @@ def install_newrelic(api_key):
 def install_packages():
     """ Installs OS packages required to run the API. """
     _install_base()
-    _mount_ebs()
-    _install_postgres()
+    # _mount_ebs()
+    # _install_postgres()
     _install_libgdal()
     _install_elasticsearch()
     _install_memcached()
