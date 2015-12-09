@@ -1971,6 +1971,7 @@ def tabulation_details(tabulation_id):
     )
 
     row = result.fetchone()
+    row = dict(row)
 
     if not row:
         abort(400, "Tabulation %s not found." % tabulation_id)
