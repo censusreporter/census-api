@@ -2372,8 +2372,9 @@ def show_specified_data(acs):
                 returned_geo_ids = set([row['geoid'] for row in result])
                 raise ShowDataException("The %s release doesn't include GeoID(s) %s." % (get_acs_name(acs), ','.join(set(valid_geo_ids) - returned_geo_ids)))
 
-            for row in result:
-                geoid = row['geoid']
+            for row_obj in result:
+                row = row_obj.__dict__
+                geoid = row.pop('geoid')
                 data_for_geoid = OrderedDict()
 
                 # If we end up at the 'most complete' release, we should include every bit of
