@@ -449,6 +449,7 @@ def get_data_fallback(table_ids, geoids, acs=None):
         )
         data = {}
         for row in result.fetchall():
+            row = dict(row)
             geoid = row.pop('geoid')
             data[geoid] = dict([(col, val) for (col, val) in row.iteritems()])
 
@@ -464,6 +465,7 @@ def get_data_fallback(table_ids, geoids, acs=None):
             )
             data = {}
             for row in result.fetchall():
+                row = dict(row)
                 geoid = row.pop('geoid')
                 data[geoid] = dict([(col, val) for (col, val) in row.iteritems()])
 
@@ -2372,8 +2374,8 @@ def show_specified_data(acs):
                 returned_geo_ids = set([row['geoid'] for row in result])
                 raise ShowDataException("The %s release doesn't include GeoID(s) %s." % (get_acs_name(acs), ','.join(set(valid_geo_ids) - returned_geo_ids)))
 
-            for row_obj in result:
-                row = dict(row_obj)
+            for row in result:
+                row = dict(row)
                 geoid = row.pop('geoid')
                 data_for_geoid = OrderedDict()
 
@@ -2524,6 +2526,7 @@ def download_specified_data(acs):
                 raise ShowDataException("The %s release doesn't include GeoID(s) %s." % (get_acs_name(acs), ','.join(set(valid_geo_ids) - returned_geo_ids)))
 
             for row in result.fetchall():
+                row = dict(row)
                 geoid = row.pop('geoid')
                 data_for_geoid = OrderedDict()
 
