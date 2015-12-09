@@ -248,6 +248,7 @@ def jsonify_error_handler(error):
     else:
         resp = jsonify(error=error.message)
         resp.status_code = 500
+    app.logger.exception("Handling exception %s, %s", error, error.message)
     return resp
 
 
