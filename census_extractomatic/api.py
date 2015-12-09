@@ -2373,7 +2373,7 @@ def show_specified_data(acs):
                 raise ShowDataException("The %s release doesn't include GeoID(s) %s." % (get_acs_name(acs), ','.join(set(valid_geo_ids) - returned_geo_ids)))
 
             for row_obj in result:
-                row = row_obj.__dict__
+                row = dict(row_obj)
                 geoid = row.pop('geoid')
                 data_for_geoid = OrderedDict()
 
