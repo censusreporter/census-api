@@ -1428,7 +1428,7 @@ def geo_search():
     elif q:
         q = re.sub(r'[^a-zA-Z\,\.\-]', ' ', q)
         q = re.sub(r'\s+', ' ', q)
-        where = "lower(prefix_match_name) LIKE lower(%s)"
+        where = "lower(prefix_match_name) LIKE lower(:q)"
         q += '%'
         where_args = {'q': q}
     else:
