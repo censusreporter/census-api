@@ -1578,6 +1578,7 @@ def geo_lookup(release, geoid):
         if not result:
             abort(400, 'Unknown GeoID')
 
+        result = dict(result)
         geom = result.pop('geom', None)
         if geom:
             geom = json.loads(geom)
