@@ -49,6 +49,12 @@ allowed_acs = [
     'acs2013_3yr',
 ]
 
+# Allowed TIGER releases in newest order
+allowed_tiger = [
+    'tiger2014',
+    'tiger2013',
+]
+
 ACS_NAMES = {
     'acs2014_1yr': {'name': 'ACS 2014 1-year', 'years': '2014'},
     'acs2014_5yr': {'name': 'ACS 2014 5-year', 'years': '2010-2014'},
@@ -1475,15 +1481,18 @@ def num2deg(xtile, ytile, zoom):
 
 
 # Example: /1.0/geo/tiger2014/tiles/160/10/261/373.geojson
-@app.route("/1.0/geo/tiger2014/tiles/<sumlevel>/<int:zoom>/<int:x>/<int:y>.geojson")
+# Example: /1.0/geo/tiger2013/tiles/160/10/261/373.geojson
+@app.route("/1.0/geo/<release>/tiles/<sumlevel>/<int:zoom>/<int:x>/<int:y>.geojson")
 @crossdomain(origin='*')
-def geo_tiles(sumlevel, zoom, x, y):
+def geo_tiles(release, sumlevel, zoom, x, y):
+    if release not in allowed_tiger:
+        abort(400, "Unknown TIGER release")
     if sumlevel not in SUMLEV_NAMES:
         abort(400, "Unknown sumlevel")
     if sumlevel == '010':
         abort(400, "Don't support US tiles")
 
-    cache_key = str('1.0/geo/tiger2014/tiles/%s/%s/%s/%s.geojson' % (sumlevel, zoom, x, y))
+    cache_key = str('1.0/geo/%s/tiles/%s/%s/%s/%s.geojson' % (release, sumlevel, zoom, x, y))
     cached = get_from_cache(cache_key)
     if cached:
         resp = make_response(cached)
@@ -1498,8 +1507,8 @@ def geo_tiles(sumlevel, zoom, x, y):
                     ST_Perimeter(geom) / 2500), 6) as geom,
                 full_geoid,
                 display_name
-               FROM tiger2014.census_name_lookup
-               WHERE sumlevel=:sumlev AND ST_Intersects(ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 4326), geom)""",
+               FROM %s.census_name_lookup
+               WHERE sumlevel=:sumlev AND ST_Intersects(ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 4326), geom)""" % (release,),
             {'minx': minx, 'miny': miny, 'maxx': maxx, 'maxy': maxy, 'sumlev': sumlevel}
         )
 
@@ -1528,17 +1537,20 @@ def geo_tiles(sumlevel, zoom, x, y):
 
 
 # Example: /1.0/geo/tiger2014/04000US53
-@app.route("/1.0/geo/tiger2014/<geoid>")
+# Example: /1.0/geo/tiger2013/04000US53
+@app.route("/1.0/geo/<release>/<geoid>")
 @qwarg_validate({
     'geom': {'valid': Bool(), 'default': False}
 })
 @crossdomain(origin='*')
-def geo_lookup(geoid):
+def geo_lookup(release, geoid):
+    if release not in allowed_tiger:
+        abort(400, "Unknown TIGER release")
     geoid_parts = geoid.split('US')
     if len(geoid_parts) is not 2:
         abort(400, 'Invalid GeoID')
 
-    cache_key = str('1.0/geo/tiger2014/show/%s.json?geom=%s' % (geoid, request.qwargs.geom))
+    cache_key = str('1.0/geo/%s/show/%s.json?geom=%s' % (release, geoid, request.qwargs.geom))
     cached = get_from_cache(cache_key)
     if cached:
         resp = make_response(cached)
@@ -1547,17 +1559,17 @@ def geo_lookup(geoid):
             result = db.session.execute(
                 """SELECT display_name,simple_name,sumlevel,full_geoid,population,aland,awater,
                    ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,ST_Perimeter(geom) / 1700)) as geom
-                   FROM tiger2014.census_name_lookup
+                   FROM %s.census_name_lookup
                    WHERE full_geoid=:geoid
-                   LIMIT 1""",
+                   LIMIT 1""" % (release,),
                 {'geoid': geoid}
             )
         else:
             result = db.session.execute(
                 """SELECT display_name,simple_name,sumlevel,full_geoid,population,aland,awater
-                   FROM tiger2014.census_name_lookup
+                   FROM %s.census_name_lookup
                    WHERE full_geoid=:geoid
-                   LIMIT 1""",
+                   LIMIT 1""" % (release,),
                 {'geoid': geoid}
             )
 
@@ -1582,10 +1594,13 @@ def geo_lookup(geoid):
 
 
 # Example: /1.0/geo/tiger2014/04000US53/parents
-@app.route("/1.0/geo/tiger2014/<geoid>/parents")
+# Example: /1.0/geo/tiger2013/04000US53/parents
+@app.route("/1.0/geo/<release>/<geoid>/parents")
 @crossdomain(origin='*')
-def geo_parent(geoid):
-    cache_key = str('tiger2014/show/%s.parents.json' % geoid)
+def geo_parent(release, geoid):
+    if release not in allowed_tiger:
+        abort(400, "Unknown TIGER release")
+    cache_key = str('%s/show/%s.parents.json' % (release, geoid))
     cached = get_from_cache(cache_key)
     if cached:
         resp = make_response(cached)
@@ -1606,9 +1621,9 @@ def geo_parent(geoid):
         if parent_geoids:
             result = db.session.execute(
                 """SELECT display_name,sumlevel,full_geoid
-                   FROM tiger2014.census_name_lookup
+                   FROM %s.census_name_lookup
                    WHERE full_geoid IN :geoids
-                   ORDER BY sumlevel DESC""",
+                   ORDER BY sumlevel DESC""" % (release,),
                 {'geoids': tuple(parent_geoids)}
             )
             parent_list = dict([build_item(p) for p in result])
@@ -1629,12 +1644,14 @@ def geo_parent(geoid):
 
 # Example: /1.0/geo/show/tiger2014?geo_ids=04000US55,04000US56
 # Example: /1.0/geo/show/tiger2014?geo_ids=160|04000US17,04000US56
-@app.route("/1.0/geo/show/tiger2014")
+@app.route("/1.0/geo/show/<release>")
 @qwarg_validate({
     'geo_ids': {'valid': StringList(), 'required': True},
 })
 @crossdomain(origin='*')
-def show_specified_geo_data():
+def show_specified_geo_data(release):
+    if release not in allowed_tiger:
+        abort(400, "Unknown TIGER release")
     geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids)
 
     max_geoids = current_app.config.get('MAX_GEOIDS_TO_SHOW', 3000)
@@ -1648,8 +1665,8 @@ def show_specified_geo_data():
             awater,
             population,
             ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,ST_Perimeter(geom) / 2500)) as geom
-           FROM tiger2014.census_name_lookup
-           WHERE geom is not null and full_geoid IN :geoids;""",
+           FROM %s.census_name_lookup
+           WHERE geom is not null and full_geoid IN :geoids;""" % (release,),
         {'geoids': tuple(geo_ids)}
     )
 
