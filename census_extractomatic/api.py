@@ -2293,7 +2293,7 @@ def show_specified_data(acs):
         expand_geoids_with = acs
     elif acs == 'latest':
         acs_to_try = allowed_acs[:3]  # The first three releases
-        expand_geoids_with = allowed_acs[2]  # The third (biggest) release
+        expand_geoids_with = allowed_acs[1]  # The second (biggest) release
     else:
         abort(400, 'The %s release isn\'t supported.' % get_acs_name(acs))
 
