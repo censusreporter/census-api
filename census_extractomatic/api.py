@@ -1903,22 +1903,22 @@ def table_search():
         return json.dumps(data)
 
     table_where_parts = []
-    table_where_args = []
+    table_where_args = {}
     column_where_parts = []
-    column_where_args = []
+    column_where_args = {}
 
     if q and q != '*':
         q = '%%%s%%' % q
-        table_where_parts.append("lower(tab.table_title) LIKE lower(%s)")
-        table_where_args.append(q)
-        column_where_parts.append("lower(col.column_title) LIKE lower(%s)")
-        column_where_args.append(q)
+        table_where_parts.append("lower(tab.table_title) LIKE lower(:query)")
+        table_where_args['query'] = q
+        column_where_parts.append("lower(col.column_title) LIKE lower(:query)")
+        column_where_args['query'] = q
 
     if topics:
-        table_where_parts.append('tab.topics @> %s')
-        table_where_args.append(topics)
-        column_where_parts.append('tab.topics @> %s')
-        column_where_args.append(topics)
+        table_where_parts.append('tab.topics @> :topics')
+        table_where_args['topics'] = topics
+        column_where_parts.append('tab.topics @> :topics')
+        column_where_args['topics'] = topics
 
     if table_where_parts:
         table_where = ' AND '.join(table_where_parts)
