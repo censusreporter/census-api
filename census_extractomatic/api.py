@@ -1943,6 +1943,7 @@ def table_search():
         table_where_args
     )
     for tabulation in result:
+        tabulation = dict(tabulation)
         for tables_for_release_col in ('tables_in_one_yr', 'tables_in_three_yr', 'tables_in_five_yr'):
             if tabulation[tables_for_release_col]:
                 tabulation['table_id'] = tabulation[tables_for_release_col][0]
