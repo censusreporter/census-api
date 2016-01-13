@@ -2538,7 +2538,7 @@ def download_specified_data(acs):
 
             sql = 'SELECT * FROM %s WHERE geoid IN :geo_ids;' % (from_stmt,)
 
-            result = db.session.execute(sql, {'geo_ids': valid_geo_ids})
+            result = db.session.execute(sql, {'geo_ids': tuple(valid_geo_ids)})
             data = OrderedDict()
 
             if result.rowcount != len(valid_geo_ids):
