@@ -2627,9 +2627,9 @@ def download_specified_data(acs):
                             out_layer.CreateField(ogr.FieldDefn(column_id, ogr.OFTReal))
                             out_layer.CreateField(ogr.FieldDefn(column_id + "e", ogr.OFTReal))
                         else:
-                            column_name_utf8 = column_info['name'].encode('utf-8')
-                            out_layer.CreateField(ogr.FieldDefn(column_id + " - " + column_name_utf8, ogr.OFTReal))
-                            out_layer.CreateField(ogr.FieldDefn(column_id + " - " + column_name_utf8+", Error", ogr.OFTReal))
+                            column_name_utf8 = column_id.encode('utf-8')
+                            out_layer.CreateField(ogr.FieldDefn(column_name_utf8, ogr.OFTReal))
+                            out_layer.CreateField(ogr.FieldDefn(column_name_utf8+", Error", ogr.OFTReal))
 
                 sql = """SELECT geom,full_geoid,display_name
                          FROM tiger2014.census_name_lookup
