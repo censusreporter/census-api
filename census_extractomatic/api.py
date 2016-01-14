@@ -2025,6 +2025,7 @@ def tabulation_details(tabulation_id):
 @crossdomain(origin='*')
 def table_details(table_id):
     release = request.qwargs.acs
+
     cache_key = str('tables/%s/%s.json' % (release, table_id))
     cached = get_from_cache(cache_key)
     if cached:
@@ -2041,7 +2042,7 @@ def table_details(table_id):
         row = result.fetchone()
 
         if not row:
-            abort(400, "Table %s not found." % table_id.upper())
+            abort(400, "Table %s not found in release %s. Try specifying another release." % (table_id.upper(), release))
 
         data = OrderedDict([
             ("table_id", row['table_id']),
