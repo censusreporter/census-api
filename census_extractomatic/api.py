@@ -52,6 +52,9 @@ allowed_acs = [
 # use this ACS. It should always be a 5yr release so as to include as
 # many geos as possible.
 release_to_expand_with = allowed_acs[1]
+# When table searches happen without a specified release, use this
+# release to do the table search.
+default_table_search_release = allowed_acs[1]
 
 # Allowed TIGER releases in newest order
 allowed_tiger = [
@@ -1782,7 +1785,7 @@ def format_table_elasticsearch_result(obj, backfill_table_details):
 # Example: /1.0/table/elasticsearch?topics=housing,poverty
 @app.route("/1.0/table/elasticsearch")
 @qwarg_validate({
-    'acs': {'valid': OneOf(allowed_acs), 'default': allowed_acs[0]},
+    'acs': {'valid': OneOf(allowed_acs), 'default': default_table_search_release},
     'q':   {'valid': NonemptyString()},
     'topics': {'valid': StringList()},
     'start': {'valid': Integer(), 'default': 0},
@@ -1872,7 +1875,7 @@ def format_table_search_result(obj, obj_type):
 # Example: /1.0/table/search?topics=housing,poverty
 @app.route("/1.0/table/search")
 @qwarg_validate({
-    'acs': {'valid': OneOf(allowed_acs), 'default': allowed_acs[0]},
+    'acs': {'valid': OneOf(allowed_acs), 'default': default_table_search_release},
     'q':   {'valid': NonemptyString()},
     'topics': {'valid': StringList()}
 })
@@ -2017,7 +2020,7 @@ def tabulation_details(tabulation_id):
 # Example: /1.0/table/B28001?release=acs2013_1yr
 @app.route("/1.0/table/<table_id>")
 @qwarg_validate({
-    'acs': {'valid': OneOf(allowed_acs), 'default': 'latest'}
+    'acs': {'valid': OneOf(allowed_acs), 'default': default_table_search_release}
 })
 @crossdomain(origin='*')
 def table_details(table_id):
