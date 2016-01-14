@@ -48,6 +48,10 @@ allowed_acs = [
     'acs2014_5yr',
     'acs2013_3yr',
 ]
+# When expanding a container geoid shorthand (i.e. 140|05000US12127),
+# use this ACS. It should always be a 5yr release so as to include as
+# many geos as possible.
+release_to_expand_with = allowed_acs[1]
 
 # Allowed TIGER releases in newest order
 allowed_tiger = [
@@ -1653,7 +1657,7 @@ def geo_parent(release, geoid):
 def show_specified_geo_data(release):
     if release not in allowed_tiger:
         abort(400, "Unknown TIGER release")
-    geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids)
+    geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids, release_to_expand_with)
 
     max_geoids = current_app.config.get('MAX_GEOIDS_TO_SHOW', 3000)
     if len(geo_ids) > max_geoids:
@@ -2295,7 +2299,7 @@ def show_specified_data(acs):
         expand_geoids_with = acs
     elif acs == 'latest':
         acs_to_try = allowed_acs[:3]  # The first three releases
-        expand_geoids_with = allowed_acs[1]  # The second (biggest) release
+        expand_geoids_with = release_to_expand_with
     else:
         abort(400, 'The %s release isn\'t supported.' % get_acs_name(acs))
 
@@ -2460,7 +2464,7 @@ def download_specified_data(acs):
         expand_geoids_with = acs
     elif acs == 'latest':
         acs_to_try = allowed_acs[:3]  # The first three releases
-        expand_geoids_with = allowed_acs[2]  # The third (biggest) release
+        expand_geoids_with = release_to_expand_with
     else:
         abort(400, 'The %s release isn\'t supported.' % get_acs_name(acs))
 
