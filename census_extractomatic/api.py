@@ -2633,7 +2633,7 @@ def download_specified_data(acs):
 
                 sql = """SELECT geom,full_geoid,display_name
                          FROM tiger2014.census_name_lookup
-                         WHERE full_geoid IN %s
+                         WHERE full_geoid IN (%s)
                          ORDER BY full_geoid""" % ', '.join("'%s'" % g.encode('utf-8') for g in valid_geo_ids)
                 in_layer = conn.ExecuteSQL(sql)
 
