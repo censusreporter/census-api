@@ -256,7 +256,7 @@ def crossdomain(origin=None, methods=None, headers=None,
 @crossdomain(origin='*')
 def jsonify_error_handler(error):
     if isinstance(error, ClientRequestValidationException):
-        resp = jsonify(error="The requested parameters are not valid.", errors=error.errors)
+        resp = jsonify(error=error.message, errors=error.errors)
         resp.status_code = error.code
     elif isinstance(error, HTTPException):
         resp = jsonify(error=error.description)

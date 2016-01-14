@@ -145,7 +145,7 @@ def qwarg_validate(validators):
                             "error": validation.help_text()
                         }
             if errors:
-                raise ClientRequestValidationException(errors=errors)
+                raise ClientRequestValidationException("The requested parameters are not valid", errors=errors)
             request.qwargs = qwargs
             return f(*args, **kwargs)
         return validate_qwargs
