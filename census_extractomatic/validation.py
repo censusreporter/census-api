@@ -1,4 +1,5 @@
 from flask import request, abort
+from werkzeug.exceptions import BadRequest
 from functools import wraps
 import json
 
@@ -8,6 +9,10 @@ class QueryArgs(dict):
 
 
 class ValidationException(Exception):
+    pass
+
+
+class ClientRequestValidationException(BadRequest):
     pass
 
 
@@ -139,7 +144,7 @@ def qwarg_validate(validators):
                             "error": validation.help_text()
                         }
             if errors:
-                abort(400, json.dumps(errors))
+                raise ClientRequestValidationException(errors=errors)
             request.qwargs = qwargs
             return f(*args, **kwargs)
         return validate_qwargs

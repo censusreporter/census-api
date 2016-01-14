@@ -27,7 +27,7 @@ import pyes
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 from boto.exception import S3ResponseError
-from validation import qwarg_validate, NonemptyString, FloatRange, StringList, Bool, OneOf, Integer
+from validation import qwarg_validate, NonemptyString, FloatRange, StringList, Bool, OneOf, Integer, ClientRequestValidationException
 
 
 app = Flask(__name__)
@@ -255,7 +255,10 @@ def crossdomain(origin=None, methods=None, headers=None,
 @app.errorhandler(500)
 @crossdomain(origin='*')
 def jsonify_error_handler(error):
-    if isinstance(error, HTTPException):
+    if isinstance(error, ClientRequestValidationException):
+        resp = jsonify(error="The requested parameters are not valid.", errors=error.errors)
+        resp.status_code = error.code
+    elif isinstance(error, HTTPException):
         resp = jsonify(error=error.description)
         resp.status_code = error.code
     else:
