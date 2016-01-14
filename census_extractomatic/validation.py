@@ -1,7 +1,6 @@
-from flask import request, abort
+from flask import request
 from werkzeug.exceptions import BadRequest
 from functools import wraps
-import json
 
 
 class QueryArgs(dict):
@@ -13,7 +12,9 @@ class ValidationException(Exception):
 
 
 class ClientRequestValidationException(BadRequest):
-    pass
+    def __init__(self, message, errors):
+        super(ClientRequestValidationException, self).__init__(message)
+        self.errors = errors
 
 
 class Validation(object):
