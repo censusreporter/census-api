@@ -2622,19 +2622,19 @@ def download_specified_data(acs):
                 out_layer.CreateField(ogr.FieldDefn('name', ogr.OFTString))
                 for (table_id, table) in table_metadata.iteritems():
                     for column_id, column_info in table['columns'].iteritems():
+                        column_name_utf8 = column_id.encode('utf-8')
                         if request.qwargs.format == 'shp':
                             # Work around the Shapefile column name length limits
-                            out_layer.CreateField(ogr.FieldDefn(column_id, ogr.OFTReal))
-                            out_layer.CreateField(ogr.FieldDefn(column_id + "e", ogr.OFTReal))
-                        else:
-                            column_name_utf8 = column_id.encode('utf-8')
                             out_layer.CreateField(ogr.FieldDefn(column_name_utf8, ogr.OFTReal))
-                            out_layer.CreateField(ogr.FieldDefn(column_name_utf8+", Error", ogr.OFTReal))
+                            out_layer.CreateField(ogr.FieldDefn(column_name_utf8 + "e", ogr.OFTReal))
+                        else:
+                            out_layer.CreateField(ogr.FieldDefn(column_name_utf8, ogr.OFTReal))
+                            out_layer.CreateField(ogr.FieldDefn(column_name_utf8 + ", Error", ogr.OFTReal))
 
                 sql = """SELECT geom,full_geoid,display_name
                          FROM tiger2014.census_name_lookup
                          WHERE full_geoid IN %s
-                         ORDER BY full_geoid""" % ', '.join("'%s'" % g for g in valid_geo_ids)
+                         ORDER BY full_geoid""" % ', '.join("'%s'" % g.encode('utf-8') for g in valid_geo_ids)
                 in_layer = conn.ExecuteSQL(sql)
 
                 in_feat = in_layer.GetNextFeature()
@@ -2648,14 +2648,15 @@ def download_specified_data(acs):
                         table_estimates = data[geoid][table_id]['estimate']
                         table_errors = data[geoid][table_id]['error']
                         for column_id, column_info in table['columns'].iteritems():
+                            column_name_utf8 = column_id.encode('utf-8')
                             if column_id in table_estimates:
                                 if request.qwargs.format == 'shp':
                                     # Work around the Shapefile column name length limits
-                                    estimate_col_name = column_id
-                                    error_col_name = column_id + "e"
+                                    estimate_col_name = column_name_utf8
+                                    error_col_name = column_name_utf8 + "e"
                                 else:
-                                    estimate_col_name = column_id + " - " + column_info['name']
-                                    error_col_name = column_id + " - " + column_info['name']+", Error"
+                                    estimate_col_name = column_name_utf8
+                                    error_col_name = column_name_utf8 + ", Error"
 
                                 out_feat.SetField(estimate_col_name, table_estimates[column_id])
                                 out_feat.SetField(error_col_name, table_errors[column_id])
