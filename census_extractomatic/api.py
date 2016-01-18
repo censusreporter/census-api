@@ -2413,7 +2413,7 @@ def show_specified_data(acs):
                 # If we end up at the 'most complete' release, we should include every bit of
                 # data we can instead of erroring out on the user.
                 # See https://www.pivotaltracker.com/story/show/70906084
-                this_geo_has_data = False or acs == allowed_acs[-1]
+                this_geo_has_data = False or acs == allowed_acs[1]
 
                 cols_iter = iter(sorted(row.items(), key=lambda tup: tup[0]))
                 for table_id, data_iter in groupby(cols_iter, lambda x: x[0][:-3].upper()):
