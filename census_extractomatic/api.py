@@ -2640,7 +2640,8 @@ def download_specified_data(acs):
                 in_feat = in_layer.GetNextFeature()
                 while in_feat is not None:
                     out_feat = ogr.Feature(out_layer.GetLayerDefn())
-                    out_feat.SetGeometry(in_feat.GetGeometryRef())
+                    if request.qwargs.format in ('shp', 'kml', 'geojson'):
+                        out_feat.SetGeometry(in_feat.GetGeometryRef())
                     geoid = in_feat.GetField('full_geoid')
                     out_feat.SetField('geoid', geoid)
                     out_feat.SetField('name', in_feat.GetField('display_name'))
