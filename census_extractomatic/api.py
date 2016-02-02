@@ -2248,7 +2248,7 @@ def get_child_geoids_by_prefix(release, parent_geoid, child_summary_level):
 
 def expand_geoids(geoid_list, release=None):
     if not release:
-        release = allowed_acs[-1]
+        release = expand_geoids_with
 
     # Look for geoid "groups" of the form `child_sumlevel|parent_geoid`.
     # These will expand into a list of geoids like the old comparison endpoint used to
