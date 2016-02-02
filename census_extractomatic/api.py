@@ -46,7 +46,7 @@ if not app.debug:
 allowed_acs = [
     'acs2014_1yr',
     'acs2014_5yr',
-    'acs2013_3yr',
+    # 'acs2013_3yr',
 ]
 # When expanding a container geoid shorthand (i.e. 140|05000US12127),
 # use this ACS. It should always be a 5yr release so as to include as
