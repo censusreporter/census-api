@@ -500,8 +500,8 @@ def compute_profile_item_levels(geoid):
     geoid_parts = []
 
     if geoid:
-        geoid = geoid.lower()
-        geoid_parts = geoid.split('us')
+        geoid = geoid.upper()
+        geoid_parts = geoid.split('US')
 
     if len(geoid_parts) is not 2:
         raise Exception('Invalid geoid')
@@ -1559,7 +1559,7 @@ def geo_tiles(release, sumlevel, zoom, x, y):
 def geo_lookup(release, geoid):
     if release not in allowed_tiger:
         abort(400, "Unknown TIGER release")
-    geoid_parts = geoid.split('US')
+    geoid_parts = geoid.upper().split('US')
     if len(geoid_parts) is not 2:
         abort(400, 'Invalid GeoID')
 
@@ -2235,7 +2235,7 @@ def get_child_geoids_by_gis(release, parent_geoid, child_summary_level):
 
 
 def get_child_geoids_by_prefix(release, parent_geoid, child_summary_level):
-    child_geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid.split('US')[1])
+    child_geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid.upper().split('US')[1])
 
     # Use the "worst"/biggest ACS to find all child geoids
     db.session.execute("SET search_path=:acs,public;", {'acs': release})
