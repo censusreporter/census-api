@@ -6,6 +6,7 @@ from flask import abort, request, g
 from flask import make_response, current_app, send_file, url_for
 from flask import jsonify, redirect
 from flask.ext.sqlalchemy import SQLAlchemy
+from raven.contrib.flask import Sentry
 from werkzeug.exceptions import HTTPException
 from functools import update_wrapper
 from itertools import groupby
@@ -33,6 +34,7 @@ from validation import qwarg_validate, NonemptyString, FloatRange, StringList, B
 app = Flask(__name__)
 app.config.from_object(os.environ.get('EXTRACTOMATIC_CONFIG_MODULE', 'census_extractomatic.config.Development'))
 db = SQLAlchemy(app)
+sentry = Sentry(app)
 
 app.s3 = S3Connection()
 
