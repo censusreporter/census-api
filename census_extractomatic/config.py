@@ -1,5 +1,8 @@
+import os
+
+
 class Config(object):
-    pass
+    SENTRY_DSN = os.environ.get('SENTRY_DSN')
 
 
 class Production(Config):
