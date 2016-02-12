@@ -497,8 +497,12 @@ def get_data_fallback(table_ids, geoids, acs=None):
 
 def compute_profile_item_levels(geoid):
     levels = []
+    geoid_parts = []
 
-    geoid_parts = geoid.split('US')
+    if geoid:
+        geoid = geoid.lower()
+        geoid_parts = geoid.split('us')
+
     if len(geoid_parts) is not 2:
         raise Exception('Invalid geoid')
 
