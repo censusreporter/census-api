@@ -1614,6 +1614,9 @@ def geo_lookup(release, geoid):
 def geo_parent(release, geoid):
     if release not in allowed_tiger:
         abort(400, "Unknown TIGER release")
+
+    geoid = geoid.upper()
+
     cache_key = str('%s/show/%s.parents.json' % (release, geoid))
     cached = get_from_cache(cache_key)
     if cached:
@@ -2032,6 +2035,8 @@ def tabulation_details(tabulation_id):
 @crossdomain(origin='*')
 def table_details(table_id):
     release = request.qwargs.acs
+
+    table_id = table_id.upper() if table_id else table_id
 
     cache_key = str('tables/%s/%s.json' % (release, table_id))
     cached = get_from_cache(cache_key)
