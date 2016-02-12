@@ -1559,7 +1559,9 @@ def geo_tiles(release, sumlevel, zoom, x, y):
 def geo_lookup(release, geoid):
     if release not in allowed_tiger:
         abort(400, "Unknown TIGER release")
-    geoid_parts = geoid.upper().split('US')
+
+    geoid = geoid.upper() if geoid else geoid
+    geoid_parts = geoid.split('US')
     if len(geoid_parts) is not 2:
         abort(400, 'Invalid GeoID')
 
