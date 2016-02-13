@@ -58,6 +58,8 @@ $ curl "http://api.censusreporter.org/1.0/tabulation/01001"
 
 #### `GET /1.0/table/<table_id>`
 
+**Deprecated**: You should use the endpoint `GET /2.0/table/<release>/<table_id>`, documented below.
+
  URL Argument    | Type   | Required? | Description
 :----------------|:-------|:----------|:-----------
  `table_id`      | string | Yes       | The table ID to retrieve.
@@ -72,6 +74,48 @@ Returns information about the specified table in the specified release. Informat
 Examples:
 ```bash
 $ curl "http://api.censusreporter.org/1.0/table/B01001A"
+{
+    "table_id": "B01001A",
+    "table_title": "Sex by Age (White Alone)",
+    "simple_table_title": "Sex by Age (White Alone)",
+    "subject_area": "Age-Sex",
+    "universe": "People Who Are White Alone",
+    "denominator_column_id": "B01001A001",
+    "topics": [
+        "age",
+        "race",
+        "sex"
+    ],
+    "columns": {
+        "B01001A001": {
+            "column_title": "Total:",
+            "indent": 0,
+            "parent_column_id": null
+        },
+        "B01001A002": {
+            "column_title": "Male:",
+            "indent": 1,
+            "parent_column_id": "B01001A001"
+        },
+        ...
+    }
+}
+```
+
+#### `GET /2.0/table/<acs>/<table_id>`
+
+ URL Argument    | Type   | Required? | Description
+:----------------|:-------|:----------|:-----------
+ `acs`           | string | Yes       | The release to use for this data.
+ `table_id`      | string | Yes       | The table ID to retrieve.
+
+Returns information about the specified table in the specified release. Information returned includes the table's title, subject area, universe, a list of topics covered by the table, and a list of columns contained in the table.
+
+The `acs` parameter specifies which release to use. If you aren't sure, use the word `latest` and we will pick the most recent release that contains the table you asked for.
+
+Examples:
+```bash
+$ curl "http://api.censusreporter.org/2.0/table/latest/B01001A"
 {
     "table_id": "B01001A",
     "table_title": "Sex by Age (White Alone)",

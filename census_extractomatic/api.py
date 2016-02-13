@@ -2097,6 +2097,77 @@ def table_details(table_id):
     return resp
 
 
+# Example: /2.0/table/latest/B28001
+@app.route("/2.0/table/<release>/<table_id>")
+@crossdomain(origin='*')
+def table_details_with_release(release, table_id):
+    if release in allowed_acs:
+        acs_to_try = [release]
+    elif release == 'latest':
+        acs_to_try = list(allowed_acs)
+    else:
+        abort(400, 'The %s release isn\'t supported.' % get_acs_name(release))
+
+    table_id = table_id.upper() if table_id else table_id
+
+    for release in acs_to_try:
+        cache_key = str('tables/%s/%s.json' % (release, table_id))
+        cached = get_from_cache(cache_key)
+        if cached:
+            resp = make_response(cached)
+        else:
+            db.session.execute("SET search_path=:acs, public;", {'acs': release})
+
+            result = db.session.execute(
+                """SELECT *
+                   FROM census_table_metadata tab
+                   WHERE table_id=:table_id""",
+                {'table_id': table_id}
+            )
+            row = result.fetchone()
+
+            if not row:
+                continue
+
+            data = OrderedDict([
+                ("table_id", row['table_id']),
+                ("table_title", row['table_title']),
+                ("simple_table_title", row['simple_table_title']),
+                ("subject_area", row['subject_area']),
+                ("universe", row['universe']),
+                ("denominator_column_id", row['denominator_column_id']),
+                ("topics", row['topics'])
+            ])
+
+            result = db.session.execute(
+                """SELECT *
+                   FROM census_column_metadata
+                   WHERE table_id=:table_id""",
+                {'table_id': row['table_id']}
+            )
+
+            rows = []
+            for row in result:
+                rows.append((row['column_id'], dict(
+                    column_title=row['column_title'],
+                    indent=row['indent'],
+                    parent_column_id=row['parent_column_id']
+                )))
+            data['columns'] = OrderedDict(rows)
+
+            result = json.dumps(data)
+
+            resp = make_response(result)
+            put_in_cache(cache_key, result)
+
+        resp.headers.set('Content-Type', 'application/json')
+        resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600*4))
+
+        return resp
+
+    abort(400, "Table %s not found in releases %s. Try specifying another release." % (table_id, ', '.join(acs_to_try)))
+
+
 # Example: /1.0/table/compare/rowcounts/B01001?year=2011&sumlevel=050&within=04000US53
 @app.route("/1.0/table/compare/rowcounts/<table_id>")
 @qwarg_validate({
