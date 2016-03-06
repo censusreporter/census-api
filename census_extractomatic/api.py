@@ -20,7 +20,6 @@ import re
 import os
 import shutil
 import tempfile
-import urlparse
 import zipfile
 import pylibmc
 import mockcache
@@ -30,6 +29,7 @@ from boto.s3.key import Key
 from boto.exception import S3ResponseError
 from validation import qwarg_validate, NonemptyString, FloatRange, StringList, Bool, OneOf, Integer, ClientRequestValidationException
 
+from census_extractomatic.exporters import create_ogr_download, create_excel_download, supported_formats
 
 app = Flask(__name__)
 app.config.from_object(os.environ.get('EXTRACTOMATIC_CONFIG_MODULE', 'census_extractomatic.config.Development'))
@@ -169,15 +169,6 @@ state_fips = {
     "72": "Puerto Rico",
     "78": "United States Virgin Islands"
 }
-
-supported_formats = {
-    'shp':      {"type": "ogr", "driver": "ESRI Shapefile"},
-    'kml':      {"type": "ogr", "driver": "KML"},
-    'geojson':  {"type": "ogr", "driver": "GeoJSON"},
-    'xlsx':     {"type": "ogr", "driver": "XLSX"},
-    'csv':      {"type": "ogr", "driver": "CSV"},
-}
-
 
 def get_from_cache(cache_key, try_s3=True):
     # Try memcache first
@@ -2540,83 +2531,6 @@ def show_specified_data(acs):
     abort(400, str(e))
 
 
-def get_sql_config():
-    """Return a tuple of strings: (host, user, password, database)"""
-    db_details = urlparse.urlparse(app.config['SQLALCHEMY_DATABASE_URI'])
-    return (db_details.hostname,
-            db_details.username,
-            db_details.password,
-            db_details.path[1:])
-
-def create_ogr_download(data, table_metadata, valid_geo_ids, file_ident, out_filename, format):
-    import ogr
-    import osr
-    format_info = supported_formats[format]
-    driver_name = format_info['driver']
-    ogr.UseExceptions()
-    in_driver = ogr.GetDriverByName("PostgreSQL")
-    host, user, password, database = get_sql_config()
-    conn = in_driver.Open("PG: host=%s dbname=%s user=%s password=%s" % (host, database, user, password))
-
-    if conn is None:
-        raise Exception("Could not connect to database to generate download.")
-
-    out_driver = ogr.GetDriverByName(driver_name)
-    out_srs = osr.SpatialReference()
-    out_srs.ImportFromEPSG(4326)
-    out_data = out_driver.CreateDataSource(out_filename)
-    # See http://gis.stackexchange.com/questions/53920/ogr-createlayer-returns-typeerror
-    out_layer = out_data.CreateLayer(file_ident.encode('utf-8'), srs=out_srs, geom_type=ogr.wkbMultiPolygon)
-    out_layer.CreateField(ogr.FieldDefn('geoid', ogr.OFTString))
-    out_layer.CreateField(ogr.FieldDefn('name', ogr.OFTString))
-    for (table_id, table) in table_metadata.iteritems():
-        for column_id, column_info in table['columns'].iteritems():
-            column_name_utf8 = column_id.encode('utf-8')
-            if driver_name == "ESRI Shapefile":
-                # Work around the Shapefile column name length limits
-                out_layer.CreateField(ogr.FieldDefn(column_name_utf8, ogr.OFTReal))
-                out_layer.CreateField(ogr.FieldDefn(column_name_utf8 + "e", ogr.OFTReal))
-            else:
-                out_layer.CreateField(ogr.FieldDefn(column_name_utf8, ogr.OFTReal))
-                out_layer.CreateField(ogr.FieldDefn(column_name_utf8 + ", Error", ogr.OFTReal))
-
-    sql = """SELECT geom,full_geoid,display_name
-             FROM tiger2014.census_name_lookup
-             WHERE full_geoid IN (%s)
-             ORDER BY full_geoid""" % ', '.join("'%s'" % g.encode('utf-8') for g in valid_geo_ids)
-    in_layer = conn.ExecuteSQL(sql)
-
-    in_feat = in_layer.GetNextFeature()
-    while in_feat is not None:
-        out_feat = ogr.Feature(out_layer.GetLayerDefn())
-        if format in ('shp', 'kml', 'geojson'):
-            out_feat.SetGeometry(in_feat.GetGeometryRef())
-        geoid = in_feat.GetField('full_geoid')
-        out_feat.SetField('geoid', geoid)
-        out_feat.SetField('name', in_feat.GetField('display_name'))
-        for (table_id, table) in table_metadata.iteritems():
-            table_estimates = data[geoid][table_id]['estimate']
-            table_errors = data[geoid][table_id]['error']
-            for column_id, column_info in table['columns'].iteritems():
-                column_name_utf8 = column_id.encode('utf-8')
-                if column_id in table_estimates:
-                    if format == 'shp':
-                        # Work around the Shapefile column name length limits
-                        estimate_col_name = column_name_utf8
-                        error_col_name = column_name_utf8 + "e"
-                    else:
-                        estimate_col_name = column_name_utf8
-                        error_col_name = column_name_utf8 + ", Error"
-
-                    out_feat.SetField(estimate_col_name, table_estimates[column_id])
-                    out_feat.SetField(error_col_name, table_errors[column_id])
-
-        out_layer.CreateFeature(out_feat)
-        in_feat.Destroy()
-        in_feat = in_layer.GetNextFeature()
-    out_data.Destroy()
-
-
 # Example: /1.0/data/download/acs2012_5yr?format=shp&table_ids=B01001,B01003&geo_ids=04000US55,04000US56
 # Example: /1.0/data/download/latest?table_ids=B01001&geo_ids=160|04000US17,04000US56
 @app.route("/1.0/data/download/<acs>")
@@ -2756,11 +2670,8 @@ def download_specified_data(acs):
             os.mkdir(inner_path)
             out_filename = os.path.join(inner_path, '%s.%s' % (file_ident, request.qwargs.format))
             format_info = supported_formats.get(request.qwargs.format)
-
-            if format_info['type'] == 'ogr':
-                create_ogr_download(data, table_metadata, valid_geo_ids, file_ident, out_filename, request.qwargs.format)
-            else:
-                pass # placeholder for non-ogr handling
+            builder_func = format_info['function']
+            builder_func(app.config['SQLALCHEMY_DATABASE_URI'], data, table_metadata, valid_geo_ids, file_ident, out_filename, request.qwargs.format)
 
             metadata_dict = {
                 'release': {
