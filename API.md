@@ -1,6 +1,8 @@
 ## Census Reporter API
 
-Think of the American Community Survey as a spreadshet with thousands of columns and hundreds of thousands of rows (geographies). At the intersection of each of these is a The goal of this API is to make it easy to access any chunk of that spreadsheet with simple HTTP calls and get the result as an easy-to-parse JSON object.
+Think of the American Community Survey as a spreadshet with thousands of columns and hundreds of thousands of rows (geographies). At the intersection of each of these is an estimate.
+
+The goal of this API is to make it easy to access any chunk of that spreadsheet with simple HTTP calls and get the result as an easy-to-parse JSON object.
 
 To continue with the spreadsheet metaphor, the endpoints for this API can be roughly broken into 3 pieces:
 
@@ -8,86 +10,10 @@ To continue with the spreadsheet metaphor, the endpoints for this API can be rou
 2. information about geographies (rows)
 3. data at the intersection of one or more of the above
 
+Endpoints labeled *experimental* depend on our project to implement ElasticSearch for CensusReporter data, and may change API and/or return imperfect results.
+
 ### Column, Table, and Tabulations
 
-#### `GET /1.0/table/suggest`
-
- Query Argument | Type   | Required? | Description
-:---------------|:-------|:----------|:-----------
- `q`            | string | Yes       | The string to use for suggestions.
-
-Retrieves a list of table and column suggestions given a search term using `q`. This is meant to support autocomplete text boxes.
-
-Examples:
-```bash
-$ curl "http://api.censusreporter.org/1.0/table/suggest?q=pover"
-{
-    "results": [
-        {
-            "table_id": "B17001",
-            "table_title": "Poverty Status in the Past 12 Months by Sex by Age"
-        },
-        ...
-    ]
-}
-
-$ curl "http://api.censusreporter.org/1.0/table/suggest?q=esoteric+word"
-{
-    "results": []
-}
-```
-
-#### `GET /1.0/table/elasticsearch`
-
- Query Argument | Type   | Required? | Description
-:---------------|:-------|:----------|:-----------
- `q`            | string | Yes       | The string to use for suggestions.
- `start`        | int    | No        | Where in the results list to start.
- `size`         | int    | No        | The number of results to return.
- `topics`       | string | No        | A column-separated list of topics to limit the search by.
- `acs`          | string | No        | The ACS release code to limit the search by.
-
-Returns table and column information relevant to the search term given in `q`. This endpoint supports paging using the `start` and `size` parameters. You can narrow your search by specifying a `topics` parameter. The `acs` parameter limits your search to a specific ACS release. By default it will use the most recent release.
-
-Examples:
-```bash
-$ curl "http://api.censusreporter.org/1.0/table/elasticsearch?q=children+in+poverty"
-{
-    "facets": {
-        "topics": {
-            "_type": "terms",
-            "total": 14,
-            "terms": [
-                {
-                    "count": 3,
-                    "term": "children"
-                },
-                ...
-            ],
-            "other": 0,
-            "missing": 0
-        }
-    },
-    "results": [
-        {
-            "table_title": "Poverty Status in the Past 12 Months of Related Children Under 18 Years by Family Type by Age of Related Children Under 18 Years",
-            "uid": "acs2012_5yr_B17006",
-            "universe": "Related Children Under 18 Years",
-            "denominator_column_id": "B17006001",
-            "table_id": "B17006",
-            "release": "acs2012_5yr",
-            "topics": [
-                "families",
-                "age",
-                "family type",
-                "poverty",
-                "children"
-            ]
-        },
-        ...
-    ]
-}
-```
 
 #### `GET /1.0/tabulation/<tabulation_id>`
 
@@ -132,6 +58,8 @@ $ curl "http://api.censusreporter.org/1.0/tabulation/01001"
 
 #### `GET /1.0/table/<table_id>`
 
+**Deprecated**: You should use the endpoint `GET /2.0/table/<release>/<table_id>`, documented below.
+
  URL Argument    | Type   | Required? | Description
 :----------------|:-------|:----------|:-----------
  `table_id`      | string | Yes       | The table ID to retrieve.
@@ -174,94 +102,51 @@ $ curl "http://api.censusreporter.org/1.0/table/B01001A"
 }
 ```
 
+#### `GET /2.0/table/<acs>/<table_id>`
+
+ URL Argument    | Type   | Required? | Description
+:----------------|:-------|:----------|:-----------
+ `acs`           | string | Yes       | The release to use for this data.
+ `table_id`      | string | Yes       | The table ID to retrieve.
+
+Returns information about the specified table in the specified release. Information returned includes the table's title, subject area, universe, a list of topics covered by the table, and a list of columns contained in the table.
+
+The `acs` parameter specifies which release to use. If you aren't sure, use the word `latest` and we will pick the most recent release that contains the table you asked for.
+
+Examples:
+```bash
+$ curl "http://api.censusreporter.org/2.0/table/latest/B01001A"
+{
+    "table_id": "B01001A",
+    "table_title": "Sex by Age (White Alone)",
+    "simple_table_title": "Sex by Age (White Alone)",
+    "subject_area": "Age-Sex",
+    "universe": "People Who Are White Alone",
+    "denominator_column_id": "B01001A001",
+    "topics": [
+        "age",
+        "race",
+        "sex"
+    ],
+    "columns": {
+        "B01001A001": {
+            "column_title": "Total:",
+            "indent": 0,
+            "parent_column_id": null
+        },
+        "B01001A002": {
+            "column_title": "Male:",
+            "indent": 1,
+            "parent_column_id": "B01001A001"
+        },
+        ...
+    }
+}
+```
+
 ### Geography
 
-#### `GET /1.0/geo/suggest`
-
- Query Argument | Type   | Required? | Description
-:---------------|:-------|:----------|:-----------
- `q`            | string | Yes       | The string to use for suggestions.
-
-Retrieves a list of geography suggestions given a search term using `q`. This is meant to support autocomplete text boxes.
-
-Examples:
-```bash
-$ curl "http://api.censusreporter.org/1.0/geo/suggest?q=chicag"
-{
-    "results": [
-        {
-            "geoid": "16000US1714000",
-            "name": "Chicago, IL"
-        },
-        {
-            "geoid": "06000US1703114000",
-            "name": "Chicago city, Cook County, IL"
-        },
-        {
-            "geoid": "31000US16980",
-            "name": "Chicago-Joliet-Naperville, IL-IN-WI Metro Area"
-        },
-        {
-            "geoid": "33000US176",
-            "name": "Chicago-Naperville-Michigan City, IL-IN-WI CSA"
-        },
-        {
-            "geoid": "16000US1714026",
-            "name": "Chicago Heights, IL"
-        }
-    ]
-}
-```
-
-#### `GET /1.0/geo/elasticsearch`
-
- Query Argument | Type   | Required? | Description
-:---------------|:-------|:----------|:-----------
- `q`            | string | Yes       | The string to use for suggestions.
- `start`        | int    | No        | Where in the results list to start.
- `size`         | int    | No        | The number of results to return.
- `sumlevs`      | string | No        | A column-separated list of 3-digit summary level codes to limit the search by.
-
-Returns geography information relevant to the search term given in `q`. This endpoint supports paging using the `start` and `size` parameters. You can narrow your search by specifying a comma-separated list of 3-digit summary levels with the `sumlevs` parameter.
-
-Examples:
-```bash
-$ curl "http://api.censusreporter.org/1.0/geo/elasticsearch?q=evanston+il"
-{
-    "facets": {
-        "sumlev": {
-            "_type": "terms",
-            "total": 1,
-            "terms": [
-                {
-                    "count": 1,
-                    "term": "160"
-                }
-            ],
-            "other": 0,
-            "missing": 0
-        }
-    },
-    "results": [
-        {
-            "sumlev": "160",
-            "population": 74619,
-            "display_name": "Evanston, IL",
-            "importance": 141.312802096439,
-            "awater": 57390,
-            "aland": 20148006,
-            "full_geoid": "16000US1724582",
-            "geoid": "1724582",
-            "location": [
-                -87.6943525,
-                42.0463909
-            ]
-        }
-    ]
-}
-```
-
-#### `GET /1.0/geo/tiger2012/tiles/<sumlevel>/<zoom>/<x>/<y>.geojson`
+#### `GET /1.0/geo/tiger2013/tiles/<sumlevel>/<zoom>/<x>/<y>.geojson`
 
  URL Argument    | Type   | Required? | Description
 :----------------|:-------|:----------|:-----------
@@ -272,7 +157,7 @@ $ curl "http://api.censusreporter.org/1.0/geo/elasticsearch?q=evanston+il"
 
 Returns a [GeoJSON](http://geojson.org/) representation of all geographies at summary level `sumlevel` and contained within a [map tile](http://www.maptiler.org/google-maps-coordinates-tile-bounds-projection/) specified by the `zoom`, `x`, and `y` parameters. You can use this to create a map of Census geographies on top of an existing map. The returned GeoJSON data includes attributes for the name and geoid of the geography.
 
-#### `GET /1.0/geo/tiger2012/<geoid>`
+#### `GET /1.0/geo/tiger2013/<geoid>`
 
  URL Argument    | Type   | Required? | Description
 :----------------|:-------|:----------|:-----------
@@ -286,7 +171,7 @@ Returns a [GeoJSON](http://geojson.org/) representation of the specified Census 
 
 Examples:
 ```bash
-$ curl "http://api.censusreporter.org/1.0/geo/tiger2012/04000US55"
+$ curl "http://api.censusreporter.org/1.0/geo/tiger2013/04000US55"
 {
     "geometry": null,
     "type": "Feature",
@@ -301,7 +186,7 @@ $ curl "http://api.censusreporter.org/1.0/geo/tiger2012/04000US55"
     }
 }
 
-$ curl "http://api.censusreporter.org/1.0/geo/tiger2012/04000US55?geom=true"
+$ curl "http://api.censusreporter.org/1.0/geo/tiger2013/04000US55?geom=true"
 {
     "geometry": {
         "type": "MultiPolygon",
@@ -330,7 +215,7 @@ $ curl "http://api.censusreporter.org/1.0/geo/tiger2012/04000US55?geom=true"
 }
 ```
 
-#### `GET /1.0/geo/tiger2012/<geoid>/parents`
+#### `GET /1.0/geo/tiger2013/<geoid>/parents`
 
  URL Argument    | Type   | Required? | Description
 :----------------|:-------|:----------|:-----------
@@ -344,7 +229,7 @@ This endpoint will also return the specified geography with a `relation` of `thi
 
 Examples:
 ```bash
-$ curl "http://api.censusreporter.org/1.0/geo/tiger2012/04000US55/parents"
+$ curl "http://api.censusreporter.org/1.0/geo/tiger2013/04000US55/parents"
 {
     "parents": [
         {
@@ -364,7 +249,7 @@ $ curl "http://api.censusreporter.org/1.0/geo/tiger2012/04000US55/parents"
     ]
 }
 
-$ curl "http://api.censusreporter.org/1.0/geo/tiger2012/16000US1714000/parents"
+$ curl "http://api.censusreporter.org/1.0/geo/tiger2013/16000US1714000/parents"
 {
     "parents": [
         {
@@ -413,7 +298,7 @@ $ curl "http://api.censusreporter.org/1.0/geo/tiger2012/16000US1714000/parents"
 }
 ```
 
-#### `GET /1.0/geo/show/tiger2012`
+#### `GET /1.0/geo/show/tiger2013`
 
  Query Argument | Type   | Required? | Description
 :---------------|:-------|:----------|:-----------
@@ -447,9 +332,9 @@ Examples:
 $ curl "http://api.censusreporter.org/1.0/data/show/latest?table_ids=B13016&geo_ids=04000US55"
 {
     "release": {
-        "id": "acs2012_1yr",
-        "name": "ACS 2012 1-year",
-        "years": "2012"
+        "id": "acs2013_1yr",
+        "name": "ACS 2013 1-year",
+        "years": "2013"
     },
     "tables": {
         "B13016": {

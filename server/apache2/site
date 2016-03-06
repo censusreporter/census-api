@@ -2,7 +2,9 @@
     ServerName %(domainname)s
     ServerAdmin admin@%(domainname)s
 
-    WSGIDaemonProcess %(domainname)s user=www-data group=www-data threads=5 python-path=%(project_path)s:%(venv_path)s
+    RequestReadTimeout header=0 body=0
+
+    WSGIDaemonProcess %(domainname)s user=www-data group=www-data threads=25 python-path=%(project_path)s:%(venv_path)s
     WSGIScriptAlias / %(wsgi_path)s
 
     AddOutputFilterByType DEFLATE application/json

@@ -4,8 +4,9 @@ from fabric.context_managers import shell_env, prefix
 from fabric.colors import green
 
 root_dir = '/home/www-data'
-code_dir = '%s/api_app' % root_dir
-virtualenv_name = 'api_venv'
+host = 'api.censusreporter.org'
+code_dir = '%s/%s_app' % (root_dir, host)
+virtualenv_name = '%s_venv' % host
 virtualenv_dir = '%s/%s' % (root_dir, virtualenv_name)
 newrelic_app_name = 'Census Reporter API'
 
@@ -67,13 +68,13 @@ def _mount_ebs():
 def _install_postgres():
     """ Install PostgreSQL and PostGIS. """
 
-    sudo('apt-get install -q -y postgresql-9.1 postgresql-9.1-postgis')
+    sudo('apt-get install -q -y postgresql-9.3 postgresql-9.3-postgis-2.1')
     sudo('/etc/init.d/postgresql stop') # Stop it so we can move the data dir
     sudo('mkdir -p /vol/postgresql')
-    if not exists('/vol/postgresql/9.1'):
-        sudo('mv /var/lib/postgresql/9.1 /vol/postgresql/')
+    if not exists('/vol/postgresql/9.3'):
+        sudo('mv /var/lib/postgresql/9.3 /vol/postgresql/')
     sudo('chown -R postgres:postgres /vol/postgresql')
-    sudo("sed -i \"s/data_directory = '\/var\/lib\/postgresql\/9.1\/main'/data_directory = '\/vol\/postgresql\/9.1\/main'/\" /etc/postgresql/9.1/main/postgresql.conf")
+    sudo("sed -i \"s/data_directory = '\/var\/lib\/postgresql\/9.3\/main'/data_directory = '\/vol\/postgresql\/9.3\/main'/\" /etc/postgresql/9.3/main/postgresql.conf")
     sudo('/etc/init.d/postgresql start')
 
     # Create PostgreSQL `census` user and database
@@ -95,8 +96,8 @@ def _install_libgdal():
 def _install_elasticsearch():
     """ Install and start ElasticSearch. """
     sudo('apt-get install -q -y openjdk-7-jre-headless')
-    run('wget --quiet --continue https://download.elasticsearch.org/elasticsearch/elasticsearch/elasticsearch-1.0.1.deb')
-    sudo('dpkg -i elasticsearch-1.0.1.deb')
+    run('wget --quiet --continue https://download.elasticsearch.org/elasticsearch/release/org/elasticsearch/distribution/deb/elasticsearch/2.1.0/elasticsearch-2.1.0.deb')
+    sudo('dpkg -i elasticsearch-2.1.0.deb')
     sudo('mkdir -p /vol/elasticsearch')
     sudo('chown elasticsearch:elasticsearch /vol/elasticsearch')
     append('/etc/elasticsearch/elasticsearch.yml', 'path.data: /vol/elasticsearch', use_sudo=True)
@@ -114,6 +115,10 @@ def _install_apache():
     sudo('apt-get install -q -y apache2 libapache2-mod-wsgi')
     sudo('a2enmod wsgi', warn_only=True)
 
+def _install_nginx():
+    """ Install and set up nginx. """
+    sudo('apt-get install -q -y nginx')
+
 def install_newrelic(api_key):
     """ Install the New Relic Python and Server agents using the specified API key. """
     with cd(code_dir):
@@ -125,12 +130,12 @@ def install_newrelic(api_key):
 def install_packages():
     """ Installs OS packages required to run the API. """
     _install_base()
-    _mount_ebs()
-    _install_postgres()
+    # _mount_ebs()
+    # _install_postgres()
     _install_libgdal()
     _install_elasticsearch()
     _install_memcached()
-    _install_apache()
+    _install_nginx()
 
 def flushcache():
     "Flush the memcache by restarting it."
@@ -140,36 +145,50 @@ def flushcache():
 def initial_config():
     """ Configure the remote host to run Census Reporter API. """
 
-    host = 'api.censusreporter.org'
-
     sudo('mkdir -p %s' % root_dir)
     sudo('chown www-data:www-data %s' % root_dir)
-
-    sudo('rm -f /etc/apache2/sites-enabled/000-default')
-    sudo('rm -f /etc/apache2/sites-enabled/%s' % host)
-    sudo('rm -f /etc/apache2/sites-available/%s' % host)
-    upload_template('./server/apache2/site', '/etc/apache2/sites-available/%s' % host, use_sudo=True, context={
-        'domainname': host,
-        'project_path': code_dir,
-        'wsgi_path': '%s/census_extractomatic/api.wsgi' % (code_dir),
-        'venv_path': '%s/lib/python2.7/site-packages' % (virtualenv_dir),
-    })
-    sudo('a2ensite %s' % host)
 
     # Install up to virtualenv
     sudo('apt-get install -q -y python-setuptools')
     sudo('easy_install pip')
     sudo('pip install virtualenv')
 
-    # Create virtualenv and add our django app to its PYTHONPATH
-    sudo('virtualenv %s' % virtualenv_dir, user='www-data')
+    # Create virtualenv and add our Flask app to it
+    sudo('virtualenv --no-site-packages %s' % virtualenv_dir, user='www-data')
     sudo('rm -f %s/lib/python2.7/site-packages/censusreporter.pth' % virtualenv_dir, user='www-data')
     append('%s/lib/python2.7/site-packages/censusreporter.pth' % virtualenv_dir, code_dir, use_sudo=True)
     sudo('chown www-data:www-data %s/lib/python2.7/site-packages/censusreporter.pth' % virtualenv_dir)
 
+    # Install and set up gunicorn in the virtualenv
+    with prefix('source %s/bin/activate' % virtualenv_dir):
+        sudo('pip install gunicorn futures', user='www-data')
+
+    sudo('rm -f /etc/init/%s.conf' % host)
+    upload_template('./server/upstart.conf.template', '/etc/init/%s.conf' % host, use_sudo=True, context={
+        'domainname': host,
+        'project_path': code_dir,
+        'virtualenv_dir': virtualenv_dir,
+    })
+
+    # Configure nginx to proxy requests to gunicorn
+    sudo('rm -f /etc/nginx/sites-enabled/default')
+    sudo('rm -f /etc/nginx/sites-enabled/%s' % host)
+    sudo('rm -f /etc/nginx/sites-available/%s' % host)
+    upload_template('./server/nginx.site.template', '/etc/nginx/sites-available/%s' % host, use_sudo=True, context={
+        'domainname': host,
+        'project_path': code_dir,
+    })
+    sudo('ln -s /etc/nginx/sites-available/%s /etc/nginx/sites-enabled' % host)
+
     with settings(warn_only=True):
         if sudo('test -d %s' % code_dir, user='www-data').failed:
             sudo('git clone git://github.com/censusreporter/census-api.git %s' % code_dir, user='www-data')
+
+    # Start gunicorn
+    sudo('start %s' % host)
+
+    # Restart nginx
+    sudo('service nginx restart')
 
 def deploy(branch='master'):
     """ Deploy the specified Census Reporter API branch to the remote host. """
@@ -181,10 +200,10 @@ def deploy(branch='master'):
         # Install pip requirements
         with prefix('source %s/bin/activate' % virtualenv_dir):
             with shell_env(CPLUS_INCLUDE_PATH='/usr/include/gdal', C_INCLUDE_PATH='/usr/include/gdal'):
-                sudo('pip install -r requirements.txt', user='www-data')
+                sudo('pip --quiet --no-cache-dir install -r requirements.txt', user='www-data')
 
-    # Restart apache
-    sudo('service apache2 restart')
+    # Restart gunicorn
+    sudo('restart %s' % host)
 
 def load_elasticsearch_data(releases=['acs2012_1yr', 'acs2012_3yr', 'acs2012_5yr'], delete_first=False):
     """ Loads search data into our ElasticSearch index. """
