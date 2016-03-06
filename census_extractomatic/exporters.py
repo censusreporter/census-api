@@ -1,4 +1,17 @@
 import urlparse
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+Session = sessionmaker()
+
+_sessions = {}
+def session(sql_url):
+    try:
+        return _sessions[sql_url]
+    except KeyError: # probably not super thread-safe, but repeated execution should be harmless
+        engine = create_engine(sql_url)
+        _sessions[sql_url] = Session(bind=engine.connect())
+        return _sessions[sql_url]
 
 def get_sql_config(sql_url):
     """Return a tuple of strings: (host, user, password, database)"""
@@ -8,14 +21,44 @@ def get_sql_config(sql_url):
             db_details.password,
             db_details.path[1:])
 
-
-
 def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ident, out_filename, format):
     import openpyxl
     wb = openpyxl.workbook.Workbook()
     sheet_name = ', '.join(table_metadata)
     sheet = wb.active
     sheet.title = sheet_name
+
+    header = ['geoid', 'name']
+    for (table_id, table) in table_metadata.iteritems():
+        for column_id, column_info in table['columns'].iteritems():
+            column_name_utf8 = column_id.encode('utf-8')
+            header.append(column_name_utf8)
+            header.append(column_name_utf8 + ", Error")
+
+    for i, h in enumerate(header):
+        sheet.cell(row=1, column=i+1).value = h
+
+    # this SQL echoed in OGR export but no geom so copying instead of factoring out
+    # plus different binding when using SQLAlchemy
+    result = session(sql_url).execute(
+        """SELECT full_geoid,display_name
+                 FROM tiger2014.census_name_lookup
+                 WHERE full_geoid IN :geoids
+                 ORDER BY full_geoid""",
+        {'geoids': tuple(valid_geo_ids)}
+    )
+    for i, (geoid, name) in enumerate(result):
+        row_num = i + 2 # one-indexed, and there's a header
+        row_data = [geoid, name]
+        for (table_id, table) in table_metadata.iteritems():
+            table_estimates = data[geoid][table_id]['estimate']
+            table_errors = data[geoid][table_id]['error']
+            for column_id, column_info in table['columns'].iteritems():
+                row_data.append(table_estimates[column_id])
+                row_data.append(table_errors[column_id])
+        for j, value in enumerate(row_data):
+            sheet.cell(row=row_num,column=j+1).value = value
+
     wb.save(out_filename)
 
 def create_ogr_download(sql_url, data, table_metadata, valid_geo_ids, file_ident, out_filename, format):
@@ -50,6 +93,7 @@ def create_ogr_download(sql_url, data, table_metadata, valid_geo_ids, file_ident
                 out_layer.CreateField(ogr.FieldDefn(column_name_utf8, ogr.OFTReal))
                 out_layer.CreateField(ogr.FieldDefn(column_name_utf8 + ", Error", ogr.OFTReal))
 
+    # this SQL echoed in Excel export but no geom so copying instead of factoring out
     sql = """SELECT geom,full_geoid,display_name
              FROM tiger2014.census_name_lookup
              WHERE full_geoid IN (%s)
