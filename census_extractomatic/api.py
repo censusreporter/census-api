@@ -1892,26 +1892,35 @@ def table_search():
     if not (q or topics):
         abort(400, "Must provide a query term or topics for filtering.")
 
-    db.session.execute("SET search_path=:acs, public;", {'acs': acs})
     data = []
 
-    if re.match(r'^\w\d+\w{0,3}$', q, flags=re.IGNORECASE):
-        # Matching for table id
-        result = db.session.execute(
-            """SELECT tab.table_id,
-                      tab.table_title,
-                      tab.simple_table_title,
-                      tab.universe,
-                      tab.topics
-               FROM census_table_metadata tab
-               WHERE table_id=:table_id""",
-            {'table_id': q}
-        )
-        for row in result:
-            data.append(format_table_search_result(row, 'table'))
+    if re.match(r'^\w\d{2,}$', q, flags=re.IGNORECASE):
+        acs_to_search = allowed_acs[:]
+        acs_to_search.remove(acs)
+        ids_found = set()
+        while acs_to_search: # search 'em all because not every table is in every release...
+            # Matching for table id
+            db.session.execute("SET search_path=:acs, public;", {'acs': acs})
+            result = db.session.execute(
+                """SELECT tab.table_id,
+                          tab.table_title,
+                          tab.simple_table_title,
+                          tab.universe,
+                          tab.topics
+                   FROM census_table_metadata tab
+                   WHERE lower(table_id) like lower(:table_id)""",
+                {'table_id': '{}%'.format(q)}
+            )
+            for row in result:
+                if row['table_id'] not in ids_found:
+                    data.append(format_table_search_result(row, 'table'))
+                    ids_found.add(row['table_id'])
+            acs = acs_to_search.pop(0)
+        if data:
+            data.sort(key=lambda x: x['unique_key'])
+            return json.dumps(data)
 
-        return json.dumps(data)
-
+    db.session.execute("SET search_path=:acs, public;", {'acs': acs})
     table_where_parts = []
     table_where_args = {}
     column_where_parts = []
