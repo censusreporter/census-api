@@ -6,6 +6,7 @@ from flask import abort, request, g
 from flask import make_response, current_app, send_file, url_for
 from flask import jsonify, redirect
 from flask.ext.sqlalchemy import SQLAlchemy
+from raven.contrib.flask import Sentry
 from werkzeug.exceptions import HTTPException
 from functools import update_wrapper
 from itertools import groupby
@@ -19,7 +20,6 @@ import re
 import os
 import shutil
 import tempfile
-import urlparse
 import zipfile
 import pylibmc
 import mockcache
@@ -29,10 +29,12 @@ from boto.s3.key import Key
 from boto.exception import S3ResponseError
 from validation import qwarg_validate, NonemptyString, FloatRange, StringList, Bool, OneOf, Integer, ClientRequestValidationException
 
+from census_extractomatic.exporters import create_ogr_download, create_excel_download, supported_formats
 
 app = Flask(__name__)
 app.config.from_object(os.environ.get('EXTRACTOMATIC_CONFIG_MODULE', 'census_extractomatic.config.Development'))
 db = SQLAlchemy(app)
+sentry = Sentry(app)
 
 app.s3 = S3Connection()
 
@@ -46,7 +48,6 @@ if not app.debug:
 allowed_acs = [
     'acs2014_1yr',
     'acs2014_5yr',
-    'acs2013_3yr',
 ]
 # When expanding a container geoid shorthand (i.e. 140|05000US12127),
 # use this ACS. It should always be a 5yr release so as to include as
@@ -168,15 +169,6 @@ state_fips = {
     "72": "Puerto Rico",
     "78": "United States Virgin Islands"
 }
-
-supported_formats = {
-    'shp':      {"type": "ogr", "driver": "ESRI Shapefile"},
-    'kml':      {"type": "ogr", "driver": "KML"},
-    'geojson':  {"type": "ogr", "driver": "GeoJSON"},
-    'xlsx':     {"type": "ogr", "driver": "XLSX"},
-    'csv':      {"type": "ogr", "driver": "CSV"},
-}
-
 
 def get_from_cache(cache_key, try_s3=True):
     # Try memcache first
@@ -498,8 +490,12 @@ def get_data_fallback(table_ids, geoids, acs=None):
 
 def compute_profile_item_levels(geoid):
     levels = []
+    geoid_parts = []
 
-    geoid_parts = geoid.split('US')
+    if geoid:
+        geoid = geoid.upper()
+        geoid_parts = geoid.split('US')
+
     if len(geoid_parts) is not 2:
         raise Exception('Invalid geoid')
 
@@ -1556,6 +1552,8 @@ def geo_tiles(release, sumlevel, zoom, x, y):
 def geo_lookup(release, geoid):
     if release not in allowed_tiger:
         abort(400, "Unknown TIGER release")
+
+    geoid = geoid.upper() if geoid else geoid
     geoid_parts = geoid.split('US')
     if len(geoid_parts) is not 2:
         abort(400, 'Invalid GeoID')
@@ -1611,6 +1609,9 @@ def geo_lookup(release, geoid):
 def geo_parent(release, geoid):
     if release not in allowed_tiger:
         abort(400, "Unknown TIGER release")
+
+    geoid = geoid.upper()
+
     cache_key = str('%s/show/%s.parents.json' % (release, geoid))
     cached = get_from_cache(cache_key)
     if cached:
@@ -2009,10 +2010,11 @@ def tabulation_details(tabulation_id):
     )
 
     row = result.fetchone()
-    row = dict(row)
 
     if not row:
         abort(400, "Tabulation %s not found." % tabulation_id)
+
+    row = dict(row)
 
     row['tables_by_release'] = {
         'one_yr': row.pop('tables_in_one_yr', []),
@@ -2037,6 +2039,8 @@ def tabulation_details(tabulation_id):
 @crossdomain(origin='*')
 def table_details(table_id):
     release = request.qwargs.acs
+
+    table_id = table_id.upper() if table_id else table_id
 
     cache_key = str('tables/%s/%s.json' % (release, table_id))
     cached = get_from_cache(cache_key)
@@ -2091,6 +2095,77 @@ def table_details(table_id):
     resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600*4))
 
     return resp
+
+
+# Example: /2.0/table/latest/B28001
+@app.route("/2.0/table/<release>/<table_id>")
+@crossdomain(origin='*')
+def table_details_with_release(release, table_id):
+    if release in allowed_acs:
+        acs_to_try = [release]
+    elif release == 'latest':
+        acs_to_try = list(allowed_acs)
+    else:
+        abort(400, 'The %s release isn\'t supported.' % get_acs_name(release))
+
+    table_id = table_id.upper() if table_id else table_id
+
+    for release in acs_to_try:
+        cache_key = str('tables/%s/%s.json' % (release, table_id))
+        cached = get_from_cache(cache_key)
+        if cached:
+            resp = make_response(cached)
+        else:
+            db.session.execute("SET search_path=:acs, public;", {'acs': release})
+
+            result = db.session.execute(
+                """SELECT *
+                   FROM census_table_metadata tab
+                   WHERE table_id=:table_id""",
+                {'table_id': table_id}
+            )
+            row = result.fetchone()
+
+            if not row:
+                continue
+
+            data = OrderedDict([
+                ("table_id", row['table_id']),
+                ("table_title", row['table_title']),
+                ("simple_table_title", row['simple_table_title']),
+                ("subject_area", row['subject_area']),
+                ("universe", row['universe']),
+                ("denominator_column_id", row['denominator_column_id']),
+                ("topics", row['topics'])
+            ])
+
+            result = db.session.execute(
+                """SELECT *
+                   FROM census_column_metadata
+                   WHERE table_id=:table_id""",
+                {'table_id': row['table_id']}
+            )
+
+            rows = []
+            for row in result:
+                rows.append((row['column_id'], dict(
+                    column_title=row['column_title'],
+                    indent=row['indent'],
+                    parent_column_id=row['parent_column_id']
+                )))
+            data['columns'] = OrderedDict(rows)
+
+            result = json.dumps(data)
+
+            resp = make_response(result)
+            put_in_cache(cache_key, result)
+
+        resp.headers.set('Content-Type', 'application/json')
+        resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600*4))
+
+        return resp
+
+    abort(400, "Table %s not found in releases %s. Try specifying another release." % (table_id, ', '.join(acs_to_try)))
 
 
 # Example: /1.0/table/compare/rowcounts/B01001?year=2011&sumlevel=050&within=04000US53
@@ -2240,7 +2315,7 @@ def get_child_geoids_by_gis(release, parent_geoid, child_summary_level):
 
 
 def get_child_geoids_by_prefix(release, parent_geoid, child_summary_level):
-    child_geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid.split('US')[1])
+    child_geoid_prefix = '%s00US%s%%' % (child_summary_level, parent_geoid.upper().split('US')[1])
 
     # Use the "worst"/biggest ACS to find all child geoids
     db.session.execute("SET search_path=:acs,public;", {'acs': release})
@@ -2257,7 +2332,7 @@ def get_child_geoids_by_prefix(release, parent_geoid, child_summary_level):
 
 def expand_geoids(geoid_list, release=None):
     if not release:
-        release = allowed_acs[-1]
+        release = expand_geoids_with
 
     # Look for geoid "groups" of the form `child_sumlevel|parent_geoid`.
     # These will expand into a list of geoids like the old comparison endpoint used to
@@ -2422,7 +2497,7 @@ def show_specified_data(acs):
                 # If we end up at the 'most complete' release, we should include every bit of
                 # data we can instead of erroring out on the user.
                 # See https://www.pivotaltracker.com/story/show/70906084
-                this_geo_has_data = False or acs == allowed_acs[-1]
+                this_geo_has_data = False or acs == allowed_acs[1]
 
                 cols_iter = iter(sorted(row.items(), key=lambda tup: tup[0]))
                 for table_id, data_iter in groupby(cols_iter, lambda x: x[0][:-3].upper()):
@@ -2479,7 +2554,7 @@ def download_specified_data(acs):
         acs_to_try = [acs]
         expand_geoids_with = acs
     elif acs == 'latest':
-        acs_to_try = allowed_acs[:3]  # The first three releases
+        acs_to_try = list(allowed_acs)
         expand_geoids_with = release_to_expand_with
     else:
         abort(400, 'The %s release isn\'t supported.' % get_acs_name(acs))
@@ -2604,76 +2679,8 @@ def download_specified_data(acs):
             os.mkdir(inner_path)
             out_filename = os.path.join(inner_path, '%s.%s' % (file_ident, request.qwargs.format))
             format_info = supported_formats.get(request.qwargs.format)
-
-            if format_info['type'] == 'ogr':
-                import ogr
-                import osr
-                ogr.UseExceptions()
-                db_details = urlparse.urlparse(app.config['SQLALCHEMY_DATABASE_URI'])
-                host = db_details.hostname
-                user = db_details.username
-                password = db_details.password
-                database = db_details.path[1:]
-                in_driver = ogr.GetDriverByName("PostgreSQL")
-                conn = in_driver.Open("PG: host=%s dbname=%s user=%s password=%s" % (host, database, user, password))
-
-                if conn is None:
-                    raise Exception("Could not connect to database to generate download.")
-
-                driver_name = format_info['driver']
-                out_driver = ogr.GetDriverByName(driver_name)
-                out_srs = osr.SpatialReference()
-                out_srs.ImportFromEPSG(4326)
-                out_data = out_driver.CreateDataSource(out_filename)
-                # See http://gis.stackexchange.com/questions/53920/ogr-createlayer-returns-typeerror
-                out_layer = out_data.CreateLayer(file_ident.encode('utf-8'), srs=out_srs, geom_type=ogr.wkbMultiPolygon)
-                out_layer.CreateField(ogr.FieldDefn('geoid', ogr.OFTString))
-                out_layer.CreateField(ogr.FieldDefn('name', ogr.OFTString))
-                for (table_id, table) in table_metadata.iteritems():
-                    for column_id, column_info in table['columns'].iteritems():
-                        column_name_utf8 = column_id.encode('utf-8')
-                        if request.qwargs.format == 'shp':
-                            # Work around the Shapefile column name length limits
-                            out_layer.CreateField(ogr.FieldDefn(column_name_utf8, ogr.OFTReal))
-                            out_layer.CreateField(ogr.FieldDefn(column_name_utf8 + "e", ogr.OFTReal))
-                        else:
-                            out_layer.CreateField(ogr.FieldDefn(column_name_utf8, ogr.OFTReal))
-                            out_layer.CreateField(ogr.FieldDefn(column_name_utf8 + ", Error", ogr.OFTReal))
-
-                sql = """SELECT geom,full_geoid,display_name
-                         FROM tiger2014.census_name_lookup
-                         WHERE full_geoid IN (%s)
-                         ORDER BY full_geoid""" % ', '.join("'%s'" % g.encode('utf-8') for g in valid_geo_ids)
-                in_layer = conn.ExecuteSQL(sql)
-
-                in_feat = in_layer.GetNextFeature()
-                while in_feat is not None:
-                    out_feat = ogr.Feature(out_layer.GetLayerDefn())
-                    out_feat.SetGeometry(in_feat.GetGeometryRef())
-                    geoid = in_feat.GetField('full_geoid')
-                    out_feat.SetField('geoid', geoid)
-                    out_feat.SetField('name', in_feat.GetField('display_name'))
-                    for (table_id, table) in table_metadata.iteritems():
-                        table_estimates = data[geoid][table_id]['estimate']
-                        table_errors = data[geoid][table_id]['error']
-                        for column_id, column_info in table['columns'].iteritems():
-                            column_name_utf8 = column_id.encode('utf-8')
-                            if column_id in table_estimates:
-                                if request.qwargs.format == 'shp':
-                                    # Work around the Shapefile column name length limits
-                                    estimate_col_name = column_name_utf8
-                                    error_col_name = column_name_utf8 + "e"
-                                else:
-                                    estimate_col_name = column_name_utf8
-                                    error_col_name = column_name_utf8 + ", Error"
-
-                                out_feat.SetField(estimate_col_name, table_estimates[column_id])
-                                out_feat.SetField(error_col_name, table_errors[column_id])
-
-                    out_layer.CreateFeature(out_feat)
-                    in_feat.Destroy()
-                    in_feat = in_layer.GetNextFeature()
-                out_data.Destroy()
+            builder_func = format_info['function']
+            builder_func(app.config['SQLALCHEMY_DATABASE_URI'], data, table_metadata, valid_geo_ids, file_ident, out_filename, request.qwargs.format)
 
             metadata_dict = {
                 'release': {
