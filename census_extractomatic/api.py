@@ -1898,12 +1898,13 @@ def table_search():
     if re.match(r'^\w\d{2,}$', q, flags=re.IGNORECASE):
         # we need to search 'em all because not every table is in every release...
         # might be better to have a shared table like census_tabulation_metadata?
+        table_id_acs = acs
         acs_to_search = allowed_acs[:]
-        acs_to_search.remove(acs)
+        acs_to_search.remove(table_id_acs)
         ids_found = set()
-        while acs:
+        while table_id_acs:
             # Matching for table id
-            db.session.execute("SET search_path=:acs, public;", {'acs': acs})
+            db.session.execute("SET search_path=:acs, public;", {'acs': table_id_acs})
             result = db.session.execute(
                 """SELECT tab.table_id,
                           tab.table_title,
@@ -1919,9 +1920,9 @@ def table_search():
                     data.append(format_table_search_result(row, 'table'))
                     ids_found.add(row['table_id'])
             try:
-                acs = acs_to_search.pop(0)
+                table_id_acs = acs_to_search.pop(0)
             except IndexError:
-                acs = None
+                table_id_acs = None
         if data:
             data.sort(key=lambda x: x['unique_key'])
             return json.dumps(data)
