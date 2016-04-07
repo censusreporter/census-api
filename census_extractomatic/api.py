@@ -1438,7 +1438,7 @@ def geo_search():
         where = "ST_Intersects(geom, ST_SetSRID(ST_Point(:lon, :lat),4326))"
         where_args = {'lon': lon, 'lat': lat}
     elif q:
-        q = re.sub(r'[^a-zA-Z\,\.\-]', ' ', q)
+        q = re.sub(r'[^a-zA-Z\,\.\-0-9]', ' ', q)
         q = re.sub(r'\s+', ' ', q)
         where = "lower(prefix_match_name) LIKE lower(:q)"
         q += '%'
