@@ -23,7 +23,6 @@ import tempfile
 import zipfile
 import pylibmc
 import mockcache
-import pyes
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 from boto.exception import S3ResponseError
@@ -428,8 +427,6 @@ def find_geoid(geoid, acs=None):
 
 @app.before_request
 def before_request():
-    g.es = pyes.ES(app.config.get('ELASTICSEARCH_HOST'), timeout=2)
-
     memcache_addr = app.config.get('MEMCACHE_ADDR')
     g.cache = pylibmc.Client(memcache_addr) if memcache_addr else mockcache.Client(memcache_addr)
 
@@ -1325,97 +1322,6 @@ def latest_geo_profile(geoid):
 
 ## GEO LOOKUPS ##
 
-# Example: /1.0/geo/suggest?q=spok
-# Example: /1.0/geo/suggest?q=new+yor
-@app.route("/1.0/geo/suggest")
-@qwarg_validate({
-    'q': {'valid': NonemptyString()},
-})
-@crossdomain(origin='*')
-def geo_suggest():
-    query_dict = {
-        "geo": {
-            "text": request.qwargs.q,
-            "completion": {
-                "field": "name_suggest"
-            }
-        }
-    }
-    results = g.es._send_request('POST', 'tiger2012/_suggest', body=json.dumps(query_dict))
-
-    options = []
-    if 'geo' in results:
-        for option in results['geo'][0]['options']:
-            options.append({
-                'geoid': option['payload'],
-                'name': option['text']
-            })
-
-    text = json.dumps(dict(results=options))
-    resp = make_response(text)
-    resp.headers.set('Content-Type', 'application/json')
-
-    return resp
-
-
-# Example: /1.0/geo/elasticsearch?q=chicago,+il
-# Example: /1.0/geo/elasticsearch?q=new+york+city
-@app.route("/1.0/geo/elasticsearch")
-@qwarg_validate({
-    'q': {'valid': NonemptyString()},
-    'start': {'valid': Integer(), 'default': 0},
-    'size': {'valid': Integer(), 'default': 25},
-    'sumlevs': {'valid': StringList(item_validator=OneOf(SUMLEV_NAMES))},
-})
-@crossdomain(origin='*')
-def geo_elasticsearch():
-    q = pyes.query.BoolQuery()
-
-    if request.qwargs.q:
-        q.add_must(pyes.query.MatchQuery('names', request.qwargs.q.lower(), operator='and'))
-
-    if request.qwargs.sumlevs:
-        q.add_must(pyes.query.MatchQuery('sumlev', request.qwargs.sumlevs))
-
-    if request.qwargs.start < 0:
-        abort(400, "start parameter must be zero or more.")
-
-    sorting = [
-        {"importance": "desc"},
-        "_score"
-    ]
-    q = pyes.query.Search(q, sort=sorting, start=request.qwargs.start, size=request.qwargs.size)
-    q.facet.add_term_facet('sumlev')
-
-    results = g.es.search(q, index='tiger2012', doc_types=['geo'])
-
-    out = []
-    for result in results:
-        result.pop('name_suggest', None)
-        result.pop('names', None)
-        out.append(result)
-
-    links = {}
-    if request.qwargs.start + request.qwargs.size < results.total:
-        args = request.args.copy()
-        args['start'] = request.qwargs.start + request.qwargs.size
-        links['next_page'] = url_for('.geo_elasticsearch', **args)
-    if request.qwargs.start > 0:
-        args = request.args.copy()
-        args['start'] = max(0, request.qwargs.start - request.qwargs.size)
-        links['previous_page'] = url_for('.geo_elasticsearch', **args)
-
-    text = json.dumps({
-        "results": out,
-        "facets": results.facets,
-        "links": links
-    })
-    resp = make_response(text)
-    resp.headers.set('Content-Type', 'application/json')
-
-    return resp
-
-
 # Example: /1.0/geo/search?q=spok
 # Example: /1.0/geo/search?q=spok&sumlevs=050,160
 @app.route("/1.0/geo/search")
@@ -1713,139 +1619,6 @@ def show_specified_geo_data(release):
 
 
 ## TABLE LOOKUPS ##
-
-# Example: /1.0/table/suggest?q=pove
-# Example: /1.0/table/suggest?q=norweg
-@app.route("/1.0/table/suggest")
-@qwarg_validate({
-    'q': {'valid': NonemptyString()},
-})
-@crossdomain(origin='*')
-def table_suggest():
-    query_dict = {
-        "table": {
-            "text": request.qwargs.q,
-            "completion": {
-                "field": "name_suggest"
-            }
-        }
-    }
-    results = g.es._send_request('POST', 'census/_suggest', body=json.dumps(query_dict))
-
-    def format_results(result):
-        res = dict(table_title=result['text'])
-
-        if 'table_id' in result['payload']:
-            res['table_id'] = result['payload']['table_id']
-        if 'column_id' in result['payload']:
-            res['column_title'] = result['text']
-            res['column_id'] = result['payload']['column_id']
-            res['table_title'] = result['payload']['table_title']
-
-        return res
-
-    results = results.get['table'][0]['options'] if 'table' in results else []
-    text = json.dumps({
-        "results": [format_results(result) for result in results]
-    })
-    resp = make_response(text)
-    resp.headers.set('Content-Type', 'application/json')
-
-    return resp
-
-
-def format_table_elasticsearch_result(obj, backfill_table_details):
-    '''internal util for formatting each object in `table_search` API response'''
-
-    if obj._meta.type == 'table':
-        result = {
-            'id': obj['table_id'],
-            'unique_key': obj['table_id'],
-            'table_id': obj['table_id'],
-            'table_name': obj['table_title'],
-            'simple_table_name': obj['simple_table_title'],
-            'topics': obj['topics'],
-            'universe': obj['universe'],
-        }
-    elif obj._meta.type == 'column':
-        table = backfill_table_details[obj['table_id']]
-        result = {
-            'id': obj['column_id'],
-            'unique_key': '%s|%s' % (obj['table_id'], obj['column_id']),
-            'column_id': obj['column_id'],
-            'column_name': obj['column_title'],
-            'table_id': table['table_id'],
-            'table_name': table['table_title'],
-            'simple_table_name': table['simple_table_title'],
-            'topics': table['topics'],
-            'universe': table['universe'],
-        }
-
-    return result
-
-
-# Example: /1.0/table/elasticsearch?q=norweg
-# Example: /1.0/table/elasticsearch?q=norweg&topics=age,sex
-# Example: /1.0/table/elasticsearch?topics=housing,poverty
-@app.route("/1.0/table/elasticsearch")
-@qwarg_validate({
-    'acs': {'valid': OneOf(allowed_acs), 'default': default_table_search_release},
-    'q':   {'valid': NonemptyString()},
-    'topics': {'valid': StringList()},
-    'start': {'valid': Integer(), 'default': 0},
-    'size': {'valid': Integer(), 'default': 25},
-})
-@crossdomain(origin='*')
-def table_elasticsearch():
-    q = pyes.query.BoolQuery()
-
-    if request.qwargs.q:
-        q.add_must(pyes.query.MultiMatchQuery(['table_title', 'column_title', 'table_id'], request.qwargs.q, operator='and'))
-
-    if request.qwargs.topics:
-        for topic in request.qwargs.topics:
-            q.add_must(pyes.query.MatchQuery('topics', topic))
-
-    if request.qwargs.start < 0:
-        abort(400, "start parameter must be zero or more.")
-
-    f = [
-        pyes.query.FunctionScoreQuery.BoostFunction(0.01, pyes.filters.PrefixFilter('table_id', 'B99')),
-        pyes.query.FunctionScoreQuery.BoostFunction(0.01, pyes.filters.PrefixFilter('tabulation_code', '99')),
-        pyes.query.FunctionScoreQuery.BoostFunction(1.5, pyes.filters.TypeFilter('tabulation')),
-        pyes.query.FunctionScoreQuery.BoostFunction(1.2, pyes.filters.TypeFilter('table')),
-    ]
-    q = pyes.query.FunctionScoreQuery(functions=f, query=q)
-
-    q = pyes.query.Search(q, start=request.qwargs.start, size=request.qwargs.size)
-    q.facet.add_term_facet('topics')
-
-    results = g.es.search(q, index='census', doc_types=['tabulation', 'table', 'column'])
-
-    out = []
-    for result in results:
-        result.pop('weight', None)
-        out.append(result)
-
-    links = {}
-    if request.qwargs.start + request.qwargs.size < results.total:
-        args = request.args.copy()
-        args['start'] = request.qwargs.start + request.qwargs.size
-        links['next_page'] = url_for('.table_elasticsearch', **args)
-    if request.qwargs.start > 0:
-        args = request.args.copy()
-        args['start'] = max(0, request.qwargs.start - request.qwargs.size)
-        links['previous_page'] = url_for('.table_elasticsearch', **args)
-
-    text = json.dumps({
-        "results": out,
-        "facets": results.facets,
-        "links": links
-    })
-    resp = make_response(text)
-    resp.headers.set('Content-Type', 'application/json')
-
-    return resp
 
 def format_table_search_result(obj, obj_type):
     '''internal util for formatting each object in `table_search` API response'''
