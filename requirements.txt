@@ -16,7 +16,6 @@ newrelic==2.16.0.12
 paramiko==1.15.2
 psycopg2==2.5.2
 pycrypto==2.6.1
-pyes==0.99.2
 pylibmc==1.2.3
 raven==5.10.2
 simplejson==3.3.1
