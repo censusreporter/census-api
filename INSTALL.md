@@ -34,6 +34,12 @@ mkvirtualenv --no-site-packages census-api
 pip install -r requirements.txt
 ```
 
+#### Load some data
+
+For a quick start, it will be easier to load data from our [SQL dumps](http://censusreporter.tumblr.com/post/73727555158/easier-access-to-acs-data) than to run the [census-postgres-scripts](https://github.com/censusreporter/census-postgres-scripts) import. 
+
+Again, we haven't tried this on a clean machine in a while, but it should be enough to load the most recent 1-year data and TIGER data. You should skip the 5-year data unless you have a lot of disk space to spare.
+
 #### Set up remote instance
 
 ```bash
