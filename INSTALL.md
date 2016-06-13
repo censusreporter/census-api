@@ -6,7 +6,7 @@ Due to the size of the ACS data we're using, it's relatively difficult to run ev
 
 #### Install pre-requisites for local development
 
-The GDAL dependency we rely on for data downloads is a bit complicated to install. We also rely on postgres and memcached.
+The GDAL dependency we rely on for data downloads is a bit complicated to install. We also rely on postgres, postgis and memcached.
 
 ##### Install build dependencies on a Ubuntu 14.04 machine:
 
@@ -18,10 +18,13 @@ export CPLUS_INCLUDE_PATH=/usr/include/gdal
 export C_INCLUDE_PATH=/usr/include/gdal
 ```
 
-##### Install GDAL on a Mac with Homebrew:
+##### Install supporting services on a Mac with Homebrew:
+
+We haven't had a good opportunity to try this on a clean mac, so help us out and submit a pull request if you can make these better.
 
 ```bash
-# TBD (Sorry :) )
+brew install gdal postgis
+brew install memcached
 ```
 
 ##### Complete Python dependency installation
