@@ -40,6 +40,23 @@ For a quick start, it will be easier to load data from our [SQL dumps](http://ce
 
 Again, we haven't tried this on a clean machine in a while, but it should be enough to load the most recent 1-year data and TIGER data. You should skip the 5-year data unless you have a lot of disk space to spare.
 
+To initialize your database according to the default development config settings:
+
+```bash
+createdb census
+psql census -c "CREATE EXTENSION postgis;"
+dropuser --if-exists census
+psql -c "CREATE USER census WITH PASSWORD 'censuspassword';"
+psql -c 'GRANT ALL PRIVILEGES ON DATABASE "census" to census;'
+```
+
+To load the data, it should be something like this:
+
+```bash
+
+gzcat  acs2014_1yr_backup.sql.gz | PGPASSWORD="censuspassword" psql -U census census
+```
+
 #### Set up remote instance
 
 ```bash
