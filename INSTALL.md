@@ -25,6 +25,7 @@ We haven't had a good opportunity to try this on a clean mac, so help us out and
 ```bash
 brew install gdal postgis
 brew install memcached
+brew install libmemcached
 ```
 
 ##### Complete Python dependency installation
@@ -33,6 +34,12 @@ brew install memcached
 mkvirtualenv --no-site-packages census-api
 pip install -r requirements.txt
 ```
+
+On OS X, if installation of pylibmc fails, install it separately using this command:
+
+    pip install pylibmc --install-option="--with-libmemcached=/usr/local/Cellar/libmemcached/YOUR_VERSION_NUMBER HERE/"
+
+(Solution found on http://stackoverflow.com/questions/14803310/error-when-install-pylibmc-using-pip)
 
 #### Load some data
 
