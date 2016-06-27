@@ -19,7 +19,7 @@ def build_all_sitemaps():
 
         # If there are <= 50k URLs, write them immediately
         if num_urls <= 50000:
-            fname = 'profiles/' + level + '.xml'
+            fname = 'profiles/sitemap_' + level + '.xml'
             f = open(fname, 'w')
 
             f.write(build_sitemap(levels_urls[level]))
@@ -33,7 +33,7 @@ def build_all_sitemaps():
             num_files = num_urls / 50000 + 1
 
             for i in range(num_files):
-                fname = 'profiles/' + level + '-' + str(i) + '.xml'
+                fname = 'profiles/sitemap' + level + '-' + str(i) + '.xml'
                 f = open(fname, 'w')
 
                 for url in levels_urls[level][i * 50000 : (i + 1) * 50000]:
@@ -176,8 +176,16 @@ def slugify(name):
     return name.replace(' ', '-')
 
 
+def main():
+    build_all_sitemaps()
+
+
 # Some tests
 assert slugify("This is a test") == "this-is-a-test"
 assert slugify("more ** complicated-- !!test") == "more--complicated-test"
 assert build_url("Indiana", "04000US18") == "https://censusreporter.org/profiles/04000US18-indiana/"
 assert build_url("Columbus, IN Metro Area", "31000US18020") == "https://censusreporter.org/profiles/31000US18020-columbus-in-metro-area/"
+
+
+if __name__ == "__main__":
+    main()

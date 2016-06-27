@@ -1,7 +1,6 @@
 from jinja2 import Environment, FileSystemLoader
 from sets import Set
 import psycopg2
-import re
 
 
 def write_table_sitemap():
@@ -15,7 +14,7 @@ def write_table_sitemap():
 
 	table_urls = build_table_page_list()
 
-	fname = 'tables/tables.xml'
+	fname = 'tables/sitemap_tables.xml'
 	f = open(fname, 'w')
 
 	f.write(build_sitemap(table_urls))
@@ -105,3 +104,11 @@ def build_url(table_name):
     '''
 
     return "https://censusreporter.org/tables/" + table_name + "/"
+
+
+def main():
+	write_table_sitemap()
+
+
+if __name__ == "__main__":
+    main()
