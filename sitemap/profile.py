@@ -33,7 +33,7 @@ def build_all_sitemaps():
             num_files = num_urls / 50000 + 1
 
             for i in range(num_files):
-                fname = 'profiles/sitemap' + level + '-' + str(i) + '.xml'
+                fname = 'profiles/sitemap_' + level + '_' + str(i + 1) + '.xml'
                 f = open(fname, 'w')
 
                 for url in levels_urls[level][i * 50000 : (i + 1) * 50000]:
