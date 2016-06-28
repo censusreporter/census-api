@@ -1,3 +1,5 @@
+#Full-Text Search Query Guide
+
 acs2014_1yr is the schema of interest. Look first at census_table_metadata for
 some sample table names and IDs.
 
@@ -185,6 +187,11 @@ The general query is:
     WHERE table_search.document @@ to_tsquery('QUERY')
     ORDER BY relevance DESC;
 
-The next steps are to play around with parameters (columns, rankings) to see 
-if we can improve the search results, and create a Python API for doing 
-searches.
+---
+
+Some example queries for testing:
+
+- Gross rent housing income
+- Race Sex
+- Age income
+- Family income by race
