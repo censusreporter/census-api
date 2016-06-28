@@ -47,4 +47,10 @@ def main(argv):
     query(' '.join(argv))
 
 if __name__ == "__main__":
+    try:
+        arg1 = sys.argv[1]
+    except IndexError:
+        print "Usage: python query-script.py <arg1> <arg2> etc..."
+        sys.exit(1)
+
     main(sys.argv[1:])
