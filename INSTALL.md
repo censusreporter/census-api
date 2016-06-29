@@ -37,7 +37,7 @@ pip install -r requirements.txt
 
 On OS X, if installation of pylibmc fails, install it separately using this command:
 
-    pip install pylibmc --install-option="--with-libmemcached=/usr/local/Cellar/libmemcached/YOUR_VERSION_NUMBER HERE/"
+    pip install pylibmc==1.2.3 --install-option="--with-libmemcached=/usr/local/"
 
 (Solution found on http://stackoverflow.com/questions/14803310/error-when-install-pylibmc-using-pip)
 

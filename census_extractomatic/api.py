@@ -173,7 +173,7 @@ def get_from_cache(cache_key, try_s3=True):
     # Try memcache first
     cached = g.cache.get(cache_key)
 
-    if not cached and try_s3:
+    if not cached and try_s3 and current_app.s3 is not None:
         # Try S3 next
         b = current_app.s3.get_bucket('embed.censusreporter.org', validate=False)
         k = Key(b)
@@ -188,11 +188,11 @@ def get_from_cache(cache_key, try_s3=True):
     return cached
 
 
-def put_in_cache(cache_key, value, memcache=True, s3=True, content_type='application/json', ):
+def put_in_cache(cache_key, value, memcache=True, try_s3=True, content_type='application/json', ):
     if memcache:
         g.cache.set(cache_key, value)
 
-    if s3:
+    if try_s3 and current_app.s3 is not None:
         b = current_app.s3.get_bucket('embed.censusreporter.org', validate=False)
         k = Key(b, cache_key)
         k.metadata['Content-Type'] = content_type
