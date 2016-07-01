@@ -22,6 +22,7 @@ CREATE TABLE TABLE_SEARCH_METADATA AS (
 	)
 ;
 ALTER TABLE TABLE_SEARCH_METADATA OWNER TO census;
+CREATE INDEX on TABLE_SEARCH_METADATA using gin(document);
 
 -- Innermost query joins the table with all table names
 -- (census_table_metadata) to the table with column titles 
