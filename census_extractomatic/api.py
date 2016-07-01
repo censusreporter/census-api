@@ -1777,6 +1777,42 @@ def table_search():
     return resp
 
 
+@app.route("/2.1/table/search")
+@qwarg_validate({
+    'q':   {'valid': NonemptyString()}
+})
+@crossdomain(origin='*')
+def table_search_full_text():
+    # allow choice of release, default to allowed_acs[0]
+    q = request.qwargs.q
+    q = ' & '.join(q.split())
+
+    data = []
+    result = execute_search(db, q)
+    for tabulation in result:
+        tabulation = dict(tabulation)
+        data.append(format_table_search_result(tabulation, 'table'))
+
+    text = json.dumps(data)
+    resp = make_response(text)
+    resp.headers.set('Content-Type', 'application/json')
+
+    return resp
+
+def execute_search(db, q):
+   ''' Executes a query q in a dbconnection db '''
+
+   result = db.session.execute(
+       """SELECT table_id, table_title,
+           ts_rank(document, to_tsquery('{0}')) as relevance,
+           simple_table_title, topics, universe
+       FROM table_search_metadata
+       WHERE document @@ to_tsquery('{0}')
+       ORDER BY relevance DESC;
+       """.format(q))
+
+   return result
+
 # Example: /1.0/tabulation/01001
 @app.route("/1.0/tabulation/<tabulation_id>")
 @crossdomain(origin='*')
