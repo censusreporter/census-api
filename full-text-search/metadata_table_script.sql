@@ -21,6 +21,7 @@ CREATE TABLE TABLE_SEARCH_METADATA AS (
 				topics, universe, subject_area
 	)
 ;
+ALTER TABLE TABLE_SEARCH_METADATA OWNER TO census;
 
 -- Innermost query joins the table with all table names
 -- (census_table_metadata) to the table with column titles 
