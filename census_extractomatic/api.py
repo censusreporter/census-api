@@ -1322,6 +1322,15 @@ def latest_geo_profile(geoid):
 
 ## GEO LOOKUPS ##
 
+def convert_row(row):
+    data = dict()
+    data['sumlevel'] = row['sumlevel']
+    data['full_geoid'] = row['full_geoid']
+    data['full_name'] = row['display_name']
+    if 'geom' in row and row['geom']:
+        data['geom'] = json.loads(row['geom'])
+    return data
+
 # Example: /1.0/geo/search?q=spok
 # Example: /1.0/geo/search?q=spok&sumlevs=050,160
 @app.route("/1.0/geo/search")
@@ -1372,17 +1381,28 @@ def geo_search():
             LIMIT 25;""" % (where)
     result = db.session.execute(sql, where_args)
 
-    def convert_row(row):
-        data = dict()
-        data['sumlevel'] = row['sumlevel']
-        data['full_geoid'] = row['full_geoid']
-        data['full_name'] = row['display_name']
-        if 'geom' in row and row['geom']:
-            data['geom'] = json.loads(row['geom'])
-        return data
-
     return jsonify(results=[convert_row(row) for row in result])
 
+@app.route("/2.1/geo/search")
+@qwarg_validate({
+    'q': {'valid': NonemptyString()}
+})
+@crossdomain(origin='*')
+def geo_full_text_search():
+
+    def execute_query(db, q):
+        return db.session.execute(
+            """SELECT display_name, sumlevel, full_geoid,
+                ts_rank(document, to_tsquery('{0}')) AS relevance
+                FROM profile_search_metadata
+                WHERE document @@ to_tsquery('{0}')
+                ORDER BY relevance DESC;
+            """.format(q)
+        )
+
+    q = request.qwargs.q
+
+    return jsonify(result=[convert_row(row) for row in execute_query(db, q)])
 
 def num2deg(xtile, ytile, zoom):
     n = 2.0 ** zoom
@@ -1783,6 +1803,21 @@ def table_search():
 })
 @crossdomain(origin='*')
 def table_search_full_text():
+
+    def execute_search(db, q):
+        ''' Executes a query q in a dbconnection db '''
+
+        result = db.session.execute(
+            """SELECT table_id, table_title,
+                ts_rank(document, to_tsquery('{0}')) as relevance,
+                simple_table_title, topics, universe
+            FROM table_search_metadata
+            WHERE document @@ to_tsquery('{0}')
+            ORDER BY relevance DESC;
+            """.format(q))
+
+        return result
+
     # allow choice of release, default to allowed_acs[0]
     q = request.qwargs.q
     q = ' & '.join(q.split())
@@ -1798,20 +1833,6 @@ def table_search_full_text():
     resp.headers.set('Content-Type', 'application/json')
 
     return resp
-
-def execute_search(db, q):
-   ''' Executes a query q in a dbconnection db '''
-
-   result = db.session.execute(
-       """SELECT table_id, table_title,
-           ts_rank(document, to_tsquery('{0}')) as relevance,
-           simple_table_title, topics, universe
-       FROM table_search_metadata
-       WHERE document @@ to_tsquery('{0}')
-       ORDER BY relevance DESC;
-       """.format(q))
-
-   return result
 
 # Example: /1.0/tabulation/01001
 @app.route("/1.0/tabulation/<tabulation_id>")
