@@ -1,31 +1,27 @@
 from jinja2 import Environment, FileSystemLoader
 from sets import Set
 import psycopg2
+import os.path
 
-
-def write_table_sitemap():
+def write_table_sitemap(output_dir,db_connect_string='postgresql://census:censuspassword@localhost:5432/census'):
 	''' Builds table.xml sitemap file. There are not more than
-	50,000 URLs, so we can use one file without issue. 
+	50,000 URLs, so we can use one file without issue.
 
 	params: none
 	return: none
 
 	'''
-
-	table_urls = build_table_page_list()
-
-	fname = 'tables/sitemap_tables.xml'
-	f = open(fname, 'w')
-
-	f.write(build_sitemap(table_urls))
+	table_names = query_table_list(db_connect_string)
+	table_urls = build_table_page_list(table_names)
+	fname = os.path.join(output_dir,'sitemap_tables.xml')
+	with open(fname, 'w') as f:
+		f.write(build_sitemap(table_urls))
 	print 'Wrote table sitemap to file %s' % (fname)
-
-	f.close()
 
 
 def build_sitemap(page_data):
     ''' Builds sitemap from template in sitemap.xml using data provided
-    in page_data. 
+    in page_data.
 
     params: page_data = list of page URLs
     returns: XML template with the page URLs
@@ -34,11 +30,11 @@ def build_sitemap(page_data):
 
     env = Environment(loader = FileSystemLoader('.'))
     template = env.get_template('sitemap.xml')
-    
+
     return template.render(pages = page_data)
 
 
-def query_table_list():
+def query_table_list(db_connect_string):
 	''' Queries the database for a list of all one-year
 	and five-year tables. Removes duplicates from them,
 	and returns a set of all table IDs.
@@ -47,8 +43,10 @@ def query_table_list():
 	returns: Set of table IDs
 
 	'''
-
-	conn = psycopg2.connect("dbname=census user=census")
+	# we oughta parameterize this but feeling lazy...
+	# this is assuming that you're running the DB on a non-standard port, say
+	# as if you were SSH tunneling from production to your machine
+	conn = psycopg2.connect(db_connect_string)
 	cur = conn.cursor()
 
 	q1 = "SELECT DISTINCT tables_in_one_yr from census_tabulation_metadata;"
@@ -71,18 +69,17 @@ def query_table_list():
 	return tables
 
 
-def build_table_page_list():
+def build_table_page_list(table_names):
 	''' Builds the URL/pages list for all tables.
 
 	params: none
-	return: list of CensusReporter URLs 
+	return: list of CensusReporter URLs
 
 	'''
 
-	table_names = query_table_list()
 	table_urls = []
 
-	for table in table_names:
+	for table in sorted(table_names):
 		table_urls.append(build_url(table))
 
 	return table_urls
@@ -107,8 +104,8 @@ def build_url(table_name):
 
 
 def main():
-	write_table_sitemap()
+	write_table_sitemap('.')
 
 
 if __name__ == "__main__":
-    main()
+	main()

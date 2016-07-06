@@ -1,9 +1,11 @@
 from jinja2 import Environment, FileSystemLoader
 import psycopg2
 import re
+import os.path
 
+EXCLUDED_SUMMARY_LEVELS = ['250'] # we know that these don't work correctly right now.
 
-def build_all_sitemaps():
+def write_profile_sitemaps(output_dir,db_connect_string='postgresql://census:censuspassword@localhost:5432/census'):
     ''' Builds sitemap XML files for all summary levels. Each XML file contains pages for one
     summary level, with a maximum of 50,000 URLs.
 
@@ -11,45 +13,56 @@ def build_all_sitemaps():
     return: none
 
     '''
+    sitemaps_created = []
+    for summary_level in query_all_levels(db_connect_string):
+        if summary_level not in EXCLUDED_SUMMARY_LEVELS:
+            print "querying level {}".format(summary_level)
+            results = query_one_level(summary_level, db_connect_string)
+            urls = []
 
-    levels_urls = build_all_page_lists()
+            for result in results:
+                (display_name, full_geoid) = result
+                urls.append(build_url(display_name, full_geoid))
 
-    for level in levels_urls:
-        num_urls = len(levels_urls[level])
+            num_urls = len(urls)
 
-        # If there are <= 50k URLs, write them immediately
-        if num_urls <= 50000:
-            fname = 'profiles/sitemap_' + level + '.xml'
-            f = open(fname, 'w')
+            # If there are <= 50k URLs, write them immediately
+            if num_urls <= 50000:
+                filename = 'sitemap_' + summary_level + '.xml'
+                f = open(os.path.join(output_dir,filename), 'w')
 
-            f.write(build_sitemap(levels_urls[level]))
+                f.write(build_sitemap(urls))
 
-            print 'Wrote sitemap to file %s' % (fname)
-
-            f.close()
-
-        # Otherwise, split up the URLs into groups of 50,000
-        else:
-            num_files = num_urls / 50000 + 1
-
-            for i in range(num_files):
-                fname = 'profiles/sitemap_' + level + '_' + str(i + 1) + '.xml'
-                f = open(fname, 'w')
-
-                for url in levels_urls[level][i * 50000 : (i + 1) * 50000]:
-                    # Python allows list indexing out of bounds without complaint, 
-                    # i.e., if L = [1, 2, 3], then L[2:4] just gives [3]
-
-                    f.write("%s\n" % url)
-
-                print 'Wrote sitemap to file %s' % (fname)
-
+                print 'Wrote sitemap to file %s' % (filename)
+                sitemaps_created.append(filename)
                 f.close()
 
+            # Otherwise, split up the URLs into groups of 50,000
+            else:
+                num_files = num_urls / 50000 + 1
+
+                for i in range(num_files):
+                    filename = 'sitemap_' + summary_level + '_' + str(i + 1) + '.xml'
+                    f = open(os.path.join(output_dir,filename), 'w')
+                    f.write(build_sitemap(urls[i * 50000 : (i + 1) * 50000]))
+                    print 'Wrote sitemap to file %s' % (filename)
+                    sitemaps_created.append(filename)
+                    f.close()
+
+    write_master_sitemap(output_dir, sitemaps_created)
+
+def write_master_sitemap(output_dir,files):
+    files = files[:]
+    files.extend(['sitemap_tables.xml','topics/sitemap.xml'])
+    urls = ['https://censusreporter.org/{}'.format(f) for f in files]
+
+    with open(os.path.join(output_dir,'sitemap.xml'),'w') as f:
+        f.write(build_sitemap(urls))
+        print 'wrote index sitemap.xml file'
 
 def build_sitemap(page_data):
     ''' Builds sitemap from template in sitemap.xml using data provided
-    in page_data. 
+    in page_data.
 
     params: page_data = list of page URLs
     returns: XML template with the page URLs
@@ -58,56 +71,22 @@ def build_sitemap(page_data):
 
     env = Environment(loader = FileSystemLoader('.'))
     template = env.get_template('sitemap.xml')
-    
+
     return template.render(pages = page_data)
 
 
-def build_all_page_lists():
-    ''' Builds a URL/page list for all sumlevels.
-
-    params: none
-    return: dict of {level:list of URLs for that level}
-
-    '''
-
-    levels = query_all_levels()
-    urls = {}
-
-    for level in levels:
-        urls[level] = build_one_page_list(level)
-
-    return urls
-
-
-def build_one_page_list(level):
-    ''' Builds a URL/page list for one sumlevel ("level")
-
-    params: level = string of the summary level code (e.g., '040')
-    return: list of slugified URLs
-
-    '''
-
-    results = query_one_level(level)
-    urls = []
-
-    for result in results:
-        urls.append(build_url(result[1], result[2]))
-
-    return urls
-
-
-def query_all_levels():
-    ''' Queries database to get list of all sumlevels 
+def query_all_levels(db_connect_string):
+    ''' Queries database to get list of all sumlevels
 
     params: none
     returns: list of all sumlevels (strings)
 
     '''
 
-    conn = psycopg2.connect("dbname=census user=census")
+    conn = psycopg2.connect(db_connect_string)
     cur = conn.cursor()
 
-    q = "SELECT DISTINCT sumlevel FROM tiger2014.census_name_lookup;"
+    q = "SELECT DISTINCT sumlevel FROM tiger2014.census_name_lookup order by sumlevel;"
     cur.execute(q)
     results = cur.fetchall()
     # Format of results is [('000',), ('001',), ...]
@@ -118,19 +97,19 @@ def query_all_levels():
     return results_list
 
 
-def query_one_level(level):
-    ''' Queries database for one sumlevel ("level") 
-    
+def query_one_level(level,db_connect_string):
+    ''' Queries database for one sumlevel ("level")
+
     params: level = string of the summary level code (e.g., "040")
-    return: all results found as a list of tuples 
+    return: all results found as a list of tuples
             (sumlevel, display_name, full_geoid)
 
     '''
 
-    conn = psycopg2.connect("dbname=census user=census")
+    conn = psycopg2.connect(db_connect_string)
     cur = conn.cursor()
 
-    q = "SELECT sumlevel, display_name, full_geoid from tiger2014.census_name_lookup where sumlevel = '%s'" % (level)
+    q = "SELECT display_name, full_geoid from tiger2014.census_name_lookup where sumlevel = '%s'" % (level)
     cur.execute(q)
     results = cur.fetchall()
 
@@ -162,7 +141,7 @@ def slugify(name):
     (2) converting to lowercase, (3) turning spaces to dashes
 
     params: name = string to change
-    return: slugified string 
+    return: slugified string
 
     '''
 
@@ -177,7 +156,7 @@ def slugify(name):
 
 
 def main():
-    build_all_sitemaps()
+    write_profile_sitemaps('.')
 
 
 # Some tests
