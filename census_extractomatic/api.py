@@ -1395,21 +1395,45 @@ def geo_search():
 @crossdomain(origin='*')
 def geo_full_text_search():
 
+
+    # Old query code -- delete this after confirming the 
+    # new code (below) works on Joon's machine
+
+    # def execute_query(db, q):
+    #     return db.session.execute(
+    #         """SELECT geoid, sumlevel, population,
+    #             display_name, full_geoid, priority,
+    #             ts_rank(document, to_tsquery('{0}')) AS relevance
+    #             FROM profile_search_metadata
+    #             WHERE document @@ to_tsquery('{0}')
+    #             ORDER BY relevance DESC;
+    #         """.format(q)
+    #     )
+
+
     def execute_query(db, q):
+        ''' Search for profiles in the database db that match
+        a query string q. '''
+
         return db.session.execute(
-            """SELECT display_name, sumlevel, full_geoid,
-                ts_rank(document, to_tsquery('{0}')) AS relevance
-                FROM profile_search_metadata
+            """SELECT text1 AS display_name,
+                      text2 AS sumlevel,
+                      text4 AS full_geoid,
+                      ts_rank(document, to_tsquery('{0}')) AS relevance
+                FROM search_metadata
                 WHERE document @@ to_tsquery('{0}')
+                AND type = 'profile'
                 ORDER BY relevance DESC;
             """.format(q)
         )
 
+    
     q = request.qwargs.q
+    q = ' & '.join(q.split())
     sumlevs = request.qwargs.sumlevs
 
     prepared_result = [convert_row(row) for row in execute_query(db, q)]
-    return jsonify(result=prepared_result)
+    return jsonify(results=prepared_result)
 
 def num2deg(xtile, ytile, zoom):
     n = 2.0 ** zoom
@@ -1811,19 +1835,44 @@ def table_search():
 @crossdomain(origin='*')
 def table_search_full_text():
 
+
+    # Old query code -- delete this after confirming the
+    # new code (below) works on Joon's machine
+
+    # def execute_search(db, q):
+    #     ''' Executes a query q in a dbconnection db '''
+
+    #     result = db.session.execute(
+    #         """SELECT table_id, table_title,
+    #             ts_rank(document, to_tsquery('{0}')) as relevance,
+    #             simple_table_title, topics, universe
+    #         FROM table_search_metadata
+    #         WHERE document @@ to_tsquery('{0}')
+    #         ORDER BY relevance DESC;
+    #         """.format(q))
+
+    #     return result
+
+
     def execute_search(db, q):
-        ''' Executes a query q in a dbconnection db '''
+        ''' Search for tables in the database db that match
+        a query string q. '''
 
         result = db.session.execute(
-            """SELECT table_id, table_title,
-                ts_rank(document, to_tsquery('{0}')) as relevance,
-                simple_table_title, topics, universe
-            FROM table_search_metadata
+            """SELECT text1 AS table_id,
+                      text2 AS table_title,
+                      string_to_array(text3, ', ') AS topics,
+                      text4 AS simple_table_title,
+                      '' AS universe,
+                ts_rank(document, to_tsquery('{0}')) as relevance
+            FROM search_metadata
             WHERE document @@ to_tsquery('{0}')
+            AND type = 'table'
             ORDER BY relevance DESC;
             """.format(q))
 
         return result
+
 
     # allow choice of release, default to allowed_acs[0]
     q = request.qwargs.q

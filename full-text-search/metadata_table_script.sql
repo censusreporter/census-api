@@ -1,4 +1,4 @@
-CREATE TABLE TABLE_SEARCH_METADATA AS (
+CREATE TABLE table_search_metadata AS (
 	SELECT table_id, table_title, simple_table_title,
 			topics,	universe, 
 			setweight(to_tsvector(coalesce(table_title, ' ')), 'A') || 
@@ -45,3 +45,5 @@ CREATE INDEX on TABLE_SEARCH_METADATA using gin(document);
 -- This creates a table with one row for every table in the 
 -- acs2014_1yr schema, with columns table_id, table_title, etc.,
 -- and document (the tsvector, the most important for search).
+--
+-- This script has been integrated into metadata_script.sql.
