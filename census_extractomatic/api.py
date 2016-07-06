@@ -35,18 +35,22 @@ app.config.from_object(os.environ.get('EXTRACTOMATIC_CONFIG_MODULE', 'census_ext
 db = SQLAlchemy(app)
 sentry = Sentry(app)
 
-app.s3 = S3Connection()
-
 if not app.debug:
     import logging
     file_handler = logging.FileHandler('/tmp/api.censusreporter.org.wsgi_error.log')
     file_handler.setLevel(logging.WARNING)
     app.logger.addHandler(file_handler)
 
+try:
+    app.s3 = S3Connection()
+except Exception, e:
+    app.s3 = None
+    app.logger.warning("S3 Configuration failed.")
+
 # Allowed ACS's in "best" order (newest and smallest range preferred)
 allowed_acs = [
     'acs2014_1yr',
-    'acs2014_5yr',
+    'acs2014_1yr', #TODO
 ]
 # When expanding a container geoid shorthand (i.e. 140|05000US12127),
 # use this ACS. It should always be a 5yr release so as to include as
@@ -59,7 +63,7 @@ default_table_search_release = allowed_acs[1]
 # Allowed TIGER releases in newest order
 allowed_tiger = [
     'tiger2014',
-    'tiger2013',
+    'tiger2014', #TODO
 ]
 
 ACS_NAMES = {
