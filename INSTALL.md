@@ -33,6 +33,7 @@ brew install libmemcached
 ```bash
 mkvirtualenv --no-site-packages census-api
 pip install -r requirements.txt
+add2virtualenv .
 ```
 
 On OS X, if installation of pylibmc fails, install it separately using this command:
