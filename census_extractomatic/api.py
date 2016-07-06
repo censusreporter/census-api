@@ -1385,7 +1385,8 @@ def geo_search():
 
 @app.route("/2.1/geo/search")
 @qwarg_validate({
-    'q': {'valid': NonemptyString()}
+    'q': {'valid': NonemptyString()},
+    'sumlevs': {'valid': StringList(item_validator=OneOf(SUMLEV_NAMES))}
 })
 @crossdomain(origin='*')
 def geo_full_text_search():
@@ -1401,8 +1402,10 @@ def geo_full_text_search():
         )
 
     q = request.qwargs.q
+    sumlevs = request.qwargs.sumlevs
 
-    return jsonify(result=[convert_row(row) for row in execute_query(db, q)])
+    prepared_result = [convert_row(row) for row in execute_query(db, q)]
+    return jsonify(result=prepared_result)
 
 def num2deg(xtile, ytile, zoom):
     n = 2.0 ** zoom
