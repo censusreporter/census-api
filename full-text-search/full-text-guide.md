@@ -14,7 +14,7 @@ For example, one might run `python query-script.py gross rent household income` 
 
 
 ---
-## Explanation of SQL querying
+## Explanation of SQL querying for tabulation data
 
 In order to implement a full-text search, we need to access table data beyond their IDs. This data is stored in the schema `acs2014_1yr`, particularly in the tables `census_table_metadata` and `census_column_metadata`. Look at the former for some sample table names and IDs. 
 

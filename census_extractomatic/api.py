@@ -50,7 +50,7 @@ except Exception, e:
 # Allowed ACS's in "best" order (newest and smallest range preferred)
 allowed_acs = [
     'acs2014_1yr',
-    'acs2014_1yr', #TODO
+    'acs2014_5yr',
 ]
 # When expanding a container geoid shorthand (i.e. 140|05000US12127),
 # use this ACS. It should always be a 5yr release so as to include as
@@ -63,7 +63,7 @@ default_table_search_release = allowed_acs[1]
 # Allowed TIGER releases in newest order
 allowed_tiger = [
     'tiger2014',
-    'tiger2014', #TODO
+    'tiger2013',
 ]
 
 ACS_NAMES = {
@@ -1395,22 +1395,6 @@ def geo_search():
 @crossdomain(origin='*')
 def geo_full_text_search():
 
-
-    # Old query code -- delete this after confirming the 
-    # new code (below) works on Joon's machine
-
-    # def execute_query(db, q):
-    #     return db.session.execute(
-    #         """SELECT geoid, sumlevel, population,
-    #             display_name, full_geoid, priority,
-    #             ts_rank(document, to_tsquery('{0}')) AS relevance
-    #             FROM profile_search_metadata
-    #             WHERE document @@ to_tsquery('{0}')
-    #             ORDER BY relevance DESC;
-    #         """.format(q)
-    #     )
-
-
     def execute_query(db, q):
         ''' Search for profiles in the database db that match
         a query string q. '''
@@ -1428,9 +1412,7 @@ def geo_full_text_search():
         )
 
     
-    q = request.qwargs.q
-    q = ' & '.join(q.split())
-    sumlevs = request.qwargs.sumlevs
+    q = ' & '.join(request.qwargs.q.split())
 
     prepared_result = [convert_row(row) for row in execute_query(db, q)]
     return jsonify(results=prepared_result)
@@ -1834,25 +1816,6 @@ def table_search():
 })
 @crossdomain(origin='*')
 def table_search_full_text():
-
-
-    # Old query code -- delete this after confirming the
-    # new code (below) works on Joon's machine
-
-    # def execute_search(db, q):
-    #     ''' Executes a query q in a dbconnection db '''
-
-    #     result = db.session.execute(
-    #         """SELECT table_id, table_title,
-    #             ts_rank(document, to_tsquery('{0}')) as relevance,
-    #             simple_table_title, topics, universe
-    #         FROM table_search_metadata
-    #         WHERE document @@ to_tsquery('{0}')
-    #         ORDER BY relevance DESC;
-    #         """.format(q))
-
-    #     return result
-
 
     def execute_search(db, q):
         ''' Search for tables in the database db that match

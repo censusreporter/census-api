@@ -24,7 +24,6 @@ CREATE TABLE search_metadata AS (
             FROM tiger2014.census_name_lookup
             ) profile_search
         ) profile_documents
-    ) profiles
 
     -- Explanation of above query:
     -- 
@@ -85,17 +84,16 @@ CREATE TABLE search_metadata AS (
                             t.topics,
                             t.subject_area,
                             t.universe,
-                            c.column_title,
+                            c.column_title
             FROM acs2014_1yr.census_table_metadata t
             JOIN acs2014_1yr.census_column_metadata c
             ON t.table_id = c.table_id
             ) table_search
 
         WHERE table_id = table_search.table_id
-        GROUP BY table_id, table_title, topics, subject_area, universe
+        GROUP BY table_id, table_title, topics, subject_area, universe, table_search.simple_table_title
         ) table_documents
-    ) tables
-);
+    );
 
 -- Because there isn't a good way to set sumlevel names (they aren't stored
 -- in a table anywhere), we use a host of update statements to set them all.
