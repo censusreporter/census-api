@@ -1,10 +1,24 @@
+from math import log10
 import psycopg2
 import sys
 
-def query(text):
+
+def compute_score(relevance):
+    """ Computes a ranking score in the range [0, 1].
+
+    params: relevance - psql relevance score, which (from out testing) 
+            appears to generally be in range [1E-8, 1E-2], which for 
+            safety, we are generalizing to [1E-10, 1] (factor of 100)
+    return: score in range [0, 1]
+    """
+
+    return log10(relevance) / 10.0 + 1
+
+
+def get_results(q):
     """Queries the database of tables, printing relevant search results.
 
-    params: text = search terms (e.g., "gross income housing rent")
+    params: q = search terms (e.g., "gross income housing rent")
     """
 
     conn = psycopg2.connect("dbname=census user=census")
@@ -12,7 +26,7 @@ def query(text):
 
     # The required query format is words separated by ampersands ('&')
     # enclosed within apostrophes, e.g., 'test string'
-    text = "'" + text.replace(' ', ' & ') + "'"
+    text = "'" + q.replace(' ', ' & ') + "'"
 
     # Read query comments inside-out. For full detail, refer to
     # full-text-guide.md.
@@ -21,7 +35,7 @@ def query(text):
     # table ID, table title, and a relevance score.
 
     q = ("SELECT table_id, table_title, "
-            "ts_rank(table_info.document, to_tsquery({0})) as relevance "
+            "ts_rank(table_info.document, to_tsquery({0}), 2|8|32) as relevance "
         "FROM ("
 
             # This query transforms relevant information into a document,
@@ -63,20 +77,22 @@ def query(text):
         ") table_info "
 
         "WHERE table_info.document @@ to_tsquery({0}) "
-        "ORDER BY relevance DESC;").format(text)
+        "ORDER BY relevance DESC "
+        "LIMIT 20;").format(text)
 
     cur.execute(q)
-    results = cur.fetchall()
+    return cur.fetchall()
+
+
+def show_results(results):
+    """ Print search results' names and scores. """
+
+    # Format of data is a 3-tuple, with second entry being table name, 
+    # and the last entry being the relevancy score.
 
     for result in results:
-        print result
+        print (result[1], compute_score(result[2]))
 
-    cur.close()
-    conn.close()
-
-
-def main(argv):
-    query(' '.join(argv))
 
 if __name__ == "__main__":
     try:
@@ -85,4 +101,6 @@ if __name__ == "__main__":
         print "Usage: python query-script.py <arg1> <arg2> etc..."
         sys.exit(1)
 
-    main(sys.argv[1:])
+    formatted_query = ' '.join(sys.argv[1:])
+    query_result = get_results(formatted_query)
+    show_results(query_result)
