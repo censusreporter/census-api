@@ -28,8 +28,8 @@ if __name__ == "__main__":
 	formatted_query = ' '.join(sys.argv[1:])
 	results = query_both(formatted_query)
 
-	# Sort results by second entry, their score; keep top 20
+	# Sort results by second entry, their score
 	results = sorted(results, key = lambda x: x[1], reverse = True)
 
-	for entry in results[:20]:
-		print entry
+	for entry in results:
+		print entry[2] + ' ' + str(entry[1]) + ' ' + entry[0]

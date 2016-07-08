@@ -7,12 +7,12 @@ def compute_score(relevance):
     """ Computes a ranking score in the range [0, 1].
 
     params: relevance - psql relevance score, which (from out testing) 
-            appears to generally be in range [1E-8, 1E-2], which for 
-            safety, we are generalizing to [1E-10, 1] (factor of 100)
+            appears to always be in range [1E-8, 1E-2], which for safety
+            we are generalizing to [1E-19, 1E-1] (factor of 10 on either side)
     return: score in range [0, 1]
     """
 
-    return log10(relevance) / 10.0 + 1
+    return (log10(relevance) + 9) / 8.0
 
 
 def get_results(q):
