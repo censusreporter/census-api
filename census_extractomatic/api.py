@@ -2172,6 +2172,34 @@ def full_text_search():
                 (1 + log(population / POP_US) / log(POP_US)) * 0.2)
 
 
+    def process_result(row):
+        """ Converts a SQLAlchemy RowProxy to a dictionary. 
+
+        params: row - row object returned from a query
+        return: dictionary with either profile or table attributes """
+
+        row = dict(row)
+        if row['type'] == 'profile':
+            result = {
+            'type': 'profile',
+            'full_geoid': row['full_geoid'],
+            'full_name': row['display_name'],
+            'sumlevel': row['sumlevel']
+            }
+
+        if row['type'] == 'table':
+            result = {
+            'type': 'table',
+            'table_id': row['table_id'],
+            'table_name': row['table_title'],
+            'simple_table_name': row['simple_table_title'],
+            'topics': row['topics'],
+            'unique_key': row['table_id']
+            }
+
+        return result
+
+
     q = request.qwargs.q
     q = ' & '.join(q.split())
 
@@ -2194,16 +2222,7 @@ def full_text_search():
     # type as the last entry.
     prepared_result = []
     for result in results:
-        result = dict(result[0])
-
-        if result['type'] == 'profile':
-            prepared_result.append(convert_row(result))
-
-        if result['type'] == 'table':
-            result['universe'] = ''
-            prepared_result.append(format_table_search_result(result, 'table'))
-
-        #TODO Refactor and write custom format function for query result
+        prepared_result.append(process_result(result[0]))
 
     return jsonify(results = prepared_result)
 
