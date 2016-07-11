@@ -3,7 +3,9 @@
 -- -- text2: sumlevel or table_title,
 -- -- text3: sumlevel_name or topics,
 -- -- text4: full_geoid or simple_table_title,
--- -- type,
+-- -- text5: population or NULL
+-- -- text6: priority or NULL
+-- -- type: 'profile' or 'table',
 -- -- document
 -- by pulling information about profiles (subquery before the UNION)
 -- and about tables (subquery after the UNION). This creates just one metadata
@@ -14,13 +16,16 @@ CREATE TABLE search_metadata AS (
            CAST(sumlevel as text) AS text2,
            NULL AS text3,
            CAST(full_geoid as text) as text4,
+           CAST(population as text) as text5,
+           CAST(priority as text) as text6,
            'profile' AS type,
            document AS document
     FROM ( 
-        SELECT display_name, sumlevel, full_geoid,
+        SELECT display_name, sumlevel, full_geoid, population, priority,
                setweight(to_tsvector(coalesce(display_name, ' ')), 'A') AS document
         FROM (
-            SELECT DISTINCT display_name, sumlevel, full_geoid
+            SELECT DISTINCT display_name, sumlevel, full_geoid,
+                            population, priority
             FROM tiger2014.census_name_lookup
             ) profile_search
         ) profile_documents
@@ -69,6 +74,8 @@ CREATE TABLE search_metadata AS (
            CAST(table_title as text) AS text2,
            CAST(array_to_string(topics, ', ') as text) AS text3,
            CAST(simple_table_title as text) AS text4,
+           NULL as text5,
+           NULL as text6,
            'table' AS type,
            document AS document
     FROM ( 
