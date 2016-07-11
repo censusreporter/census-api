@@ -15,6 +15,7 @@ from collections import OrderedDict
 import decimal
 import operator
 import math
+from math import log10, log
 from datetime import timedelta
 import re
 import os
@@ -2084,6 +2085,128 @@ def table_geo_comparison_rowcount(table_id):
     resp.headers.set('Content-Type', 'application/json')
 
     return resp
+
+## COMBINED LOOKUPS ##
+
+@app.route("/2.1/full-text/search/")
+@qwarg_validate({
+    'q':   {'valid': NonemptyString()}
+})
+@crossdomain(origin='*')
+def full_text_search():
+
+    def execute_search(db, q):
+        ''' Search for tables and profiles matching a query string q. '''
+
+        q_tables = """SELECT text1 AS table_id, 
+                             text2 AS table_title,
+                             text3 AS topics,
+                             text4 AS simple_table_title,
+                             ts_rank(document, to_tsquery('{0}'), 2|8|32) AS relevance,
+                             type
+                      FROM search_metadata
+                      WHERE document @@ to_tsquery('{0}')
+                      AND type = 'table'
+                      ORDER BY relevance DESC
+                      LIMIT 20;""".format(q)
+
+        tables = db.session.execute(q_tables)
+
+        q_profiles = """SELECT text1 AS display_name, 
+                               text2 AS sumlevel,
+                               text3 AS sumlevel_name,
+                               text4 AS full_geoid,
+                               text5 AS population, 
+                               text6 AS priority,
+                               ts_rank(document, to_tsquery('{0}')) AS relevance,
+                               type
+                        FROM search_metadata
+                        WHERE document @@ to_tsquery('{0}')
+                        AND type = 'profile'
+                        ORDER BY priority, population DESC, relevance DESC
+                        LIMIT 20;""".format(q)
+
+        profiles = db.session.execute(q_profiles)
+
+        return tables, profiles
+
+
+    def compute_table_score(relevance):
+        """ Computes a ranking score in the range [0, 1].
+
+        params: relevance - psql relevance score, which (from our 
+                testing appears to always be in range [1E-8, 1E-2], 
+                which for safety we are generalizing to [1E-9, 1E-1] 
+                (factor of 10 on either side)
+        return: score in range [0, 1]
+        """
+
+        return (log10(relevance) + 9) / 8.0
+
+
+    def compute_profile_score(priority, population):
+        """ Computes a ranking score in the range [0, 1].
+
+        params: priority, population - both taken from profile info
+        return: score in range [0, 1]
+        """
+
+        # Priority bounds are 5 (nation) to 320 (something small), 
+        # so the actual range is size 315
+        PRIORITY_RANGE = 320.0 - 5
+
+        # Approximate value, because this depends on where you look
+        POP_US = 318857056.0 #TODO change to query for real value
+
+        # Make population nonzero.
+        if not population:
+            population = 1
+
+        priority, population = int(priority), int(population)
+
+        # Decrement priority by 5 to map [5, 320] to [0, 315].
+        priority -= 5
+
+
+        return ((1 - priority / PRIORITY_RANGE) * 0.8 +
+                (1 + log(population / POP_US) / log(POP_US)) * 0.2)
+
+
+    q = request.qwargs.q
+    q = ' & '.join(q.split())
+
+    tables, profiles = execute_search(db, q)
+    results = []
+
+    # Compute ranking scores of each object
+    for p in profiles:
+        results.append((p, compute_profile_score(p[5], p[4])))
+
+    for t in tables:
+        results.append((t, compute_table_score(t[4])))
+
+    # Sort by second entry, their score, descending
+    # The lambda gets the second entry in a tuple x
+    results = sorted(results, key = lambda x: x[1], reverse = True)
+
+    # Format of results is a list of tuples, with each tuple being a profile
+    # or table followed by its score. Each profile and table object has its 
+    # type as the last entry.
+    prepared_result = []
+    for result in results:
+        result = dict(result[0])
+
+        if result['type'] == 'profile':
+            prepared_result.append(convert_row(result))
+
+        if result['type'] == 'table':
+            result['universe'] = ''
+            prepared_result.append(format_table_search_result(result, 'table'))
+
+        #TODO Refactor and write custom format function for query result
+
+    return jsonify(results = prepared_result)
+
 
 
 ## DATA RETRIEVAL ##
