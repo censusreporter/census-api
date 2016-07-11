@@ -2088,7 +2088,7 @@ def table_geo_comparison_rowcount(table_id):
 
 ## COMBINED LOOKUPS ##
 
-@app.route("/2.1/full-text/search/")
+@app.route("/2.1/full-text/search")
 @qwarg_validate({
     'q':   {'valid': NonemptyString()}
 })
