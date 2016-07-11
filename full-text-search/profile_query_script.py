@@ -18,12 +18,14 @@ def compute_score(priority, population):
     return: score in range [0, 1]
     """
 
-    # Decrement priority by 5 to map [5, 320] to [0, 315].
-    priority -= 5
-
     # Make population nonzero.
     if not population:
         population = 1
+
+    priority, population = int(priority), int(population)
+
+    # Decrement priority by 5 to map [5, 320] to [0, 315].
+    priority -= 5
 
     # The function (1 - priority / PRIORITY_RANGE) sends priorities in 
     # [0, 315] -> [0, 1], with 0 -> 1, 315 -> 0. 
