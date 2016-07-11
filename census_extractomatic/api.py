@@ -2184,7 +2184,8 @@ def full_text_search():
             'type': 'profile',
             'full_geoid': row['full_geoid'],
             'full_name': row['display_name'],
-            'sumlevel': row['sumlevel']
+            'sumlevel': row['sumlevel'],
+            'sumlevel_name': row['sumlevel_name']
             }
 
         if row['type'] == 'table':
