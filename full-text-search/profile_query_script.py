@@ -49,17 +49,17 @@ def get_results(q):
     connection = psycopg2.connect("dbname=census user=census")
     cur = connection.cursor()
 
-    cur.execute("""SELECT m.text1 AS display_name, m.text3,
-                         m.text2 AS sumlevel,
-                         m.text4 AS full_geoid,
-                         ts_rank(m.document, to_tsquery('{0}')) AS relevance,
-                         c.population AS population, c.priority AS priority
-                   FROM search_metadata m
-                   JOIN tiger2014.census_name_lookup c
-                   ON m.text4 = c.full_geoid
-                   WHERE m.document @@ to_tsquery('{0}')
-                   AND m.type = 'profile'
-                   ORDER BY priority, sumlevel, population DESC, relevance DESC
+    cur.execute("""SELECT text1 AS display_name, 
+                         text2 AS sumlevel,
+                         text3 AS sumlevel_name,
+                         text4 AS full_geoid,
+                         text5 AS population, 
+                         text6 AS priority,
+                         ts_rank(document, to_tsquery('{0}')) AS relevance
+                   FROM search_metadata
+                   WHERE document @@ to_tsquery('{0}')
+                   AND type = 'profile'
+                   ORDER BY priority, population DESC, relevance DESC
                    LIMIT 20;
                 """.format(' & '.join(q.split())))
     
@@ -69,9 +69,9 @@ def get_results(q):
 def show_results(results):
     """ Print search results' names and scores. """
 
-    # Format of data is a 7-tuple, with priority and population being 
-    # the last two entries, and profile name being the first entry.
-    data = [(x[0], compute_score(x[6], x[5])) for x in results]
+    # Format of data is a 7-tuple, with priority being the 6th entry,
+    # population being the 5th entry, and profile name being the 1st entry.
+    data = [(x[0], compute_score(int(x[5]), int(x[4]))) for x in results]
 
     for datum in data:
         print datum
