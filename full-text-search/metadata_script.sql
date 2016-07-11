@@ -1,4 +1,4 @@
--- Creates search_metadata table with columns 
+-- Creates search_metadata table with columns
 -- -- text1: display_name or table_id,
 -- -- text2: sumlevel or table_title,
 -- -- text3: sumlevel_name or topics,
@@ -10,6 +10,8 @@
 -- by pulling information about profiles (subquery before the UNION)
 -- and about tables (subquery after the UNION). This creates just one metadata
 -- table with all of the information we (currently) need for search.
+
+DROP TABLE IF EXISTS search_metadata;
 
 CREATE TABLE search_metadata AS (
     SELECT CAST(display_name as text) AS text1,
