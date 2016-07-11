@@ -14,11 +14,11 @@ def query_both(q):
 	all_objects = []
 
 	for p in profiles:
-		p = (p[0], profile_query_script.compute_score(p[6], p[5]), 'profile')
+		p = (p[0], profile_query_script.compute_score(int(p[5]), int(p[4])), 'profile')
 		all_objects.append(p)
 
 	for t in tables:
-		t = (t[1], table_query_script.compute_score(t[2]), 'table')
+		t = (t[1], table_query_script.compute_score(t[4]), 'table')
 		all_objects.append(t)
 
 	return all_objects

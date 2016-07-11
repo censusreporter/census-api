@@ -30,7 +30,7 @@ def get_results(q):
                          text2 AS table_title,
                          text3 AS topics,
                          text4 AS simple_table_title,
-                         ts_rank(document, to_tsquery('{0}')) AS relevance
+                         ts_rank(document, to_tsquery('{0}'), 2|8|32) AS relevance
                    FROM search_metadata
                    WHERE document @@ to_tsquery('{0}')
                    AND type = 'table'
@@ -48,7 +48,7 @@ def show_results(results):
     # and the last entry being the relevancy score.
 
     for result in results:
-        print (result[1], compute_score(result[4]))
+        print (result[1], result[4], compute_score(result[4]))
 
 
 if __name__ == "__main__":
