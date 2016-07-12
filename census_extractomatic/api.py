@@ -2096,7 +2096,7 @@ def table_geo_comparison_rowcount(table_id):
 def full_text_search():
 
     def execute_search(db, q):
-        ''' Search for tables and profiles matching a query string q. '''
+        """ Search for tables and profiles matching a query q. """
 
         q_tables = """SELECT text1 AS table_id, 
                              text2 AS table_title,
@@ -2109,8 +2109,6 @@ def full_text_search():
                       AND type = 'table'
                       ORDER BY relevance DESC
                       LIMIT 20;""".format(q)
-
-        tables = db.session.execute(q_tables)
 
         q_profiles = """SELECT text1 AS display_name, 
                                text2 AS sumlevel,
@@ -2126,6 +2124,7 @@ def full_text_search():
                         ORDER BY priority, population DESC, relevance DESC
                         LIMIT 20;""".format(q)
 
+        tables = db.session.execute(q_tables)
         profiles = db.session.execute(q_profiles)
 
         return tables, profiles
@@ -2152,7 +2151,7 @@ def full_text_search():
         """
 
         # Priority bounds are 5 (nation) to 320 (something small), 
-        # so the actual range is size 315
+        # so the actual range is the difference, size 315
         PRIORITY_RANGE = 320.0 - 5
 
         # Approximate value, because this depends on where you look
@@ -2179,6 +2178,7 @@ def full_text_search():
         return: dictionary with either profile or table attributes """
 
         row = dict(row)
+
         if row['type'] == 'profile':
             result = {
             'type': 'profile',
@@ -2201,8 +2201,13 @@ def full_text_search():
         return result
 
 
+    # Build query by separating words with '&', and adding wildcard character
+    # to support prefix matching. 
+
+    MINIMUM_QUERY_LENGTH = 3
     q = request.qwargs.q
     q = ' & '.join(q.split())
+    q += ':*'
 
     tables, profiles = execute_search(db, q)
     results = []
@@ -2214,13 +2219,12 @@ def full_text_search():
     for t in tables:
         results.append((t, compute_table_score(t[4])))
 
-    # Sort by second entry, their score, descending
-    # The lambda gets the second entry in a tuple x
+    # Sort by second entry (score), descending; the lambda pulls the second
+    # element of a tuple.
     results = sorted(results, key = lambda x: x[1], reverse = True)
 
     # Format of results is a list of tuples, with each tuple being a profile
-    # or table followed by its score. Each profile and table object has its 
-    # type as the last entry.
+    # or table followed by its score. The profile or table is then result[0].
     prepared_result = []
     for result in results:
         prepared_result.append(process_result(result[0]))
