@@ -2185,7 +2185,8 @@ def full_text_search():
             'full_geoid': row['full_geoid'],
             'full_name': row['display_name'],
             'sumlevel': row['sumlevel'],
-            'sumlevel_name': row['sumlevel_name']
+            'sumlevel_name': row['sumlevel_name'],
+            'url': build_profile_url(row['display_name'], row['full_geoid'])
             }
 
         if row['type'] == 'table':
@@ -2195,10 +2196,48 @@ def full_text_search():
             'table_name': row['table_title'],
             'simple_table_name': row['simple_table_title'],
             'topics': row['topics'],
-            'unique_key': row['table_id']
+            'unique_key': row['table_id'],
+            'url': build_table_url(row['table_id'])
             }
 
         return result
+
+
+    def slugify(name):
+        ''' Slugifies a string by (1) removing non-alphanumeric / space 
+        characters, (2) converting to lowercase, (3) turning spaces to dashes
+
+        params: name - string to change
+        return: slugified string 
+        '''
+
+        name = re.sub('[^0-9a-zA-Z ]', '', name)
+        name = name.lower()
+        return name.replace(' ', '-')
+
+
+    def build_profile_url(display_name, full_geoid):
+        ''' Builds the censusreporter URL out of name and geoid.
+        Format: https://censusreporter.org/profiles/full_geoid-display_name/"
+
+        >>> build_profile_url("Columbus, IN Metro Area", "31000US18020")
+        "https://censusreporter.org/profiles/31000US18020-columbus-in-metro-area"
+
+        '''
+
+        new_name = slugify(display_name)
+        return "https://censusreporter.org/profiles/" + full_geoid + "-" + new_name + "/"
+
+
+    def build_table_url(table_id):
+        ''' Builds the CensusReporter URL out of table_id.
+        Format: https://censusreporter.org/tables/table_id/"
+
+        >>> build_table_url("B06009")
+        "http://censusreporter.org/tables/B06009/"
+        '''
+
+        return "https://censusreporter.org/tables/" + table_id + "/"
 
 
     # Build query by separating words with '&', and adding wildcard character
