@@ -2116,12 +2116,14 @@ def full_text_search():
                                text4 AS full_geoid,
                                text5 AS population, 
                                text6 AS priority,
-                               ts_rank(document, to_tsquery('{0}')) AS relevance,
+                               ts_rank(document, to_tsquery('simple', '{0}')) AS relevance,
                                type
                         FROM search_metadata
-                        WHERE document @@ to_tsquery('{0}')
+                        WHERE document @@ to_tsquery('simple', '{0}')
                         AND type = 'profile'
-                        ORDER BY priority, population DESC, relevance DESC
+                        ORDER BY CAST(text6 as INT) ASC, 
+                                 CAST(text5 as INT) DESC, 
+                                 relevance DESC
                         LIMIT 20;""".format(q)
 
         tables = db.session.execute(q_tables)
@@ -2157,8 +2159,8 @@ def full_text_search():
         # Approximate value, because this depends on where you look
         POP_US = 318857056.0 #TODO change to query for real value
 
-        # Make population nonzero.
-        if not population:
+        # Make population nonzero (catching both empty string and string '0')
+        if not population or not int(population):
             population = 1
 
         priority, population = int(priority), int(population)

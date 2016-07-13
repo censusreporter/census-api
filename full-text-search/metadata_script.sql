@@ -24,7 +24,7 @@ CREATE TABLE search_metadata AS (
            document AS document
     FROM ( 
         SELECT display_name, sumlevel, full_geoid, population, priority,
-               setweight(to_tsvector(coalesce(display_name, ' ')), 'A') AS document
+               setweight(to_tsvector('simple', coalesce(display_name, ' ')), 'A') AS document
         FROM (
             SELECT DISTINCT display_name, sumlevel, full_geoid,
                             population, priority

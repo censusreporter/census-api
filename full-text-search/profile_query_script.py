@@ -57,11 +57,13 @@ def get_results(q):
                          text4 AS full_geoid,
                          text5 AS population, 
                          text6 AS priority,
-                         ts_rank(document, to_tsquery('{0}')) AS relevance
+                         ts_rank(document, to_tsquery('simple', '{0}')) AS relevance
                    FROM search_metadata
-                   WHERE document @@ to_tsquery('{0}')
+                   WHERE document @@ to_tsquery('simple', '{0}')
                    AND type = 'profile'
-                   ORDER BY priority, population DESC, relevance DESC
+                   ORDER BY CAST(text6 as INT), 
+                            CAST(text5 as INT) DESC, 
+                            relevance DESC
                    LIMIT 20;
                 """.format(' & '.join(q.split())))
     
