@@ -72,35 +72,37 @@ CREATE TABLE search_metadata AS (
     -- From this, we take the columns directly used in search results
     -- and put them into the combined metadata table.
 
-    SELECT CAST(table_id as text) AS text1,
+    SELECT CAST(tabulation_code as text) AS text1,
            CAST(table_title as text) AS text2,
            CAST(array_to_string(topics, ', ') as text) AS text3,
            CAST(simple_table_title as text) AS text4,
-           NULL as text5,
-           NULL as text6,
+           CAST(array_to_string(tables, ' ') as text) AS text5,
+           NULL AS text6,
            'table' AS type,
-           document AS document
-    FROM ( 
-        SELECT table_id, table_title, topics, simple_table_title,
+           document as document
+    FROM (
+        SELECT tabulation_code, table_title, topics, simple_table_title, 
+               tables_in_one_yr as tables,
                setweight(to_tsvector(coalesce(table_title, ' ')), 'A') || 
                setweight(to_tsvector(coalesce(subject_area, ' ')), 'B') || 
                setweight(to_tsvector(coalesce(string_agg(column_title, ' '), ' ')), 'C') || 
                setweight(to_tsvector(coalesce(universe, ' ')), 'D') as document 
         FROM (
-            SELECT DISTINCT t.table_id, 
+            SELECT DISTINCT t.tabulation_code,
                             t.table_title,
                             t.simple_table_title,
+                            t.tables_in_one_yr,
                             t.topics,
                             t.subject_area,
                             t.universe,
                             c.column_title
-            FROM acs2014_1yr.census_table_metadata t
+            FROM census_tabulation_metadata t
             JOIN acs2014_1yr.census_column_metadata c
-            ON t.table_id = c.table_id
+            ON t.tables_in_one_yr[1] = c.table_id
             ) table_search
-
-        WHERE table_id = table_search.table_id
-        GROUP BY table_id, table_title, topics, subject_area, universe, table_search.simple_table_title
+        WHERE tabulation_code = table_search.tabulation_code
+        GROUP BY tabulation_code, table_title, tables_in_one_yr, topics,
+                 subject_area, universe, simple_table_title
         ) table_documents
     );
 
