@@ -2098,10 +2098,11 @@ def full_text_search():
     def execute_search(db, q):
         """ Search for tables and profiles matching a query q. """
 
-        q_tables = """SELECT text1 AS table_id, 
+        q_tables = """SELECT text1 AS tabulation_code, 
                              text2 AS table_title,
                              text3 AS topics,
                              text4 AS simple_table_title,
+                             text5 AS tables,
                              ts_rank(document, to_tsquery('{0}'), 2|8|32) AS relevance,
                              type
                       FROM search_metadata
@@ -2192,14 +2193,18 @@ def full_text_search():
             }
 
         if row['type'] == 'table':
+            table_id = row['tables'].split()[0]
+
             result = {
             'type': 'table',
-            'table_id': row['table_id'],
+            'table_id': table_id,
+            'tabulation_code': row['tabulation_code'],
             'table_name': row['table_title'],
             'simple_table_name': row['simple_table_title'],
             'topics': row['topics'],
-            'unique_key': row['table_id'],
-            'url': build_table_url(row['table_id'])
+            'unique_key': row['tabulation_code'],
+            'subtables': row['tables'],
+            'url': build_table_url(table_id)
             }
 
         return result
@@ -2258,7 +2263,7 @@ def full_text_search():
         results.append((p, compute_profile_score(p[5], p[4])))
 
     for t in tables:
-        results.append((t, compute_table_score(t[4])))
+        results.append((t, compute_table_score(t[5])))
 
     # Sort by second entry (score), descending; the lambda pulls the second
     # element of a tuple.

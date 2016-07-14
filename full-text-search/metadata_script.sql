@@ -1,9 +1,9 @@
 -- Creates search_metadata table with columns
--- -- text1: display_name or table_id,
+-- -- text1: display_name or tabulation_code,
 -- -- text2: sumlevel or table_title,
 -- -- text3: sumlevel_name or topics,
 -- -- text4: full_geoid or simple_table_title,
--- -- text5: population or NULL
+-- -- text5: population or tables,
 -- -- text6: priority or NULL
 -- -- type: 'profile' or 'table',
 -- -- document

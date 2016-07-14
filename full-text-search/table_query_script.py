@@ -26,10 +26,11 @@ def get_results(q):
 
     # Query combined metadata table, decoding columns as needed
 
-    cur.execute("""SELECT text1 AS table_id, 
+    cur.execute("""SELECT text1 AS tabulation_code, 
                          text2 AS table_title,
                          text3 AS topics,
                          text4 AS simple_table_title,
+                         text5 AS tables,
                          ts_rank(document, to_tsquery('{0}'), 2|8|32) AS relevance
                    FROM search_metadata
                    WHERE document @@ to_tsquery('{0}')
@@ -44,11 +45,11 @@ def get_results(q):
 def show_results(results):
     """ Print search results' names and scores. """
 
-    # Format of data is a 5-tuple, (table_id, table_title, topics, 
-    # simple_table_title, relevance), so build our results from these
+    # Format of data is a 6-tuple, (tabulation_code, table_title, topics, 
+    # simple_table_title, tables, relevance), so build our results from these
 
     for result in results:
-        print ' '.join([str(compute_score(result[4])), result[0], result[1]])
+        print ' '.join([str(compute_score(result[5])), result[4].split()[0], result[1]])
 
 
 if __name__ == "__main__":

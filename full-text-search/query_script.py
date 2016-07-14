@@ -14,11 +14,21 @@ def query_both(q):
 	all_objects = []
 
 	for p in profiles:
-		p = (p[0], profile_query_script.compute_score(p[5], p[4]), 'profile', p[3])
+		relevance = str(profile_query_script.compute_score(p[5], p[4]))
+		obj_type = 'profile'
+		name = p[0]
+		full_geoid = p[3]
+
+		p = (relevance, obj_type, full_geoid, name)
 		all_objects.append(p)
 
 	for t in tables:
-		t = (t[1], table_query_script.compute_score(t[4]), 'table', t[0])
+		relevance = str(table_query_script.compute_score(t[5]))
+		obj_type = 'table'
+		name = t[1]
+		table_id = t[4].split()[0]
+
+		t = (relevance, obj_type, table_id, name)
 		all_objects.append(t)
 
 	return all_objects
@@ -28,8 +38,9 @@ if __name__ == "__main__":
 	formatted_query = ' '.join(sys.argv[1:])
 	results = query_both(formatted_query)
 
-	# Sort results by second entry, their score
-	results = sorted(results, key = lambda x: x[1], reverse = True)
+	# Each result is formatted as (relevance, type, some_code, name), where
+	# some_code is full_geoid or table_id. Sort by relevance.
+	results = sorted(results, key = lambda x: x[0], reverse = True)
 
 	for entry in results:
-		print ' '.join([entry[2], entry[3], str(entry[1]), entry[0]])
+		print ' '.join(entry)
