@@ -78,7 +78,7 @@ def show_results(results):
     data = [(x[0], compute_score(int(x[5]), int(x[4]))) for x in results]
 
     for datum in data:
-        print datum
+        print ' '.join(x for x in results)
 
 
 if __name__ == "__main__":

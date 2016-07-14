@@ -44,11 +44,11 @@ def get_results(q):
 def show_results(results):
     """ Print search results' names and scores. """
 
-    # Format of data is a 5-tuple, with second entry being table title, 
-    # and the last entry being the relevancy score.
+    # Format of data is a 5-tuple, (table_id, table_title, topics, 
+    # simple_table_title, relevance), so build our results from these
 
     for result in results:
-        print (result[1], result[4], compute_score(result[4]))
+        print ' '.join([str(compute_score(result[4])), result[0], result[1]])
 
 
 if __name__ == "__main__":
