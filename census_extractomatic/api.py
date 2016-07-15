@@ -2174,6 +2174,48 @@ def full_text_search():
                 (1 + log(population / POP_US) / log(POP_US)) * 0.2)
 
 
+    def choose_table(tables):
+        """ Choose a representative table for a list of table_ids.
+
+        In the case where a tabulation has multiple iterations / subtables, we
+        want one that is representative of all of them. The preferred order is:
+            'C' table with no iterations
+          > 'B' table with no iterationks
+          > 'C' table with iterations (arbitrarily choosing 'A' iteration)
+          > 'B' table with iterations (arbitrarily choosing 'A' iteration)
+        since, generally, simpler, more complete tables are more useful. This
+        function selects the most relevant table based on the hierarchy above.
+
+        Table IDs are in the format [B/C]#####[A-I]. The first character is 
+        'B' or 'C', followed by five digits (the tabulation code), optionally
+        ending with a character representing that this is a race iteration. 
+        If any iteration is present, all of them are (e.g., if B10001A is 
+        present, so are B10001B, ... , B10001I.)
+        """
+
+        tabulation_code = tables[0][1:6]
+
+        # 'C' table with no iterations, e.g., C10001
+        if 'C' + tabulation_code in tables:
+            return 'C' + tabulation_code
+
+        # 'B' table with no iterations, e.g., B10001
+        if 'B' + tabulation_code in tables:
+            return 'B' + tabulation_code
+
+        # 'C' table with iterations, choosing 'A' iteration, e.g., C10001A
+        if 'C' + tabulation_code + 'A' in tables:
+            return 'C' + tabulation_code + 'A'
+
+        # 'B' table with iterations, choosing 'A' iteration, e.g., B10001A
+        if 'B' + tabulation_code + 'A' in tables:
+            return 'B' + tabulation_code + 'A'
+
+        else:
+            return ''
+
+
+
     def process_result(row):
         """ Converts a SQLAlchemy RowProxy to a dictionary. 
 
@@ -2193,7 +2235,7 @@ def full_text_search():
             }
 
         if row['type'] == 'table':
-            table_id = row['tables'].split()[0]
+            table_id = choose_table(row['tables'].split())
 
             result = {
             'type': 'table',
