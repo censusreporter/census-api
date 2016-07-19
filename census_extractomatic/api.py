@@ -67,6 +67,12 @@ allowed_tiger = [
     'tiger2013',
 ]
 
+allowed_searches = [
+    'table', 
+    'profile',
+    'both'
+]
+
 ACS_NAMES = {
     'acs2014_1yr': {'name': 'ACS 2014 1-year', 'years': '2014'},
     'acs2014_5yr': {'name': 'ACS 2014 5-year', 'years': '2010-2014'},
@@ -2090,12 +2096,13 @@ def table_geo_comparison_rowcount(table_id):
 
 @app.route("/2.1/full-text/search")
 @qwarg_validate({
-    'q':   {'valid': NonemptyString()}
+    'q':   {'valid': NonemptyString()},
+    'type': {'valid': OneOf(allowed_searches), 'default': allowed_searches[2]}
 })
 @crossdomain(origin='*')
 def full_text_search():
 
-    def execute_search(db, q):
+    def table_search(db, q):
         """ Search for tables and profiles matching a query q. """
 
         q_tables = """SELECT text1 AS tabulation_code, 
@@ -2111,6 +2118,11 @@ def full_text_search():
                       ORDER BY relevance DESC
                       LIMIT 20;""".format(q)
 
+        tables = db.session.execute(q_tables)
+        return tables
+
+
+    def profile_search(db, q):
         q_profiles = """SELECT text1 AS display_name, 
                                text2 AS sumlevel,
                                text3 AS sumlevel_name,
@@ -2127,10 +2139,8 @@ def full_text_search():
                                  relevance DESC
                         LIMIT 20;""".format(q)
 
-        tables = db.session.execute(q_tables)
         profiles = db.session.execute(q_profiles)
-
-        return tables, profiles
+        return profiles
 
 
     def compute_table_score(relevance):
@@ -2215,7 +2225,6 @@ def full_text_search():
             return ''
 
 
-
     def process_result(row):
         """ Converts a SQLAlchemy RowProxy to a dictionary. 
 
@@ -2297,10 +2306,23 @@ def full_text_search():
     q = ' & '.join(q.split())
     q += ':*'
 
-    tables, profiles = execute_search(db, q)
-    results = []
+    search_type = request.qwargs.type
+
+    # Support choice of 'search type' as returning table results, profile 
+    # results, or both. Only the needed queries will get executed; e.g., for 
+    # a profile search, the profiles list will be filled but tables will be 
+    # empty.
+    profiles, tables = [], []
+
+    if search_type == 'profile' or search_type == 'both':
+        profiles = profile_search(db, q)
+
+    if search_type == 'table' or search_type == 'both':
+        tables = table_search(db, q)
 
     # Compute ranking scores of each object
+    results = []
+
     for p in profiles:
         results.append((p, compute_profile_score(p[5], p[4])))
 
