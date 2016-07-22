@@ -91,6 +91,17 @@ class Integer(Validation):
         return "An integer like '1' or '123'"
 
 
+class PositiveInteger(Validation):
+    def validate(self, raw):
+        try:
+            res = int(raw)
+            if res <= 0:
+                res = False
+        except ValueError:
+            res = False
+        return res
+
+
 class OneOf(Validation):
     def __init__(self, collection):
         self._collection = collection
