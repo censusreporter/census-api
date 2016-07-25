@@ -2262,7 +2262,7 @@ def full_text_search():
             'simple_table_name': row['simple_table_title'],
             'topics': row['topics'].split(', '),
             'unique_key': row['tabulation_code'],
-            'subtables': row['tables'],
+            'subtables': row['tables'].split(),
             'url': build_table_url(table_id)
             }
 
