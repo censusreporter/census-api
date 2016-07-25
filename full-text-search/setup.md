@@ -6,7 +6,7 @@ We create a shared metadata table, `search_metadata` that indexes information ab
 	psql census < metadata_script.sql
 and allow it to finish. Note that this may take a while, because it indexes all of the place names.
 
-**Notes**: This script requires the presence of tiger2014.census_name_lookup, acs2014_1yr.census_column_metadata, and census_tabulation_metadata. It does not access any other tables. It will likely need to be modified if these tables are not present or to index tigeer data from other years, 3 year data, etc.
+**Notes**: This script requires the presence of `tiger2014.census_name_lookup`, `acs2014_1yr.census_column_metadata`, and `census_tabulation_metadata`. It does not access any other tables. It will likely need to be modified if these tables are not present or to index tigeer data from other years, 3 year data, etc.
 
 ## API Setup
 Fortunately, very little setup for the API is required. The version of `census-api/census_extractomatic/api.py` in the branch `full-text-search` contains the necessary functions in `full_text_search`. The API can be run locally and found at the route `/2.1/full-text/search`. For example, run
