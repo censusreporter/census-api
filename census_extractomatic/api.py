@@ -2098,19 +2098,16 @@ def table_geo_comparison_rowcount(table_id):
 @qwarg_validate({
     'q':   {'valid': NonemptyString()},
     'type': {'valid': OneOf(allowed_searches), 'default': allowed_searches[2]},
-    'page': {'valid': PositiveInteger(), 'default': 1}
 })
 @crossdomain(origin='*')
 def full_text_search():
 
-    def table_search(db, q, page):
+    def table_search(db, q):
         """ Search for tables matching a query q. 
 
         Return a list, because it is easier to work with than the SQLAlchemy
         ResultProxy object (which does not support indexing) 
         """
-
-        num_results = 20 * page
 
         q_tables = """SELECT text1 AS tabulation_code, 
                              text2 AS table_title,
@@ -2122,21 +2119,18 @@ def full_text_search():
                       FROM search_metadata
                       WHERE document @@ to_tsquery('{0}')
                       AND type = 'table'
-                      ORDER BY relevance DESC
-                      LIMIT {1};""".format(q, num_results)
+                      ORDER BY relevance DESC;""".format(q)
 
         tables = db.session.execute(q_tables)
         return [t for t in tables]
 
 
-    def profile_search(db, q, page):
+    def profile_search(db, q):
         """ Search for profiles matching a query q.
 
         Return a list, because it is easier to work with than the SQLAlchemy
         ResultProxy object (which does not support indexing) 
         """
-
-        num_results = 20 * page
 
         q_profiles = """SELECT text1 AS display_name, 
                                text2 AS sumlevel,
@@ -2151,8 +2145,7 @@ def full_text_search():
                         AND type = 'profile'
                         ORDER BY CAST(text6 as INT) ASC, 
                                  CAST(text5 as INT) DESC, 
-                                 relevance DESC
-                        LIMIT {1};""".format(q, num_results)
+                                 relevance DESC;""".format(q)
 
         profiles = db.session.execute(q_profiles)
         return [p for p in profiles]
@@ -2322,7 +2315,6 @@ def full_text_search():
     q += ':*'
 
     search_type = request.qwargs.type
-    page = request.qwargs.page
 
     # Support choice of 'search type' as returning table results, profile 
     # results, or both. Only the needed queries will get executed; e.g., for 
@@ -2331,26 +2323,18 @@ def full_text_search():
     profiles, tables = [], []
 
     if search_type == 'profile' or search_type == 'both':
-        profiles = profile_search(db, q, page)
+        profiles = profile_search(db, q)
 
     if search_type == 'table' or search_type == 'both':
-        tables = table_search(db, q, page)
+        tables = table_search(db, q)
 
     # Compute ranking scores of each object that we want to return
-    # Range determined as 20 * (page - 1) : 20 * page
-    #   e.g, for page 1, we want to only consider profiles[0:20]
-    # Note that if the limits are out of bounds, no error is raised; we just 
-    # get an empty list instead.
-
-    lower_limit = 20 * (page - 1)
-    upper_limit = 20 * page
-
     results = []
 
-    for p in profiles[lower_limit:upper_limit]:
+    for p in profiles:
         results.append((p, compute_profile_score(p[5], p[4])))
 
-    for t in tables[lower_limit:upper_limit]:
+    for t in tables:
         results.append((t, compute_table_score(t[5])))
 
     # Sort by second entry (score), descending; the lambda pulls the second
