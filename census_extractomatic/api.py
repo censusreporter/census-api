@@ -2260,7 +2260,7 @@ def full_text_search():
             'tabulation_code': row['tabulation_code'],
             'table_name': row['table_title'],
             'simple_table_name': row['simple_table_title'],
-            'topics': row['topics'],
+            'topics': row['topics'].split(', '),
             'unique_key': row['tabulation_code'],
             'subtables': row['tables'],
             'url': build_table_url(table_id)
