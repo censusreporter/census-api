@@ -2247,7 +2247,7 @@ def full_text_search():
             'full_geoid': row['full_geoid'],
             'full_name': row['display_name'],
             'sumlevel': row['sumlevel'],
-            'sumlevel_name': row['sumlevel_name'],
+            'sumlevel_name': row['sumlevel_name'] if row['sumlevel_name'] else '',
             'url': build_profile_url(row['display_name'], row['full_geoid'])
             }
 
@@ -2315,7 +2315,7 @@ def full_text_search():
     q += ':*'
 
     search_type = request.qwargs.type
-
+ 
     # Support choice of 'search type' as returning table results, profile 
     # results, or both. Only the needed queries will get executed; e.g., for 
     # a profile search, the profiles list will be filled but tables will be 
