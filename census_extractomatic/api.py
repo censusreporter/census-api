@@ -1394,35 +1394,6 @@ def geo_search():
 
     return jsonify(results=[convert_row(row) for row in result])
 
-@app.route("/2.1/geo/search")
-@qwarg_validate({
-    'q': {'valid': NonemptyString()},
-    'sumlevs': {'valid': StringList(item_validator=OneOf(SUMLEV_NAMES))}
-})
-@crossdomain(origin='*')
-def geo_full_text_search():
-
-    def execute_query(db, q):
-        ''' Search for profiles in the database db that match
-        a query string q. '''
-
-        return db.session.execute(
-            """SELECT text1 AS display_name,
-                      text2 AS sumlevel,
-                      text4 AS full_geoid,
-                      ts_rank(document, to_tsquery('{0}')) AS relevance
-                FROM search_metadata
-                WHERE document @@ to_tsquery('{0}')
-                AND type = 'profile'
-                ORDER BY relevance DESC;
-            """.format(q)
-        )
-
-    
-    q = ' & '.join(request.qwargs.q.split())
-
-    prepared_result = [convert_row(row) for row in execute_query(db, q)]
-    return jsonify(results=prepared_result)
 
 def num2deg(xtile, ytile, zoom):
     n = 2.0 ** zoom
@@ -1816,49 +1787,6 @@ def table_search():
 
     return resp
 
-
-@app.route("/2.1/table/search")
-@qwarg_validate({
-    'q':   {'valid': NonemptyString()}
-})
-@crossdomain(origin='*')
-def table_search_full_text():
-
-    def execute_search(db, q):
-        ''' Search for tables in the database db that match
-        a query string q. '''
-
-        result = db.session.execute(
-            """SELECT text1 AS table_id,
-                      text2 AS table_title,
-                      string_to_array(text3, ', ') AS topics,
-                      text4 AS simple_table_title,
-                      '' AS universe,
-                ts_rank(document, to_tsquery('{0}')) as relevance
-            FROM search_metadata
-            WHERE document @@ to_tsquery('{0}')
-            AND type = 'table'
-            ORDER BY relevance DESC;
-            """.format(q))
-
-        return result
-
-
-    # allow choice of release, default to allowed_acs[0]
-    q = request.qwargs.q
-    q = ' & '.join(q.split())
-
-    data = []
-    result = execute_search(db, q)
-    for tabulation in result:
-        tabulation = dict(tabulation)
-        data.append(format_table_search_result(tabulation, 'table'))
-
-    text = json.dumps(data)
-    resp = make_response(text)
-    resp.headers.set('Content-Type', 'application/json')
-
-    return resp
 
 # Example: /1.0/tabulation/01001
 @app.route("/1.0/tabulation/<tabulation_id>")
