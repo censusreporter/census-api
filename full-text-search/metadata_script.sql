@@ -26,11 +26,11 @@ CREATE TABLE search_metadata AS (
         SELECT display_name, sumlevel, full_geoid, population, priority,
                setweight(to_tsvector('simple', coalesce(display_name, ' ')), 'A') AS document
         -- Exclude sumlevels without maps (067, 258, 355)
-        WHERE sumlevel NOT IN (067, 258, 355)
         FROM (
             SELECT DISTINCT display_name, sumlevel, full_geoid,
                             population, priority
             FROM tiger2014.census_name_lookup
+            WHERE sumlevel NOT IN ('067', '258', '355')
             ) profile_search
         ) profile_documents
 
