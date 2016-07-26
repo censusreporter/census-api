@@ -25,6 +25,8 @@ CREATE TABLE search_metadata AS (
     FROM ( 
         SELECT display_name, sumlevel, full_geoid, population, priority,
                setweight(to_tsvector('simple', coalesce(display_name, ' ')), 'A') AS document
+        -- Exclude sumlevels without maps (067, 258, 355)
+        WHERE sumlevel NOT IN (067, 258, 355)
         FROM (
             SELECT DISTINCT display_name, sumlevel, full_geoid,
                             population, priority
@@ -37,7 +39,7 @@ CREATE TABLE search_metadata AS (
     -- Information about each place (name, sumlevel, etc.) is pulled
     -- directly from tiger data, and the name is transformed into a tsvector
     -- for a full text search. For full detail, refer to the psql docs.
-    -- 
+    --
     -- The column text3 is NULL initially, but it will be populated with 
     -- names of sumlevels. (See the update statements below this.)
     --
