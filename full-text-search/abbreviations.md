@@ -6,7 +6,7 @@ Our goal is to add support for abbreviations in Postgres -- that is, treat "st" 
 
 To do this, we make use of a Postgres feature called a thesaurus. This allows us to specify additional lexemes to index when a particular word is encountered; for example, the document for the place St. Louis will then contain the lexemes "saint", "st", and "louis".
 
-Go to `usr/share/postgresql/9.5/tsearch_data`, and make a new file called `place_thesaurus.ths`. In it, include the following:
+Go to `/usr/share/postgresql/9.5/tsearch_data`, and make a new file called `place_thesaurus.ths`. In it, include the following:
     saint : saint st
     st : saint st
     fort : fort ft 
