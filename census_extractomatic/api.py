@@ -15,6 +15,7 @@ from collections import OrderedDict
 import decimal
 import operator
 import math
+from math import log10, log
 from datetime import timedelta
 import re
 import os
@@ -35,13 +36,17 @@ app.config.from_object(os.environ.get('EXTRACTOMATIC_CONFIG_MODULE', 'census_ext
 db = SQLAlchemy(app)
 sentry = Sentry(app)
 
-app.s3 = S3Connection()
-
 if not app.debug:
     import logging
     file_handler = logging.FileHandler('/tmp/api.censusreporter.org.wsgi_error.log')
     file_handler.setLevel(logging.WARNING)
     app.logger.addHandler(file_handler)
+
+try:
+    app.s3 = S3Connection()
+except Exception, e:
+    app.s3 = None
+    app.logger.warning("S3 Configuration failed.")
 
 # Allowed ACS's in "best" order (newest and smallest range preferred)
 allowed_acs = [
@@ -60,6 +65,12 @@ default_table_search_release = allowed_acs[1]
 allowed_tiger = [
     'tiger2014',
     'tiger2013',
+]
+
+allowed_searches = [
+    'table', 
+    'profile',
+    'both'
 ]
 
 ACS_NAMES = {
@@ -1322,6 +1333,15 @@ def latest_geo_profile(geoid):
 
 ## GEO LOOKUPS ##
 
+def convert_row(row):
+    data = dict()
+    data['sumlevel'] = row['sumlevel']
+    data['full_geoid'] = row['full_geoid']
+    data['full_name'] = row['display_name']
+    if 'geom' in row and row['geom']:
+        data['geom'] = json.loads(row['geom'])
+    return data
+
 # Example: /1.0/geo/search?q=spok
 # Example: /1.0/geo/search?q=spok&sumlevs=050,160
 @app.route("/1.0/geo/search")
@@ -1371,15 +1391,6 @@ def geo_search():
             ORDER BY priority, population DESC NULLS LAST
             LIMIT 25;""" % (where)
     result = db.session.execute(sql, where_args)
-
-    def convert_row(row):
-        data = dict()
-        data['sumlevel'] = row['sumlevel']
-        data['full_geoid'] = row['full_geoid']
-        data['full_name'] = row['display_name']
-        if 'geom' in row and row['geom']:
-            data['geom'] = json.loads(row['geom'])
-        return data
 
     return jsonify(results=[convert_row(row) for row in result])
 
@@ -2008,6 +2019,264 @@ def table_geo_comparison_rowcount(table_id):
     resp.headers.set('Content-Type', 'application/json')
 
     return resp
+
+## COMBINED LOOKUPS ##
+
+@app.route("/2.1/full-text/search")
+@qwarg_validate({
+    'q':   {'valid': NonemptyString()},
+    'type': {'valid': OneOf(allowed_searches), 'default': allowed_searches[2]},
+})
+@crossdomain(origin='*')
+def full_text_search():
+
+    def table_search(db, q):
+        """ Search for tables matching a query q. 
+
+        Return a list, because it is easier to work with than the SQLAlchemy
+        ResultProxy object (which does not support indexing) 
+        """
+
+        q_tables = """SELECT text1 AS tabulation_code, 
+                             text2 AS table_title,
+                             text3 AS topics,
+                             text4 AS simple_table_title,
+                             text5 AS tables,
+                             ts_rank(document, to_tsquery('{0}'), 2|8|32) AS relevance,
+                             type
+                      FROM search_metadata
+                      WHERE document @@ to_tsquery('{0}')
+                      AND type = 'table'
+                      ORDER BY relevance DESC;""".format(q)
+
+        tables = db.session.execute(q_tables)
+        return [t for t in tables]
+
+
+    def profile_search(db, q):
+        """ Search for profiles matching a query q.
+
+        Return a list, because it is easier to work with than the SQLAlchemy
+        ResultProxy object (which does not support indexing) 
+        """
+
+        q_profiles = """SELECT text1 AS display_name, 
+                               text2 AS sumlevel,
+                               text3 AS sumlevel_name,
+                               text4 AS full_geoid,
+                               text5 AS population, 
+                               text6 AS priority,
+                               ts_rank(document, to_tsquery('simple', '{0}')) AS relevance,
+                               type
+                        FROM search_metadata
+                        WHERE document @@ to_tsquery('simple', '{0}')
+                        AND type = 'profile'
+                        ORDER BY CAST(text6 as INT) ASC, 
+                                 CAST(text5 as INT) DESC, 
+                                 relevance DESC;""".format(q)
+
+        profiles = db.session.execute(q_profiles)
+        return [p for p in profiles]
+
+
+    def compute_table_score(relevance):
+        """ Computes a ranking score in the range [0, 1].
+
+        params: relevance - psql relevance score, which (from our 
+                testing appears to always be in range [1E-8, 1E-2], 
+                which for safety we are generalizing to [1E-9, 1E-1] 
+                (factor of 10 on either side)
+        return: score in range [0, 1]
+        """
+
+        return (log10(relevance) + 9) / 8.0
+
+
+    def compute_profile_score(priority, population):
+        """ Computes a ranking score in the range [0, 1].
+
+        params: priority, population - both taken from profile info
+        return: score in range [0, 1]
+        """
+
+        # Priority bounds are 5 (nation) to 320 (something small), 
+        # so the actual range is the difference, size 315
+        PRIORITY_RANGE = 320.0 - 5
+
+        # Approximate value, because this depends on where you look
+        POP_US = 318857056.0 #TODO change to query for real value
+
+        # Make population nonzero (catching both empty string and string '0')
+        if not population or not int(population):
+            population = 1
+
+        priority, population = int(priority), int(population)
+
+        # Decrement priority by 5 to map [5, 320] to [0, 315].
+        priority -= 5
+
+
+        return ((1 - priority / PRIORITY_RANGE) * 0.8 +
+                (1 + log(population / POP_US) / log(POP_US)) * 0.2)
+
+
+    def choose_table(tables):
+        """ Choose a representative table for a list of table_ids.
+
+        In the case where a tabulation has multiple iterations / subtables, we
+        want one that is representative of all of them. The preferred order is:
+            'C' table with no iterations
+          > 'B' table with no iterationks
+          > 'C' table with iterations (arbitrarily choosing 'A' iteration)
+          > 'B' table with iterations (arbitrarily choosing 'A' iteration)
+        since, generally, simpler, more complete tables are more useful. This
+        function selects the most relevant table based on the hierarchy above.
+
+        Table IDs are in the format [B/C]#####[A-I]. The first character is 
+        'B' or 'C', followed by five digits (the tabulation code), optionally
+        ending with a character representing that this is a race iteration. 
+        If any iteration is present, all of them are (e.g., if B10001A is 
+        present, so are B10001B, ... , B10001I.)
+        """
+
+        tabulation_code = tables[0][1:6]
+
+        # 'C' table with no iterations, e.g., C10001
+        if 'C' + tabulation_code in tables:
+            return 'C' + tabulation_code
+
+        # 'B' table with no iterations, e.g., B10001
+        if 'B' + tabulation_code in tables:
+            return 'B' + tabulation_code
+
+        # 'C' table with iterations, choosing 'A' iteration, e.g., C10001A
+        if 'C' + tabulation_code + 'A' in tables:
+            return 'C' + tabulation_code + 'A'
+
+        # 'B' table with iterations, choosing 'A' iteration, e.g., B10001A
+        if 'B' + tabulation_code + 'A' in tables:
+            return 'B' + tabulation_code + 'A'
+
+        else:
+            return ''
+
+
+    def process_result(row):
+        """ Converts a SQLAlchemy RowProxy to a dictionary. 
+
+        params: row - row object returned from a query
+        return: dictionary with either profile or table attributes """
+
+        row = dict(row)
+
+        if row['type'] == 'profile':
+            result = {
+            'type': 'profile',
+            'full_geoid': row['full_geoid'],
+            'full_name': row['display_name'],
+            'sumlevel': row['sumlevel'],
+            'sumlevel_name': row['sumlevel_name'] if row['sumlevel_name'] else '',
+            'url': build_profile_url(row['display_name'], row['full_geoid'])
+            }
+
+        if row['type'] == 'table':
+            table_id = choose_table(row['tables'].split())
+
+            result = {
+            'type': 'table',
+            'table_id': table_id,
+            'tabulation_code': row['tabulation_code'],
+            'table_name': row['table_title'],
+            'simple_table_name': row['simple_table_title'],
+            'topics': row['topics'].split(', '),
+            'unique_key': row['tabulation_code'],
+            'subtables': row['tables'].split(),
+            'url': build_table_url(table_id)
+            }
+
+        return result
+
+
+    def slugify(name):
+        ''' Slugifies a string by (1) removing non-alphanumeric / space 
+        characters, (2) converting to lowercase, (3) turning spaces to dashes
+
+        params: name - string to change
+        return: slugified string 
+        '''
+
+        name = re.sub('[^0-9a-zA-Z ]', '', name)
+        name = name.lower()
+        return name.replace(' ', '-')
+
+
+    def build_profile_url(display_name, full_geoid):
+        ''' Builds the censusreporter URL out of name and geoid.
+        Format: https://censusreporter.org/profiles/full_geoid-display_name/"
+
+        >>> build_profile_url("Columbus, IN Metro Area", "31000US18020")
+        "https://censusreporter.org/profiles/31000US18020-columbus-in-metro-area"
+
+        '''
+
+        new_name = slugify(display_name)
+        return "https://censusreporter.org/profiles/" + full_geoid + "-" + new_name + "/"
+
+
+    def build_table_url(table_id):
+        ''' Builds the CensusReporter URL out of table_id.
+        Format: https://censusreporter.org/tables/table_id/"
+
+        >>> build_table_url("B06009")
+        "http://censusreporter.org/tables/B06009/"
+        '''
+
+        return "https://censusreporter.org/tables/" + table_id + "/"
+
+
+    # Build query by separating words with '&', and adding wildcard character
+    # to support prefix matching. 
+
+    MINIMUM_QUERY_LENGTH = 3
+    q = request.qwargs.q
+    q = ' & '.join(q.split())
+    q += ':*'
+
+    search_type = request.qwargs.type
+ 
+    # Support choice of 'search type' as returning table results, profile 
+    # results, or both. Only the needed queries will get executed; e.g., for 
+    # a profile search, the profiles list will be filled but tables will be 
+    # empty.
+    profiles, tables = [], []
+
+    if search_type == 'profile' or search_type == 'both':
+        profiles = profile_search(db, q)
+
+    if search_type == 'table' or search_type == 'both':
+        tables = table_search(db, q)
+
+    # Compute ranking scores of each object that we want to return
+    results = []
+
+    for p in profiles:
+        results.append((p, compute_profile_score(p[5], p[4])))
+
+    for t in tables:
+        results.append((t, compute_table_score(t[5])))
+
+    # Sort by second entry (score), descending; the lambda pulls the second
+    # element of a tuple.
+    results = sorted(results, key = lambda x: x[1], reverse = True)
+
+    # Format of results is a list of tuples, with each tuple being a profile
+    # or table followed by its score. The profile or table is then result[0].
+    prepared_result = []
+    for result in results:
+        prepared_result.append(process_result(result[0]))
+
+    return jsonify(results = prepared_result)
+
 
 
 ## DATA RETRIEVAL ##
