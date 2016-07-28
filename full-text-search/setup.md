@@ -2,9 +2,11 @@
 This guide is intended to provide instructions for configuring full text search on Census Reporter. Broadly speaking, there are three levels of complexity to be aware of when setting this up: the database, the API, and the front end.
 
 ## Database Setup
-We create a shared metadata table, `search_metadata` that indexes information about both profiles and tables. The SQL script that creates this is found in `census-api/full-text-search/metadata_script.sql`. To execute, run
+We create a shared metadata table, `search_metadata` that indexes information about both profiles and tables. The SQL script that creates this is found in `census-api/full-text-search/metadata_script.sql`. Before we run this, we want to make simple configuration changes that add support for abbreviations. For instance, a user searching "Saint Louis" should be able to find "St. Louis."
+
+Refer to the instructions in [abbreviations.md](abbreviations.md) to configure the thesaurus. Following that, build the search table by running
 	psql census < metadata_script.sql
-and allow it to finish. Note that this may take a while, because it indexes all of the place names.
+Note that this may take a while, because it indexes all of the place names.
 
 **Notes**: This script requires the presence of `tiger2014.census_name_lookup`, `acs2014_1yr.census_column_metadata`, and `census_tabulation_metadata`. It does not access any other tables. It will likely need to be modified if these tables are not present or to index tigeer data from other years, 3 year data, etc.
 
