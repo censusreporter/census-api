@@ -142,6 +142,7 @@ def get_list_of_topics():
     url = "https://censusreporter.org/topics"
     handle = urllib2.urlopen(url)
     html = handle.read()
+    handle.close()
 
     parser = TopicsParser()
     parser.feed(html)
@@ -154,6 +155,7 @@ def scrape_topic_page(name, url):
 
     handle = urllib2.urlopen(url)
     html = handle.read()
+    handle.close()
 
     parser = TopicPageParser()
     parser.feed(html)
@@ -172,8 +174,13 @@ def remove_old_topics():
 
     # Remove old entries
     q = "DELETE FROM search_metadata WHERE type = 'topic';"
+
     cur.execute(q)
+    print cur.statusmessage
+
     connection.commit()
+    cur.close()
+    connection.close()
 
     return
 
@@ -187,16 +194,16 @@ def add_to_table(topics_data):
          ...]
     """
 
+    # Connect to database
+    connection = psycopg2.connect("dbname=census user=census")
+    cur = connection.cursor()
+
     for topic in topics_data:
         # Format each "text" entry properly, i.e., &-delimited. We replace spaces
         # with &s, but trim whitespace because there may be multiple sequential
         # spaces.
         topic['text'] = re.sub('\s+', ' ', topic['text'].strip())
         topic['text'] = topic['text'].replace(' ', ' & ')
-
-        # Connect to database
-        connection = psycopg2.connect("dbname=census user=census")
-        cur = connection.cursor()
 
         # Update search_metadata accordingly. We set text1 to the topic name,
         # text2 to the list of tables, and text3 through text6 to NULL. 
@@ -212,14 +219,26 @@ def add_to_table(topics_data):
                topic['name'], ' '.join(topic['tables']), topic['text'])
 
         cur.execute(q)
-        connection.commit()
+        print cur.statusmessage
+
+    connection.commit()
+    cur.close()
+    connection.close()
 
     return
 
 
 if __name__ == "__main__":
     topics = get_list_of_topics()
+    print "Obtained list of topics"
 
     for topic in topics:
-        print topic
-        print scrape_topic_page(**topic)
+        # Update topics dictionary with the text and tables that are
+        # scraped from the topic page.
+        topic['text'], topic['tables'] = scrape_topic_page(**topic)
+        print "Finished scraping topic page '{0}'".format(topic['name'])
+
+    remove_old_topics()
+    print "Removed old topics entries from search_metadata."
+    add_to_table(topics)
+    print "Added new topics entries to search_metadata."
