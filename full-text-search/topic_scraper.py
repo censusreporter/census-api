@@ -1,4 +1,5 @@
 from HTMLParser import HTMLParser
+import psycopg2
 import re
 import urllib2
 
@@ -160,6 +161,60 @@ def scrape_topic_page(name, url):
     text = ' '.join(parser.text)
 
     return text, parser.tables
+
+
+def remove_old_topics():
+    """" Removes old topics entries from search_metadata. """
+
+    # Connect to database
+    connection = psycopg2.connect("dbname=census user=census")
+    cur = connection.cursor()
+
+    # Remove old entries
+    q = "DELETE FROM search_metadata WHERE type = 'topic';"
+    cur.execute(q)
+    connection.commit()
+
+    return
+
+
+def add_to_table(topics_data):
+    """ Adds topics data into the search_metadata table.
+
+    Requires that the format be a list of dictionaries, i.e., 
+        [{ name: topic1, url: url1, tables: tables_in_topic1, text: '...'},
+         { name: topic2, url: url2, tables: tables_in_topic2, text: '...'},
+         ...]
+    """
+
+    for topic in topics_data:
+        # Format each "text" entry properly, i.e., &-delimited. We replace spaces
+        # with &s, but trim whitespace because there may be multiple sequential
+        # spaces.
+        topic['text'] = re.sub('\s+', ' ', topic['text'].strip())
+        topic['text'] = topic['text'].replace(' ', ' & ')
+
+        # Connect to database
+        connection = psycopg2.connect("dbname=census user=census")
+        cur = connection.cursor()
+
+        # Update search_metadata accordingly. We set text1 to the topic name,
+        # text2 to the list of tables, and text3 through text6 to NULL. 
+        # The document is made out of the title (first priority) and the 
+        # words scraped (third priority)
+
+        q = """INSERT INTO search_metadata 
+               (text1, text2, text3, text4, text5, text6, 
+                    type, document)
+               VALUES ('{0}', '{1}', NULL, NULL, NULL, NULL, 'topic', 
+                    setweight(to_tsvector('{0}'), 'A') ||
+                    setweight(to_tsvector('{2}'), 'C'));""".format(
+               topic['name'], ' '.join(topic['tables']), topic['text'])
+
+        cur.execute(q)
+        connection.commit()
+
+    return
 
 
 if __name__ == "__main__":
