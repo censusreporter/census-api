@@ -10,12 +10,12 @@ class TopicsParser(HTMLParser):
         in_dt_tag: Flag for whether or not the parser is inside a <dt> tag.
         topic_buffer: Buffer to store a single topic name and page URL
         base_url: Census Reporter URL
-        topics: List of topic page dictionaries, each containing 
-               'name' and 'link'
+        topics: List of topic page dictionaries, each containing
+                'name' and 'link'
 
     We always encounter, in order, a <dt> tag, an <a> tag, and the topic name.
     We can take advantage of this data knowledge in order to build a buffer
-    that stores a URL, then a topic, which we can then append to our master 
+    that stores a URL, then a topic, which we can then append to our master
     list of topics.
     """
 
@@ -27,9 +27,9 @@ class TopicsParser(HTMLParser):
         self.topics = []
 
     def handle_starttag(self, tag, attrs):
-        """ Handle <dt> and <a> tags. 
+        """ Handle <dt> and <a> tags.
 
-        If we see a <dt> tag, set the flag appropriately. Census Reporter's 
+        If we see a <dt> tag, set the flag appropriately. Census Reporter's
         topic page does not nest these tags. If we see a link, build and store
         the appropriate URL.
         """
@@ -48,9 +48,9 @@ class TopicsParser(HTMLParser):
             self.in_dt_tag = False
 
     def handle_data(self, data):
-        """ Find data found in the <dt> tags, which are topic names. 
+        """ Find data found in the <dt> tags, which are topic names.
 
-        Note that we use topic_buffer.copy() to prevent pointer-like 
+        Note that we use topic_buffer.copy() to prevent pointer-like
         behavior, and create new dictionaries when appending them.
         """
 
@@ -60,20 +60,20 @@ class TopicsParser(HTMLParser):
 
 
 class TopicPageParser(HTMLParser):
-    """ Parser for an individual topic page. 
+    """ Parser for an individual topic page.
 
     Attributes:
         in_body: Counter for whether or not parser is in main section of page.
                  This functions more or less like a stack, where we increment
-                 it if we reach a relevant <section> tag, and decrement if we 
-                 reach a </section> tag. If it's greater than 0, then we are 
+                 it if we reach a relevant <section> tag, and decrement if we
+                 reach a </section> tag. If it's greater than 0, then we are
                  in the main body of the page.
         text: List to store all the relevant text snippets on the page
         tables: List to store all table IDs found on the page
 
     The main page content is stored in a <section id='topic-overview'> tag
-    or a <section id='topic-elsewhere'> tag. We take advantage of this to find 
-    the relevant information on the page (and ignore things like scripts or 
+    or a <section id='topic-elsewhere'> tag. We take advantage of this to find
+    the relevant information on the page (and ignore things like scripts or
     footers).
     """
 
@@ -100,11 +100,11 @@ class TopicPageParser(HTMLParser):
         """ Add data to the text buffer. """
 
         if self.in_body:
-            # Get rid of non-alphanumeric and non-space / dash / slash 
+            # Get rid of non-alphanumeric and non-space / dash / slash
             # characters, plus newline characters to avoid concatenating lines.
             # Then replace the newlines, slashes, and dashes with spaces.
-            # This is kind of crude, but ultimately all we care about is a 
-            # long document of words. 
+            # This is kind of crude, but ultimately all we care about is a
+            # long document of words.
             data = re.sub('[^A-Za-z0-9\-/\n ]', '', data)
             data = re.sub('[\n/-]', ' ', data)
             self.text.append(data.strip())
@@ -113,10 +113,10 @@ class TopicPageParser(HTMLParser):
                 self.tables.append(data)
 
     def is_table(self, data):
-        """ Detects if a given string is a valid table code. 
+        """ Detects if a given string is a valid table code.
 
         Table codes are formatted as [B/C]#####. We need the try/except block
-        because the string indices may be out of range (in which case the 
+        because the string indices may be out of range (in which case the
         object we're dealing with is certainly not a table).
         """
 
@@ -132,9 +132,9 @@ class TopicPageParser(HTMLParser):
 
 
 def get_list_of_topics():
-    """ Gets and returns list of topics from Census Reporter website. 
+    """ Gets and returns list of topics from Census Reporter website.
 
-    Topics are formatted as [{name: topic1, url: url1}, 
+    Topics are formatted as [{name: topic1, url: url1},
                              {name: topic2, url: url2}, ...]
     """
 
@@ -160,6 +160,7 @@ def scrape_topic_page(name, url):
     text = ' '.join(parser.text)
 
     return text, parser.tables
+
 
 if __name__ == "__main__":
     topics = get_list_of_topics()
