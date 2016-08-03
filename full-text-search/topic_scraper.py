@@ -1,4 +1,5 @@
 from HTMLParser import HTMLParser
+import re
 import urllib2
 
 
@@ -62,38 +63,51 @@ class TopicPageParser(HTMLParser):
     """ Parser for an individual topic page. 
 
     Attributes:
-        in_body: Flag for whether or not parser is in main section of page
-        text: Place to store all the relevant text on the page
-        tables: Place to store all table IDs found on the page
+        in_body: Counter for whether or not parser is in main section of page.
+                 This functions more or less like a stack, where we increment
+                 it if we reach a relevant <section> tag, and decrement if we 
+                 reach a </section> tag. If it's greater than 0, then we are 
+                 in the main body of the page.
+        text: List to store all the relevant text snippets on the page
+        tables: List to store all table IDs found on the page
 
-    The main page content is stored in a <section id='topic-overview'> tag.
-    We take advantage of this to find the relevant information on the page 
-    (and ignore things like scripts, etc.).
+    The main page content is stored in a <section id='topic-overview'> tag
+    or a <section id='topic-elsewhere'> tag. We take advantage of this to find 
+    the relevant information on the page (and ignore things like scripts or 
+    footers).
     """
 
     def __init__(self):
         HTMLParser.__init__(self)
-        self.in_body = False
-        self.text = ""
+        self.in_body = 0
+        self.text = []
         self.tables = []
 
     def handle_starttag(self, tag, attrs):
         """ Handle start tag by detecting main section of page. """
 
-        if tag == 'section' and ('id', 'topic-overview') in attrs:
-            self.in_body = True
+        if tag == 'section' and (('id', 'topic-overview') in attrs
+                                 or ('id', 'topic-elsewhere') in attrs):
+            self.in_body += 1
 
     def handle_endtag(self, tag):
         """ Handle end tag by detecting end of main section of page. """
 
         if tag == 'section' and self.in_body:
-            self.in_body = False
+            self.in_body -= 1
 
     def handle_data(self, data):
         """ Add data to the text buffer. """
 
         if self.in_body:
-            self.text += data.strip() + " " 
+            # Get rid of non-alphanumeric and non-space / dash / slash 
+            # characters, plus newline characters to avoid concatenating lines.
+            # Then replace the newlines, slashes, and dashes with spaces.
+            # This is kind of crude, but ultimately all we care about is a 
+            # long document of words. 
+            data = re.sub('[^A-Za-z0-9\-/\n ]', '', data)
+            data = re.sub('[\n/-]', ' ', data)
+            self.text.append(data.strip())
 
             if self.is_table(data) and data not in self.tables:
                 self.tables.append(data)
@@ -118,7 +132,11 @@ class TopicPageParser(HTMLParser):
 
 
 def get_list_of_topics():
-    """ Gets list of topics from Census Reporter website. """
+    """ Gets and returns list of topics from Census Reporter website. 
+
+    Topics are formatted as [{name: topic1, url: url1}, 
+                             {name: topic2, url: url2}, ...]
+    """
 
     url = "https://censusreporter.org/topics"
     handle = urllib2.urlopen(url)
@@ -139,7 +157,9 @@ def scrape_topic_page(name, url):
     parser = TopicPageParser()
     parser.feed(html)
 
-    return parser.text, parser.tables
+    text = ' '.join(parser.text)
+
+    return text, parser.tables
 
 if __name__ == "__main__":
     topics = get_list_of_topics()
