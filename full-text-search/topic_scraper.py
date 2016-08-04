@@ -137,8 +137,8 @@ class GlossaryParser(HTMLParser):
 
     Attributes:
         in_body: Flag for whether or not parser is in main section of page.
-                 We don't have to keep a counter as before, because the 
-                 glossary page is not structured in a way that there are 
+                 We don't have to keep a counter as before, because the
+                 glossary page is not structured in a way that there are
                  nested tags.
         in_term_name: Flag for the whether or not the parser is inside a term
                       name. This allows it to keep a separate list of terms.
@@ -147,8 +147,8 @@ class GlossaryParser(HTMLParser):
 
     Once again, we use the fact that the body of the page is enclosed in a tag
     <article id='glossary'>. Similarly, term names are always enclosed in <dt>
-    tags within the body. Upon encountering a term, it is added to the list of 
-    terms. Upon encountering any text (including term names), it is added to 
+    tags within the body. Upon encountering a term, it is added to the list of
+    terms. Upon encountering any text (including term names), it is added to
     the list of all text.
 
     """
@@ -165,7 +165,7 @@ class GlossaryParser(HTMLParser):
 
         We need to know when we're in the body of the page (again, to avoid
         things like scripts or footers) and when we're in a term name (so that
-        those can be documented with higher priority). 
+        those can be documented with higher priority).
         """
 
         if tag == 'article' and ('id', 'glossary') in attrs:
@@ -269,7 +269,7 @@ def remove_old_topics():
 def add_topics_to_table(topics_data):
     """ Adds topics data into the search_metadata table.
 
-    Requires that the format be a list of dictionaries, i.e., 
+    Requires that the format be a list of dictionaries, i.e.,
         [{name: 'topic1', url: 'url1', tables: [tables_in_topic1], text: '...'},
          {name: 'topic2', url: 'url2', tables: [tables_in_topic2], text: '...'},
          ... ]
@@ -287,17 +287,17 @@ def add_topics_to_table(topics_data):
         topic['text'] = topic['text'].replace(' ', ' & ')
 
         # Update search_metadata accordingly. We set text1 to the topic name,
-        # text2 to the list of tables, and text3 through text6 to NULL. 
-        # The document is made out of the title (first priority) and the 
-        # words scraped (third priority)
+        # text2 to the list of tables, text3 to the URL, and text4 through
+        # text6 to NULL. The document is made out of the title (first priority)
+        # and the words scraped (third priority)
 
-        q = """INSERT INTO search_metadata 
-               (text1, text2, text3, text4, text5, text6, 
+        q = """INSERT INTO search_metadata
+               (text1, text2, text3, text4, text5, text6,
                     type, document)
-               VALUES ('{0}', '{1}', NULL, NULL, NULL, NULL, 'topic', 
+               VALUES ('{0}', '{1}', '{2}', NULL, NULL, NULL, 'topic',
                     setweight(to_tsvector('{0}'), 'A') ||
-                    setweight(to_tsvector('{2}'), 'C'));""".format(
-               topic['name'], ' '.join(topic['tables']), topic['text'])
+                    setweight(to_tsvector('{3}'), 'C'));""".format(
+               topic['name'], ' '.join(topic['tables']), topic['url'], topic['text'])
 
         cur.execute(q)
         print cur.statusmessage
@@ -319,23 +319,24 @@ def add_glossary_to_table(glossary):
     connection = psycopg2.connect("dbname=census user=census")
     cur = connection.cursor()
 
-    # Format text properly, i.e., &-delimited and without multiple spaces 
+    # Format text properly, i.e., &-delimited and without multiple spaces
     glossary['text'] = re.sub('\s+', ' ', glossary['text'].strip())
     glossary['text'] = glossary['text'].replace(' ', ' & ')
 
     glossary['terms'] = re.sub('\s+', ' ', glossary['terms'].strip())
     glossary['terms'] = glossary['terms'].replace(' ', ' & ')
 
-    # Update search_metadata. Set text1 to 'glossary', text2 to the terms, and 
-    # text3 through text6 to NULL. Document is made out of the terms (first 
-    # priority) and text (third priority)
+    # Update search_metadata. Set text1 to 'glossary', text2 to the terms,
+    # text3 to the URL, and text4 through text6 to NULL. Document is made out
+    # of the terms (first priority) and text (third priority)
 
     q = """INSERT INTO search_metadata
            (text1, text2, text3, text4, text5, text6, type, document)
-           VALUES ('glossary', '{0}', NULL, NULL, NULL, NULL, 'topic',
-                setweight(to_tsvector('{0}'), 'A') ||
-                setweight(to_tsvector('{1}'), 'C'));""".format(
-                    glossary['terms'], glossary['text'])
+           VALUES ('Glossary', '{0}', 'https://censusreporter.org/glossary',
+                   NULL, NULL, NULL, 'topic',
+                   setweight(to_tsvector('{0}'), 'A') ||
+                   setweight(to_tsvector('{1}'), 'C'));""".format(
+           glossary['terms'], glossary['text'])
 
     cur.execute(q)
     print cur.statusmessage
