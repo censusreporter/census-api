@@ -2031,33 +2031,11 @@ def table_geo_comparison_rowcount(table_id):
 @crossdomain(origin='*')
 def full_text_search():
 
-    def table_search(db, q):
-        """ Search for tables matching a query q. 
+    def do_search(db, q, object_type):
+        """ Search for objects (profiles, tables, topics) matching query q.
 
-        Return a list, because it is easier to work with than the SQLAlchemy
-        ResultProxy object (which does not support indexing) 
-        """
-
-        q_tables = """SELECT text1 AS tabulation_code, 
-                             text2 AS table_title,
-                             text3 AS topics,
-                             text4 AS simple_table_title,
-                             text5 AS tables,
-                             ts_rank(document, to_tsquery('{0}'), 2|8|32) AS relevance,
-                             type
-                      FROM search_metadata
-                      WHERE document @@ to_tsquery('{0}')
-                      AND type = 'table'
-                      ORDER BY relevance DESC;""".format(q)
-
-        tables = db.session.execute(q_tables)
-        return [t for t in tables]
-
-    def profile_search(db, q):
-        """ Search for profiles matching a query q.
-
-        Return a list, because it is easier to work with than the SQLAlchemy
-        ResultProxy object (which does not support indexing) 
+        Return a list, because it's easier to work with than a SQLAlchemy 
+        ResultProxy object (notably, the latter does not support indexing).
         """
 
         q_profiles = """SELECT text1 AS display_name, 
@@ -2075,15 +2053,17 @@ def full_text_search():
                                  CAST(text5 as INT) DESC, 
                                  relevance DESC;""".format(q)
 
-        profiles = db.session.execute(q_profiles)
-        return [p for p in profiles]
-
-    def topic_search(db, q):
-        """ Search for topics matching a query q.
-    
-        Return a list, because it is easier to work with than the SQLAlchemy
-        ResultProxy object (which does not support indexing) 
-        """
+        q_tables = """SELECT text1 AS tabulation_code, 
+                             text2 AS table_title,
+                             text3 AS topics,
+                             text4 AS simple_table_title,
+                             text5 AS tables,
+                             ts_rank(document, to_tsquery('{0}'), 2|8|32) AS relevance,
+                             type
+                      FROM search_metadata
+                      WHERE document @@ to_tsquery('{0}')
+                      AND type = 'table'
+                      ORDER BY relevance DESC;""".format(q)
 
         q_topics = """SELECT text1 as topic_name,
                              text3 as url,
@@ -2094,8 +2074,10 @@ def full_text_search():
                       AND type = 'topic'
                       ORDER BY relevance DESC;""".format(q)
 
-        topics = db.session.execute(q_topics)
-        return [t for t in topics]
+        q_map = {'profile': q_profiles, 'table': q_tables, 'topic': q_topics}
+
+        objects = db.session.execute(q_map[object_type])
+        return [row for row in objects]
 
     def compute_table_score(relevance):
         """ Computes a ranking score in the range [0, 1].
@@ -2193,7 +2175,6 @@ def full_text_search():
                 'sumlevel_name': row['sumlevel_name'] if row['sumlevel_name'] else '',
                 'url': build_profile_url(row['display_name'], row['full_geoid']),
                 'relevance': row['relevance'] #TODO remove this
-
             }
 
         if row['type'] == 'table':
@@ -2223,7 +2204,6 @@ def full_text_search():
 
         return result
 
-
     def slugify(name):
         ''' Slugifies a string by (1) removing non-alphanumeric / space 
         characters, (2) converting to lowercase, (3) turning spaces to dashes
@@ -2236,7 +2216,6 @@ def full_text_search():
         name = name.lower()
         return name.replace(' ', '-')
 
-
     def build_profile_url(display_name, full_geoid):
         ''' Builds the censusreporter URL out of name and geoid.
         Format: https://censusreporter.org/profiles/full_geoid-display_name/"
@@ -2248,7 +2227,6 @@ def full_text_search():
 
         new_name = slugify(display_name)
         return "https://censusreporter.org/profiles/" + full_geoid + "-" + new_name + "/"
-
 
     def build_table_url(table_id):
         ''' Builds the CensusReporter URL out of table_id.
@@ -2279,13 +2257,13 @@ def full_text_search():
     profiles, tables, topics = [], [], []
 
     if search_type == 'profile' or search_type == 'all':
-        profiles = profile_search(db, q)
+        profiles = do_search(db, q, 'profile')
 
     if search_type == 'table' or search_type == 'all':
-        tables = table_search(db, q)
+        tables = do_search(db, q, 'table')
 
     if search_type == 'topic' or search_type == 'all':
-        topics = topic_search(db, q)
+        topics = do_search(db, q, 'topic')
 
     # Compute ranking scores of each object that we want to return
     results = []
