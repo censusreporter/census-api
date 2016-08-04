@@ -70,7 +70,8 @@ allowed_tiger = [
 allowed_searches = [
     'table', 
     'profile',
-    'both'
+    'topic',
+    'all'
 ]
 
 ACS_NAMES = {
@@ -2025,7 +2026,7 @@ def table_geo_comparison_rowcount(table_id):
 @app.route("/2.1/full-text/search")
 @qwarg_validate({
     'q':   {'valid': NonemptyString()},
-    'type': {'valid': OneOf(allowed_searches), 'default': allowed_searches[2]},
+    'type': {'valid': OneOf(allowed_searches), 'default': allowed_searches[3]},
 })
 @crossdomain(origin='*')
 def full_text_search():
@@ -2052,7 +2053,6 @@ def full_text_search():
         tables = db.session.execute(q_tables)
         return [t for t in tables]
 
-
     def profile_search(db, q):
         """ Search for profiles matching a query q.
 
@@ -2078,6 +2078,24 @@ def full_text_search():
         profiles = db.session.execute(q_profiles)
         return [p for p in profiles]
 
+    def topic_search(db, q):
+        """ Search for topics matching a query q.
+    
+        Return a list, because it is easier to work with than the SQLAlchemy
+        ResultProxy object (which does not support indexing) 
+        """
+
+        q_topics = """SELECT text1 as topic_name,
+                             text3 as url,
+                             ts_rank(document, to_tsquery('{0}')) AS relevance,
+                             type
+                      FROM search_metadata
+                      WHERE document @@ to_tsquery('{0}')
+                      AND type = 'topic'
+                      ORDER BY relevance DESC;""".format(q)
+
+        topics = db.session.execute(q_topics)
+        return [t for t in topics]
 
     def compute_table_score(relevance):
         """ Computes a ranking score in the range [0, 1].
@@ -2090,7 +2108,6 @@ def full_text_search():
         """
 
         return (log10(relevance) + 9) / 8.0
-
 
     def compute_profile_score(priority, population):
         """ Computes a ranking score in the range [0, 1].
@@ -2118,7 +2135,6 @@ def full_text_search():
 
         return ((1 - priority / PRIORITY_RANGE) * 0.8 +
                 (1 + log(population / POP_US) / log(POP_US)) * 0.2)
-
 
     def choose_table(tables):
         """ Choose a representative table for a list of table_ids.
@@ -2160,7 +2176,6 @@ def full_text_search():
         else:
             return ''
 
-
     def process_result(row):
         """ Converts a SQLAlchemy RowProxy to a dictionary. 
 
@@ -2171,27 +2186,39 @@ def full_text_search():
 
         if row['type'] == 'profile':
             result = {
-            'type': 'profile',
-            'full_geoid': row['full_geoid'],
-            'full_name': row['display_name'],
-            'sumlevel': row['sumlevel'],
-            'sumlevel_name': row['sumlevel_name'] if row['sumlevel_name'] else '',
-            'url': build_profile_url(row['display_name'], row['full_geoid'])
+                'type': 'profile',
+                'full_geoid': row['full_geoid'],
+                'full_name': row['display_name'],
+                'sumlevel': row['sumlevel'],
+                'sumlevel_name': row['sumlevel_name'] if row['sumlevel_name'] else '',
+                'url': build_profile_url(row['display_name'], row['full_geoid']),
+                'relevance': row['relevance'] #TODO remove this
+
             }
 
         if row['type'] == 'table':
             table_id = choose_table(row['tables'].split())
 
             result = {
-            'type': 'table',
-            'table_id': table_id,
-            'tabulation_code': row['tabulation_code'],
-            'table_name': row['table_title'],
-            'simple_table_name': row['simple_table_title'],
-            'topics': row['topics'].split(', '),
-            'unique_key': row['tabulation_code'],
-            'subtables': row['tables'].split(),
-            'url': build_table_url(table_id)
+                'type': 'table',
+                'table_id': table_id,
+                'tabulation_code': row['tabulation_code'],
+                'table_name': row['table_title'],
+                'simple_table_name': row['simple_table_title'],
+                'topics': row['topics'].split(', '),
+                'unique_key': row['tabulation_code'],
+                'subtables': row['tables'].split(),
+                'url': build_table_url(table_id),
+                'relevance': row['relevance'] #TODO remove this
+
+            }
+
+        if row['type'] == 'topic':
+            result = {
+                'type': 'topic',
+                'topic_name': row['topic_name'],
+                'url': row['url'],
+                'relevance': row['relevance'] #TODO remove this
             }
 
         return result
@@ -2246,16 +2273,19 @@ def full_text_search():
     search_type = request.qwargs.type
  
     # Support choice of 'search type' as returning table results, profile 
-    # results, or both. Only the needed queries will get executed; e.g., for 
-    # a profile search, the profiles list will be filled but tables will be 
-    # empty.
-    profiles, tables = [], []
+    # results, topic results, or all. Only the needed queries will get 
+    # executed; e.g., for a profile search, the profiles list will be filled 
+    # but tables and topics will be empty.
+    profiles, tables, topics = [], [], []
 
-    if search_type == 'profile' or search_type == 'both':
+    if search_type == 'profile' or search_type == 'all':
         profiles = profile_search(db, q)
 
-    if search_type == 'table' or search_type == 'both':
+    if search_type == 'table' or search_type == 'all':
         tables = table_search(db, q)
+
+    if search_type == 'topic' or search_type == 'all':
+        topics = topic_search(db, q)
 
     # Compute ranking scores of each object that we want to return
     results = []
@@ -2265,6 +2295,9 @@ def full_text_search():
 
     for t in tables:
         results.append((t, compute_table_score(t[5])))
+
+    for t in topics:
+        results.append((t, t[2] * 4)) #TODO placeholder score
 
     # Sort by second entry (score), descending; the lambda pulls the second
     # element of a tuple.
