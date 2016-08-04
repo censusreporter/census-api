@@ -132,6 +132,73 @@ class TopicPageParser(HTMLParser):
             return False
 
 
+class GlossaryParser(HTMLParser):
+    """ Parser for the glossary page, censusreporter.org/glossary.
+
+    Attributes:
+        in_body: Flag for whether or not parser is in main section of page.
+                 We don't have to keep a counter as before, because the 
+                 glossary page is not structured in a way that there are 
+                 nested tags.
+        in_term_name: Flag for the whether or not the parser is inside a term
+                      name. This allows it to keep a separate list of terms.
+        terms: List of terms on page.
+        text: List of text on page.
+
+    Once again, we use the fact that the body of the page is enclosed in a tag
+    <article id='glossary'>. Similarly, term names are always enclosed in <dt>
+    tags within the body. Upon encountering a term, it is added to the list of 
+    terms. Upon encountering any text (including term names), it is added to 
+    the list of all text.
+
+    """
+
+    def __init__(self):
+        HTMLParser.__init__(self)
+        self.in_body = False
+        self.in_term_name = False
+        self.terms = []
+        self.text = []
+
+    def handle_starttag(self, tag, attrs):
+        """ Handle start tag by detecting body and term names.
+
+        We need to know when we're in the body of the page (again, to avoid
+        things like scripts or footers) and when we're in a term name (so that
+        those can be documented with higher priority). 
+        """
+
+        if tag == 'article' and ('id', 'glossary') in attrs:
+            self.in_body = True
+
+        if tag == 'dt':
+            self.in_term_name = True
+
+    def handle_endtag(self, tag):
+        """ Handle end tag by detecting end of body and term names. """
+
+        if tag == 'article' and self.in_body:
+            self.in_body = False
+
+        if tag == 'dt':
+            self.in_term_name = False
+
+    def handle_data(self, data):
+        """ Handle body text and term names on page.
+
+        Add term names found to the list of terms we maintain. Add all text
+        found to the list of text.
+        """
+
+        if self.in_body:
+            data = re.sub('[^A-Za-z0-9\-/\n ]', '', data)
+            data = re.sub('[\n/-]', ' ', data)
+            self.text.append(data.strip())
+
+        if self.in_term_name:
+            self.terms.append(data)
+
+
 def get_list_of_topics():
     """ Gets and returns list of topics from Census Reporter website.
 
@@ -165,6 +232,20 @@ def scrape_topic_page(name, url):
     return text, parser.tables
 
 
+def scrape_glossary_page():
+    """ Scrapes and returns terms and text found on the glossary page. """
+
+    url = "https://censusreporter.org/glossary"
+    handle = urllib2.urlopen(url)
+    html = handle.read()
+    handle.close()
+
+    parser = GlossaryParser()
+    parser.feed(html)
+
+    return {'text': ' '.join(parser.text), 'terms': ' '.join(parser.terms) }
+
+
 def remove_old_topics():
     """" Removes old topics entries from search_metadata. """
 
@@ -185,13 +266,13 @@ def remove_old_topics():
     return
 
 
-def add_to_table(topics_data):
+def add_topics_to_table(topics_data):
     """ Adds topics data into the search_metadata table.
 
     Requires that the format be a list of dictionaries, i.e., 
-        [{ name: topic1, url: url1, tables: tables_in_topic1, text: '...'},
-         { name: topic2, url: url2, tables: tables_in_topic2, text: '...'},
-         ...]
+        [{name: 'topic1', url: 'url1', tables: [tables_in_topic1], text: '...'},
+         {name: 'topic2', url: 'url2', tables: [tables_in_topic2], text: '...'},
+         ... ]
     """
 
     # Connect to database
@@ -228,6 +309,44 @@ def add_to_table(topics_data):
     return
 
 
+def add_glossary_to_table(glossary):
+    """ Add glossary data to search_metadata table.
+
+    Requires that it be formatted as { terms: [term1, term2, ...], text: '...'}
+    """
+
+    # Connect to database
+    connection = psycopg2.connect("dbname=census user=census")
+    cur = connection.cursor()
+
+    # Format text properly, i.e., &-delimited and without multiple spaces 
+    glossary['text'] = re.sub('\s+', ' ', glossary['text'].strip())
+    glossary['text'] = glossary['text'].replace(' ', ' & ')
+
+    glossary['terms'] = re.sub('\s+', ' ', glossary['terms'].strip())
+    glossary['terms'] = glossary['terms'].replace(' ', ' & ')
+
+    # Update search_metadata. Set text1 to 'glossary', text2 to the terms, and 
+    # text3 through text6 to NULL. Document is made out of the terms (first 
+    # priority) and text (third priority)
+
+    q = """INSERT INTO search_metadata
+           (text1, text2, text3, text4, text5, text6, type, document)
+           VALUES ('glossary', '{0}', NULL, NULL, NULL, NULL, 'topic',
+                setweight(to_tsvector('{0}'), 'A') ||
+                setweight(to_tsvector('{1}'), 'C'));""".format(
+                    glossary['terms'], glossary['text'])
+
+    cur.execute(q)
+    print cur.statusmessage
+
+    connection.commit()
+    cur.close()
+    connection.close()
+
+    return
+
+
 if __name__ == "__main__":
     topics = get_list_of_topics()
     print "Obtained list of topics"
@@ -238,7 +357,11 @@ if __name__ == "__main__":
         topic['text'], topic['tables'] = scrape_topic_page(**topic)
         print "Finished scraping topic page '{0}'".format(topic['name'])
 
+    glossary = scrape_glossary_page()
+    print "Finished sraping glossary page"
+
     remove_old_topics()
     print "Removed old topics entries from search_metadata."
-    add_to_table(topics)
+    add_topics_to_table(topics)
+    add_glossary_to_table(glossary)
     print "Added new topics entries to search_metadata."
