@@ -1,19 +1,4 @@
 #Full-Text Search Query Guide
-## Instructions for querying through Python script
-
-The Python script is designed to make querying from the command line extremely simple. Simply type `python query-script.py [search terms]` with `[search terms]` replaced by your search text, and the script will find tables that match the terms.
-
-For example, one might run `python query-script.py gross rent household income` to see all tables from the search 'gross rent household income.' Here are some other sample searches to try:
-- gross rent housing income
-- race sex
-- age income
-- family income by race
-- postmasters
-- transportation
-- warehousing
-
-
----
 ## Explanation of SQL querying for tabulation data
 
 In order to implement a full-text search, we need to access table data beyond their IDs. This data is stored in the schema `acs2014_1yr`, particularly in the tables `census_table_metadata` and `census_column_metadata`. Look at the former for some sample table names and IDs. 
