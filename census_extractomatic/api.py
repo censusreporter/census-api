@@ -2034,28 +2034,28 @@ def full_text_search():
     def do_search(db, q, object_type):
         """ Search for objects (profiles, tables, topics) matching query q.
 
-        Return a list, because it's easier to work with than a SQLAlchemy 
+        Return a list, because it's easier to work with than a SQLAlchemy
         ResultProxy object (notably, the latter does not support indexing).
         """
 
         if object_type == 'profile':
-            query = """SELECT text1 AS display_name, 
+            query = """SELECT text1 AS display_name,
                               text2 AS sumlevel,
                               text3 AS sumlevel_name,
                               text4 AS full_geoid,
-                              text5 AS population, 
+                              text5 AS population,
                               text6 AS priority,
                               ts_rank(document, to_tsquery('simple', :search_term)) AS relevance,
                               type
                        FROM search_metadata
                        WHERE document @@ to_tsquery('simple', :search_term)
                        AND type = 'profile'
-                       ORDER BY CAST(text6 as INT) ASC, 
-                                   CAST(text5 as INT) DESC, 
+                       ORDER BY CAST(text6 as INT) ASC,
+                                   CAST(text5 as INT) DESC,
                                    relevance DESC;"""
 
         elif object_type == 'table':
-            query = """SELECT text1 AS tabulation_code, 
+            query = """SELECT text1 AS tabulation_code,
                               text2 AS table_title,
                               text3 AS topics,
                               text4 AS simple_table_title,
@@ -2090,33 +2090,33 @@ def full_text_search():
         object_type = row['type']
 
         # Topics; set somewhat-arbitrary cutoff for PSQL relevance, above which
-        # the result should appear first, and below which it should simply be 
+        # the result should appear first, and below which it should simply be
         # multiplied by some amount to make it appear slightly higher
 
         if object_type == 'topic':
             relevance = row['relevance']
-            
+
             if relevance > 0.4:
                 return 1
 
-            else: 
+            else:
                 return relevance * 2
 
-        # Tables; take the PSQL relevance score, which (from our testing) 
+        # Tables; take the PSQL relevance score, which (from our testing)
         # appears to always be in the range [1E-8, 1E-2]. For safety, we
         # generalize that to [1E-9, 1E-1] (factor of 10 on each side).
         #
-        # The log sends [1E-9, 1E-1] to [-9, -1]; add 9 to send it to [0, 8]; 
+        # The log sends [1E-9, 1E-1] to [-9, -1]; add 9 to send it to [0, 8];
         # divide by 8 to send it to [0, 1].
 
-        if object_type == 'table':
+        elif object_type == 'table':
             relevance = row['relevance']
             return (log10(relevance) + 9) / 8.0
 
-        # Profiles; compute score based off priority and population. In 
+        # Profiles; compute score based off priority and population. In
         # general, larger, more populous areas should be returned first.
 
-        if object_type == 'profile':
+        elif object_type == 'profile':
             priority = row['priority']
             population = row['population']
 
@@ -2136,7 +2136,7 @@ def full_text_search():
             # Decrement priority by 5, to map [5, 320] to [0, 315].
             priority -= 5
 
-            # Since priority is now in [0, 315], and PRIORITY_RANGE = 315, the 
+            # Since priority is now in [0, 315], and PRIORITY_RANGE = 315, the
             # function (1 - priority / PRIORITY_RANGE) sends 0 -> 0, 315 -> 1.
             # Similarly, the second line incorporating population maps the range
             # [0, max population] to [0, 1].
@@ -2159,10 +2159,10 @@ def full_text_search():
         since, generally, simpler, more complete tables are more useful. This
         function selects the most relevant table based on the hierarchy above.
 
-        Table IDs are in the format [B/C]#####[A-I]. The first character is 
+        Table IDs are in the format [B/C]#####[A-I]. The first character is
         'B' or 'C', followed by five digits (the tabulation code), optionally
-        ending with a character representing that this is a race iteration. 
-        If any iteration is present, all of them are (e.g., if B10001A is 
+        ending with a character representing that this is a race iteration.
+        If any iteration is present, all of them are (e.g., if B10001A is
         present, so are B10001B, ... , B10001I.)
         """
 
@@ -2188,7 +2188,7 @@ def full_text_search():
             return ''
 
     def process_result(row):
-        """ Converts a SQLAlchemy RowProxy to a dictionary. 
+        """ Converts a SQLAlchemy RowProxy to a dictionary.
 
         params: row - row object returned from a query
         return: dictionary with either profile or table attributes """
@@ -2237,7 +2237,7 @@ def full_text_search():
         ''' Builds the censusreporter URL out of the geoid.
 
         Format: https://censusreporter.org/profiles/full_geoid
-        Note that this format is a valid link, and will redirect to the 
+        Note that this format is a valid link, and will redirect to the
         "proper" URL with geoid and display name.
 
         >>> build_profile_url("31000US18020")
@@ -2259,18 +2259,17 @@ def full_text_search():
         return "https://censusreporter.org/tables/" + table_id + "/"
 
 
-    # Build query by replacing apostrophes with spaces, separating words 
-    # with '&', and adding a wildcard character to support prefix matching. 
-
+    # Build query by replacing apostrophes with spaces, separating words
+    # with '&', and adding a wildcard character to support prefix matching.
     q = request.qwargs.q
     q = ' & '.join(q.split())
     q += ':*'
 
     search_type = request.qwargs.type
- 
-    # Support choice of 'search type' as returning table results, profile 
-    # results, topic results, or all. Only the needed queries will get 
-    # executed; e.g., for a profile search, the profiles list will be filled 
+
+    # Support choice of 'search type' as returning table results, profile
+    # results, topic results, or all. Only the needed queries will get
+    # executed; e.g., for a profile search, the profiles list will be filled
     # but tables and topics will be empty.
     profiles, tables, topics = [], [], []
 
@@ -2296,6 +2295,7 @@ def full_text_search():
     # Format of results is a list of tuples, with each tuple being a profile
     # or table followed by its score. The profile or table is then result[0].
     prepared_result = []
+
     for result in results:
         prepared_result.append(process_result(result[0]))
 
