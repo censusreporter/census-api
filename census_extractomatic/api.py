@@ -2038,45 +2038,46 @@ def full_text_search():
         ResultProxy object (notably, the latter does not support indexing).
         """
 
-        q_profiles = """SELECT text1 AS display_name, 
-                               text2 AS sumlevel,
-                               text3 AS sumlevel_name,
-                               text4 AS full_geoid,
-                               text5 AS population, 
-                               text6 AS priority,
-                               ts_rank(document, to_tsquery('simple', :query)) AS relevance,
-                               type
-                        FROM search_metadata
-                        WHERE document @@ to_tsquery('simple', :query)
-                        AND type = 'profile'
-                        ORDER BY CAST(text6 as INT) ASC, 
-                                 CAST(text5 as INT) DESC, 
-                                 relevance DESC;"""
+        if object_type == 'profile':
+            query = """SELECT text1 AS display_name, 
+                              text2 AS sumlevel,
+                              text3 AS sumlevel_name,
+                              text4 AS full_geoid,
+                              text5 AS population, 
+                              text6 AS priority,
+                              ts_rank(document, to_tsquery('simple', :search_term)) AS relevance,
+                              type
+                       FROM search_metadata
+                       WHERE document @@ to_tsquery('simple', :search_term)
+                       AND type = 'profile'
+                       ORDER BY CAST(text6 as INT) ASC, 
+                                   CAST(text5 as INT) DESC, 
+                                   relevance DESC;"""
 
-        q_tables = """SELECT text1 AS tabulation_code, 
-                             text2 AS table_title,
-                             text3 AS topics,
-                             text4 AS simple_table_title,
-                             text5 AS tables,
-                             ts_rank(document, to_tsquery(:query), 2|8|32) AS relevance,
-                             type
-                      FROM search_metadata
-                      WHERE document @@ to_tsquery(:query)
-                      AND type = 'table'
-                      ORDER BY relevance DESC;"""
+        elif object_type == 'table':
+            query = """SELECT text1 AS tabulation_code, 
+                              text2 AS table_title,
+                              text3 AS topics,
+                              text4 AS simple_table_title,
+                              text5 AS tables,
+                              ts_rank(document, to_tsquery(:search_term), 2|8|32) AS relevance,
+                              type
+                       FROM search_metadata
+                       WHERE document @@ to_tsquery(:search_term)
+                       AND type = 'table'
+                       ORDER BY relevance DESC;"""
 
-        q_topics = """SELECT text1 as topic_name,
-                             text3 as url,
-                             ts_rank(document, to_tsquery(:query)) AS relevance,
-                             type
-                      FROM search_metadata
-                      WHERE document @@ to_tsquery(:query)
-                      AND type = 'topic'
-                      ORDER BY relevance DESC;"""
+        elif object_type == 'topic':
+            query = """SELECT text1 as topic_name,
+                              text3 as url,
+                              ts_rank(document, to_tsquery(:search_term)) AS relevance,
+                              type
+                       FROM search_metadata
+                       WHERE document @@ to_tsquery(:search_term)
+                       AND type = 'topic'
+                       ORDER BY relevance DESC;"""
 
-        q_map = {'profile': q_profiles, 'table': q_tables, 'topic': q_topics}
-
-        objects = db.session.execute(q_map[object_type], {"query": q})
+        objects = db.session.execute(query, {"search_term": q})
         return [row for row in objects]
 
     def compute_score(row):
@@ -2205,7 +2206,7 @@ def full_text_search():
                 'relevance': compute_score(row) #TODO remove this
             }
 
-        if row['type'] == 'table':
+        elif row['type'] == 'table':
             table_id = choose_table(row['tables'].split())
 
             result = {
@@ -2222,7 +2223,7 @@ def full_text_search():
 
             }
 
-        if row['type'] == 'topic':
+        elif row['type'] == 'topic':
             result = {
                 'type': 'topic',
                 'topic_name': row['topic_name'],
