@@ -12,6 +12,8 @@ Note that this may take a while, because it indexes all of the place names.
 
 Finally, we want to add topic pages to the `search_metadata` table. This is done via a Python script that scrapes the live topic pages off Census Reporter, `topic_scraper.py`. Run `python topic_scraper.py` to scrape and add the topic pages to `search_metadata`.
 
+Note: If you re-run `metadata_script.sql`, you _must_ re-run `topic_scraper.py`  in order for the topic results to continue appearing. Part of `metadata_script.sql` deletes the old table to refresh it, which means the topic entries are deleted as well.
+
 ## API Setup
 Fortunately, very little setup for the API is required. The version of `census-api/census_extractomatic/api.py` in the branch `full-text-search` contains the necessary functions in `full_text_search`. The API can be run locally and found at the route `/2.1/full-text/search`. For example, run
 	python census_extractomatic/api.py

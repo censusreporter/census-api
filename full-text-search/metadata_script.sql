@@ -24,7 +24,8 @@ CREATE TABLE search_metadata AS (
            document AS document
     FROM ( 
         SELECT display_name, sumlevel, full_geoid, population, priority,
-               setweight(to_tsvector('simple', coalesce(display_name, ' ')), 'A') AS document
+               setweight(to_tsvector('simple', coalesce(display_name, ' ')), 'A') ||
+               setweight(to_tsvector('simple', coalesce(full_geoid, ' ')), 'A') AS document
         -- Exclude sumlevels without maps (067, 258, 355)
         FROM (
             SELECT DISTINCT display_name, sumlevel, full_geoid,
@@ -86,6 +87,8 @@ CREATE TABLE search_metadata AS (
         SELECT tabulation_code, table_title, topics, simple_table_title, 
                tables_in_one_yr as tables,
                setweight(to_tsvector(coalesce(table_title, ' ')), 'A') || 
+               setweight(to_tsvector(coalesce(tabulation_code)), 'A') ||
+               setweight(to_tsvector(coalesce(array_to_string(tables_in_one_yr, ' '), ' ')), 'A') ||
                setweight(to_tsvector(coalesce(subject_area, ' ')), 'B') || 
                setweight(to_tsvector(coalesce(string_agg(column_title, ' '), ' ')), 'C') || 
                setweight(to_tsvector(coalesce(universe, ' ')), 'D') as document 
