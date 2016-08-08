@@ -2044,39 +2044,39 @@ def full_text_search():
                                text4 AS full_geoid,
                                text5 AS population, 
                                text6 AS priority,
-                               ts_rank(document, to_tsquery('simple', '{0}')) AS relevance,
+                               ts_rank(document, to_tsquery('simple', :query)) AS relevance,
                                type
                         FROM search_metadata
-                        WHERE document @@ to_tsquery('simple', '{0}')
+                        WHERE document @@ to_tsquery('simple', :query)
                         AND type = 'profile'
                         ORDER BY CAST(text6 as INT) ASC, 
                                  CAST(text5 as INT) DESC, 
-                                 relevance DESC;""".format(q)
+                                 relevance DESC;"""
 
         q_tables = """SELECT text1 AS tabulation_code, 
                              text2 AS table_title,
                              text3 AS topics,
                              text4 AS simple_table_title,
                              text5 AS tables,
-                             ts_rank(document, to_tsquery('{0}'), 2|8|32) AS relevance,
+                             ts_rank(document, to_tsquery(:query), 2|8|32) AS relevance,
                              type
                       FROM search_metadata
-                      WHERE document @@ to_tsquery('{0}')
+                      WHERE document @@ to_tsquery(:query)
                       AND type = 'table'
-                      ORDER BY relevance DESC;""".format(q)
+                      ORDER BY relevance DESC;"""
 
         q_topics = """SELECT text1 as topic_name,
                              text3 as url,
-                             ts_rank(document, to_tsquery('{0}')) AS relevance,
+                             ts_rank(document, to_tsquery(:query)) AS relevance,
                              type
                       FROM search_metadata
-                      WHERE document @@ to_tsquery('{0}')
+                      WHERE document @@ to_tsquery(:query)
                       AND type = 'topic'
-                      ORDER BY relevance DESC;""".format(q)
+                      ORDER BY relevance DESC;"""
 
         q_map = {'profile': q_profiles, 'table': q_tables, 'topic': q_topics}
 
-        objects = db.session.execute(q_map[object_type])
+        objects = db.session.execute(q_map[object_type], {"query": q})
         return [row for row in objects]
 
     def compute_score(row):
@@ -2099,7 +2099,7 @@ def full_text_search():
                 return 1
 
             else: 
-                return relevance * 4
+                return relevance * 2
 
         # Tables; take the PSQL relevance score, which (from our testing) 
         # appears to always be in the range [1E-8, 1E-2]. For safety, we
@@ -2115,7 +2115,7 @@ def full_text_search():
         # Profiles; compute score based off priority and population. In 
         # general, larger, more populous areas should be returned first.
 
-        if object_type == 'table':
+        if object_type == 'profile':
             priority = row['priority']
             population = row['population']
 
@@ -2202,7 +2202,7 @@ def full_text_search():
                 'sumlevel': row['sumlevel'],
                 'sumlevel_name': row['sumlevel_name'] if row['sumlevel_name'] else '',
                 'url': build_profile_url(row['display_name'], row['full_geoid']),
-                'relevance': row['relevance'] #TODO remove this
+                'relevance': compute_score(row) #TODO remove this
             }
 
         if row['type'] == 'table':
@@ -2218,7 +2218,7 @@ def full_text_search():
                 'unique_key': row['tabulation_code'],
                 'subtables': row['tables'].split(),
                 'url': build_table_url(table_id),
-                'relevance': row['relevance'] #TODO remove this
+                'relevance': compute_score(row) #TODO remove this
 
             }
 
@@ -2227,7 +2227,7 @@ def full_text_search():
                 'type': 'topic',
                 'topic_name': row['topic_name'],
                 'url': row['url'],
-                'relevance': row['relevance'] #TODO remove this
+                'relevance': compute_score(row) #TODO remove this
             }
 
         return result
