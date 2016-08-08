@@ -2088,6 +2088,19 @@ def full_text_search():
 
         object_type = row['type']
 
+        # Topics; set somewhat-arbitrary cutoff for PSQL relevance, above which
+        # the result should appear first, and below which it should simply be 
+        # multiplied by some amount to make it appear slightly higher
+
+        if object_type == 'topic':
+            relevance = row['relevance']
+            
+            if relevance > 0.4:
+                return 1
+
+            else: 
+                return relevance * 4
+
         # Tables; take the PSQL relevance score, which (from our testing) 
         # appears to always be in the range [1E-8, 1E-2]. For safety, we
         # generalize that to [1E-9, 1E-1] (factor of 10 on each side).
@@ -2290,7 +2303,7 @@ def full_text_search():
         results.append((t, compute_score(t)))
 
     for t in topics:
-        results.append((t, t[2] * 4)) #TODO placeholder score
+        results.append((t, compute_score(t)))
 
     # Sort by second entry (score), descending; the lambda pulls the second
     # element of a tuple.
