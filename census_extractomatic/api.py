@@ -2079,44 +2079,59 @@ def full_text_search():
         objects = db.session.execute(q_map[object_type])
         return [row for row in objects]
 
-    def compute_table_score(relevance):
-        """ Computes a ranking score in the range [0, 1].
+    def compute_score(row):
+        """ Compute a ranking score in range [0, 1] from a row result.
 
-        params: relevance - psql relevance score, which (from our 
-                testing appears to always be in range [1E-8, 1E-2], 
-                which for safety we are generalizing to [1E-9, 1E-1] 
-                (factor of 10 on either side)
+        params: row - SQLAlchemy RowProxy object, which is returned by queries
         return: score in range [0, 1]
         """
 
-        return (log10(relevance) + 9) / 8.0
+        object_type = row['type']
 
-    def compute_profile_score(priority, population):
-        """ Computes a ranking score in the range [0, 1].
+        # Tables; take the PSQL relevance score, which (from our testing) 
+        # appears to always be in the range [1E-8, 1E-2]. For safety, we
+        # generalize that to [1E-9, 1E-1] (factor of 10 on each side).
+        #
+        # The log sends [1E-9, 1E-1] to [-9, -1]; add 9 to send it to [0, 8]; 
+        # divide by 8 to send it to [0, 1].
 
-        params: priority, population - both taken from profile info
-        return: score in range [0, 1]
-        """
+        if object_type == 'table':
+            relevance = row['relevance']
+            return (log10(relevance) + 9) / 8.0
 
-        # Priority bounds are 5 (nation) to 320 (something small), 
-        # so the actual range is the difference, size 315
-        PRIORITY_RANGE = 320.0 - 5
+        # Profiles; compute score based off priority and population. In 
+        # general, larger, more populous areas should be returned first.
 
-        # Approximate value, because this depends on where you look
-        POP_US = 318857056.0 #TODO change to query for real value
+        if object_type == 'table':
+            priority = row['priority']
+            population = row['population']
 
-        # Make population nonzero (catching both empty string and string '0')
-        if not population or not int(population):
-            population = 1
+            # Priority bounds are 5 (nation) to 320 (whatever the smallest one
+            # is), so the actual range is the difference, 315.
+            PRIORITY_RANGE = 320.0 - 5
 
-        priority, population = int(priority), int(population)
+            # Approximate value, but realistically it shouldn't matter much.
+            POP_US = 318857056.0
 
-        # Decrement priority by 5 to map [5, 320] to [0, 315].
-        priority -= 5
+            # Make population nonzero (catch both empty string and string '0')
+            if not population or not int(population):
+                population = 1
 
+            priority, population = int(priority), int(population)
 
-        return ((1 - priority / PRIORITY_RANGE) * 0.8 +
-                (1 + log(population / POP_US) / log(POP_US)) * 0.2)
+            # Decrement priority by 5, to map [5, 320] to [0, 315].
+            priority -= 5
+
+            # Since priority is now in [0, 315], and PRIORITY_RANGE = 315, the 
+            # function (1 - priority / PRIORITY_RANGE) sends 0 -> 0, 315 -> 1.
+            # Similarly, the second line incorporating population maps the range
+            # [0, max population] to [0, 1].
+            #
+            # We weight priority more than population, because from testing it
+            # gives the most relevant results; the 0.8 and 0.2 can be tweaked
+            # so long as they add up to 1.
+            return ((1 - priority / PRIORITY_RANGE) * 0.8 +
+                    (1 + log(population / POP_US) / log(POP_US)) * 0.2)
 
     def choose_table(tables):
         """ Choose a representative table for a list of table_ids.
@@ -2269,10 +2284,10 @@ def full_text_search():
     results = []
 
     for p in profiles:
-        results.append((p, compute_profile_score(p[5], p[4])))
+        results.append((p, compute_score(p)))
 
     for t in tables:
-        results.append((t, compute_table_score(t[5])))
+        results.append((t, compute_score(t)))
 
     for t in topics:
         results.append((t, t[2] * 4)) #TODO placeholder score
