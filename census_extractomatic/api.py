@@ -2202,7 +2202,7 @@ def full_text_search():
                 'full_name': row['display_name'],
                 'sumlevel': row['sumlevel'],
                 'sumlevel_name': row['sumlevel_name'] if row['sumlevel_name'] else '',
-                'url': build_profile_url(row['display_name'], row['full_geoid']),
+                'url': build_profile_url(row['full_geoid']),
                 'relevance': compute_score(row) #TODO remove this
             }
 
@@ -2233,32 +2233,23 @@ def full_text_search():
 
         return result
 
-    def slugify(name):
-        ''' Slugifies a string by (1) removing non-alphanumeric / space 
-        characters, (2) converting to lowercase, (3) turning spaces to dashes
+    def build_profile_url(full_geoid):
+        ''' Builds the censusreporter URL out of the geoid.
 
-        params: name - string to change
-        return: slugified string 
-        '''
+        Format: https://censusreporter.org/profiles/full_geoid
+        Note that this format is a valid link, and will redirect to the 
+        "proper" URL with geoid and display name.
 
-        name = re.sub('[^0-9a-zA-Z ]', '', name)
-        name = name.lower()
-        return name.replace(' ', '-')
-
-    def build_profile_url(display_name, full_geoid):
-        ''' Builds the censusreporter URL out of name and geoid.
-        Format: https://censusreporter.org/profiles/full_geoid-display_name/"
-
-        >>> build_profile_url("Columbus, IN Metro Area", "31000US18020")
-        "https://censusreporter.org/profiles/31000US18020-columbus-in-metro-area"
+        >>> build_profile_url("31000US18020")
+        "https://censusreporter.org/profiles/31000US18020/"
 
         '''
 
-        new_name = slugify(display_name)
-        return "https://censusreporter.org/profiles/" + full_geoid + "-" + new_name + "/"
+        return "https://censusreporter.org/profiles/" + full_geoid + "/"
 
     def build_table_url(table_id):
         ''' Builds the CensusReporter URL out of table_id.
+
         Format: https://censusreporter.org/tables/table_id/"
 
         >>> build_table_url("B06009")
