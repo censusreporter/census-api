@@ -2259,12 +2259,10 @@ def full_text_search():
         return "https://censusreporter.org/tables/" + table_id + "/"
 
 
-    # Build query by replacing apostrophes with spaces (so that they can be 
-    # passed to to_tsquery() later), separating words with '&', and adding 
-    # wildcard character to support prefix matching. 
+    # Build query by replacing apostrophes with spaces, separating words 
+    # with '&', and adding a wildcard character to support prefix matching. 
 
     q = request.qwargs.q
-    q = q.replace("'", " ")
     q = ' & '.join(q.split())
     q += ':*'
 
