@@ -2286,14 +2286,8 @@ def full_text_search():
     # Compute ranking scores of each object that we want to return
     results = []
 
-    for p in profiles:
-        results.append((p, compute_score(p)))
-
-    for t in tables:
-        results.append((t, compute_score(t)))
-
-    for t in topics:
-        results.append((t, compute_score(t)))
+    for row in profiles + tables + topics:
+        results.append((row, compute_score(row)))
 
     # Sort by second entry (score), descending; the lambda pulls the second
     # element of a tuple.
