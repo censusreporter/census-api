@@ -70,7 +70,8 @@ class TopicPageParser(HTMLParser):
                  reach a </section> tag. If it's greater than 0, then we are
                  in the main body of the page.
         text: List to store all the relevant text snippets on the page
-        tables: List to store all table IDs found on the page
+        tables: List to store all table IDs found on the page; populated
+                immediately with a regex search.
 
     The main page content is stored in a <section id='topic-overview'> tag
     or a <section id='topic-elsewhere'> tag. We take advantage of this to find
@@ -78,11 +79,11 @@ class TopicPageParser(HTMLParser):
     footers).
     """
 
-    def __init__(self):
+    def __init__(self, html):
         HTMLParser.__init__(self)
         self.in_body = 0
         self.text = []
-        self.tables = []
+        self.tables = self.find_all_tables(html)
 
     def handle_starttag(self, tag, attrs):
         """ Handle start tag by detecting main section of page. """
@@ -110,26 +111,23 @@ class TopicPageParser(HTMLParser):
             data = re.sub('[\n/-]', ' ', data)
             self.text.append(data.strip())
 
-            if self.is_table(data) and data not in self.tables:
-                self.tables.append(data)
 
-    def is_table(self, data):
-        """ Detects if a given string is a valid table code.
+    def find_all_tables(self, text):
+        """ Find all table codes in text using regex 
 
-        Table codes are formatted as [B/C]#####. We need the try/except block
-        because the string indices may be out of range (in which case the
-        object we're dealing with is certainly not a table).
+        Table codes are formatted as [B/C]##### with an optional race iteration
+        (character A - H) or a Puerto Rico tag (string 'PR' at the end). 
         """
 
-        try:
-            if ((data[0] == "B" or data[1] == "C")
-            and data[1:6].isdigit()):
-                return True
+        exp = '[BC]\d{5}[A-H]?P?R?'
+        all_tables = re.findall(exp, text)
 
-            return False
+        tables = []
+        for table in all_tables:
+            if table not in tables:
+                tables.append(table)
 
-        except:
-            return False
+        return tables
 
 
 class GlossaryParser(HTMLParser):
@@ -224,7 +222,7 @@ def scrape_topic_page(name, url):
     html = handle.read()
     handle.close()
 
-    parser = TopicPageParser()
+    parser = TopicPageParser(html)
     parser.feed(html)
 
     text = ' '.join(parser.text)
