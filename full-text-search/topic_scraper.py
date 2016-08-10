@@ -4,6 +4,28 @@ import re
 import urllib2
 
 
+class HTMLStripper(HTMLParser):
+    """ Stripper for HTML tags; simply stores data in self.data. """
+
+    def __init__(self):
+        self.reset()
+        self.data = []
+
+    def handle_data(self, data):
+        """ Append any non-HTML data to our data list.
+
+        Data, by definition, is anything that is not an HTML tag. This is
+        exactly what we are interested in.
+        """
+
+        self.data.append(data)
+
+    def get_data(self):
+        """ Return data as a string. """
+
+        return ''.join(self.data)
+
+
 class TopicsParser(HTMLParser):
     """ Parser for the main topics page.
 
@@ -118,6 +140,11 @@ class TopicPageParser(HTMLParser):
         Table codes are formatted as [B/C]##### with an optional race iteration
         (character A - H) or a Puerto Rico tag (string 'PR' at the end). 
         """
+
+        # Strip all the HTML tags
+        stripper = HTMLStripper()
+        stripper.feed(text)
+        text = stripper.get_data()
 
         exp = '[BC]\d{5}[A-H]?P?R?'
         all_tables = re.findall(exp, text)
