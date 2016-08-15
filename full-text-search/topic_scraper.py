@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from HTMLParser import HTMLParser
 import psycopg2
 import re
@@ -92,8 +94,10 @@ class TopicPageParser(HTMLParser):
                  reach a </section> tag. If it's greater than 0, then we are
                  in the main body of the page.
         text: List to store all the relevant text snippets on the page
-        tables: List to store all table IDs found on the page; populated
-                immediately with a regex search.
+        tables: Dictionary of table code : annotations pairs, where the table
+                code represents a table on the page and the annotations are 
+                the annotations next to it
+        table_codes: List of all table codes.
 
     The main page content is stored in a <section id='topic-overview'> tag
     or a <section id='topic-elsewhere'> tag. We take advantage of this to find
@@ -106,6 +110,7 @@ class TopicPageParser(HTMLParser):
         self.in_body = 0
         self.text = []
         self.tables = self.find_all_tables(html)
+        self.table_codes = self.tables.keys()
 
     def handle_starttag(self, tag, attrs):
         """ Handle start tag by detecting main section of page. """
@@ -139,22 +144,51 @@ class TopicPageParser(HTMLParser):
 
         Table codes are formatted as [B/C]##### with an optional race iteration
         (character A - H) or a Puerto Rico tag (string 'PR' at the end). 
+
+        Occasionally, there are annotations on the topic pages following the
+        table code. These are one of the following characters: 
+            ‡ - collapsed version exists; 'collapsed'
+            † - has racial iterations; 'iterations'
+            § - has Puerto Rico version; 'puerto_rico'
+            ª - no core table, only iterations; 'no_core'
         """
 
         # Strip all the HTML tags
         stripper = HTMLStripper()
-        stripper.feed(text)
+        stripper.feed(text.decode('utf-8'))
         text = stripper.get_data()
 
-        exp = '[BC]\d{5}[A-H]?P?R?'
-        all_tables = re.findall(exp, text)
+        # Find table codes
+        exp = '([BC]\d{5}[A-H]?P?R?)'
+        all_tables = re.finditer(exp, text)
 
-        tables = []
-        for table in all_tables:
-            if table not in tables:
-                tables.append(table)
+        # Prepare to find all tables on page
+        tables_on_page = {}
+        annotations = { u'‡' : 'collapsed', u'†' : 'iterations',
+                        u'§' : 'puerto_rico', u'ª' : 'no_core' }
 
-        return tables
+        for match in all_tables:
+            code = match.group()
+
+            # Add code to tables_on_page if it's not there
+            if code not in tables_on_page.keys():
+                tables_on_page[code] = []
+
+            # Search for annotations in the four characters after the
+            # table code (since there are a maximum of four annotations)
+            end_pos = match.end()
+            potential_annotations = match.string[end_pos : end_pos + 4]
+            actual_annotations = []
+
+            for char in annotations.keys():
+                if char in potential_annotations:
+                    actual_annotations.append(char)
+
+            # Update tables_on_page with the new annotations, no duplicates
+            tables_on_page[code] = list(set(tables_on_page[code] 
+                                            + actual_annotations))
+
+        return tables_on_page
 
 
 class GlossaryParser(HTMLParser):
@@ -254,7 +288,7 @@ def scrape_topic_page(name, url):
 
     text = ' '.join(parser.text)
 
-    return text, parser.tables
+    return text, parser.tables, parser.table_codes
 
 
 def scrape_glossary_page():
@@ -295,8 +329,10 @@ def add_topics_to_table(topics_data):
     """ Adds topics data into the search_metadata table.
 
     Requires that the format be a list of dictionaries, i.e.,
-        [{name: 'topic1', url: 'url1', tables: [tables_in_topic1], text: '...'},
-         {name: 'topic2', url: 'url2', tables: [tables_in_topic2], text: '...'},
+        [{name: 'topic1', url: 'url1', table_codes: [tables_in_topic1], 
+          text: '...', tables: {not relevant}},
+         {name: 'topic2', url: 'url2', table_codes: [tables_in_topic2], 
+          text: '...', tables: {not relevant}},
          ... ]
     """
 
@@ -322,7 +358,7 @@ def add_topics_to_table(topics_data):
                VALUES ('{0}', '{1}', '{2}', NULL, NULL, NULL, 'topic',
                     setweight(to_tsvector('{0}'), 'A') ||
                     setweight(to_tsvector('{3}'), 'C'));""".format(
-               topic['name'], ' '.join(topic['tables']), topic['url'], topic['text'])
+               topic['name'], ' '.join(topic['table_codes']), topic['url'], topic['text'])
 
         cur.execute(q)
         print cur.statusmessage
@@ -380,7 +416,7 @@ if __name__ == "__main__":
     for topic in topics:
         # Update topics dictionary with the text and tables that are
         # scraped from the topic page.
-        topic['text'], topic['tables'] = scrape_topic_page(**topic)
+        topic['text'], topic['table_codes'], topic['tables'] = scrape_topic_page(**topic)
         print "Finished scraping topic page '{0}'".format(topic['name'])
 
     glossary = scrape_glossary_page()
