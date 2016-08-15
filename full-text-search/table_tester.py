@@ -87,12 +87,12 @@ def check_tables_exist(to_check, all_tables):
 
         # Check for racial iterations
         if u"†" in annotations:
-            if table + u"A" in all_tables:
+            if table + u"A" not in all_tables:
                 results["no_iterations"].append(table)
 
         # Check for Puerto Rico version
         if u"§" in annotations:
-            if table + u"PR" in all_tables:
+            if table + u"PR" not in all_tables:
                 results["no_pr"].append(table)
 
     return results
