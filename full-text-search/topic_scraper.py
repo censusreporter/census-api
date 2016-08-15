@@ -416,7 +416,7 @@ if __name__ == "__main__":
     for topic in topics:
         # Update topics dictionary with the text and tables that are
         # scraped from the topic page.
-        topic['text'], topic['table_codes'], topic['tables'] = scrape_topic_page(**topic)
+        topic['text'], topic['tables'], topic['table_codes'] = scrape_topic_page(**topic)
         print "Finished scraping topic page '{0}'".format(topic['name'])
 
     glossary = scrape_glossary_page()
