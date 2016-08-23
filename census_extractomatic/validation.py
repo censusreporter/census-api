@@ -1,6 +1,6 @@
-from flask import request, abort
+from flask import request
+from werkzeug.exceptions import BadRequest
 from functools import wraps
-import json
 
 
 class QueryArgs(dict):
@@ -9,6 +9,12 @@ class QueryArgs(dict):
 
 class ValidationException(Exception):
     pass
+
+
+class ClientRequestValidationException(BadRequest):
+    def __init__(self, message, errors):
+        super(ClientRequestValidationException, self).__init__(message)
+        self.errors = errors
 
 
 class Validation(object):
@@ -139,7 +145,7 @@ def qwarg_validate(validators):
                             "error": validation.help_text()
                         }
             if errors:
-                abort(400, json.dumps(errors))
+                raise ClientRequestValidationException("The requested parameters are not valid", errors=errors)
             request.qwargs = qwargs
             return f(*args, **kwargs)
         return validate_qwargs
