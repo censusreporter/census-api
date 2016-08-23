@@ -68,7 +68,7 @@ allowed_tiger = [
 ]
 
 allowed_searches = [
-    'table', 
+    'table',
     'profile',
     'topic',
     'all'
@@ -500,18 +500,19 @@ def get_data_fallback(table_ids, geoids, acs=None):
 
 def special_case_parents(geoid, levels):
     '''
-    Update the parents list for special-cased geographies.
+    Update/adjust the parents list for special-cased geographies.
     '''
     if geoid == '16000US1150000':
         # compare Washington, D.C., to "parent" state of VA,
         # rather than comparing to self as own parent state
+
         target = (index for (index, d) in enumerate(levels) if d['geoid'] == '04000US11').next()
         levels[target].update({
             'coverage': 0,
             'display_name': 'Virginia',
             'geoid': '04000US51'
         })
-        
+
     return levels
 
 def compute_profile_item_levels(geoid):
@@ -572,7 +573,7 @@ def compute_profile_item_levels(geoid):
             'coverage': 100.0,
         })
 
-    special_case_parents(geoid, levels):
+    levels = special_case_parents(geoid, levels)
 
     return levels
 
