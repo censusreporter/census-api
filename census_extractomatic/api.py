@@ -550,7 +550,7 @@ def compute_profile_item_levels(geoid):
 
     if sumlevel in ('314'):
         levels.append({
-            'relation': 'metro area',
+            'relation': 'CBSA',
             'geoid': '31000US' + id_part[:5],
             'coverage': 100.0,
             })
