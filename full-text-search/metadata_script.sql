@@ -22,7 +22,7 @@ CREATE TABLE search_metadata AS (
            CAST(priority as text) as text6,
            'profile' AS type,
            document AS document
-    FROM ( 
+    FROM (
         SELECT display_name, sumlevel, full_geoid, population, priority,
                setweight(to_tsvector('simple', coalesce(display_name, ' ')), 'A') ||
                setweight(to_tsvector('simple', coalesce(full_geoid, ' ')), 'A') AS document
@@ -36,12 +36,12 @@ CREATE TABLE search_metadata AS (
         ) profile_documents
 
     -- Explanation of above query:
-    -- 
+    --
     -- Information about each place (name, sumlevel, etc.) is pulled
     -- directly from tiger data, and the name is transformed into a tsvector
     -- for a full text search. For full detail, refer to the psql docs.
     --
-    -- The column text3 is NULL initially, but it will be populated with 
+    -- The column text3 is NULL initially, but it will be populated with
     -- names of sumlevels. (See the update statements below this.)
     --
     -- From this, we take the columns directly used in search results
@@ -50,14 +50,14 @@ CREATE TABLE search_metadata AS (
     UNION
 
     -- Explanation of below query:
-    -- 
+    --
     -- Innermost query joins the table with all table names
-    -- (census_table_metadata) to the table with column titles 
+    -- (census_table_metadata) to the table with column titles
     -- (census_column_metadata) based on table ID.
     --
     -- It selects all of the column titles, along with other table
     -- info, and returns a table with one row for every column
-    -- in every table plus the metadata (table_id, universe, 
+    -- in every table plus the metadata (table_id, universe,
     -- etc.) as other entries in each row.
     --
     -- The result of this is called table_search.
@@ -68,7 +68,7 @@ CREATE TABLE search_metadata AS (
     -- have null values. string_agg creates one string of all
     -- column names. For full detail, refer to the psql docs.
     --
-    -- This creates a table with one row for every table in the 
+    -- This creates a table with one row for every table in the
     -- acs2014_1yr schema, with columns table_id, table_title, etc.,
     -- and document (the tsvector, the most important for search).
     --
@@ -84,14 +84,14 @@ CREATE TABLE search_metadata AS (
            'table' AS type,
            document as document
     FROM (
-        SELECT tabulation_code, table_title, topics, simple_table_title, 
+        SELECT tabulation_code, table_title, topics, simple_table_title,
                tables_in_one_yr as tables,
-               setweight(to_tsvector(coalesce(table_title, ' ')), 'A') || 
+               setweight(to_tsvector(coalesce(table_title, ' ')), 'A') ||
                setweight(to_tsvector(coalesce(tabulation_code)), 'A') ||
                setweight(to_tsvector(coalesce(array_to_string(tables_in_one_yr, ' '), ' ')), 'A') ||
-               setweight(to_tsvector(coalesce(subject_area, ' ')), 'B') || 
-               setweight(to_tsvector(coalesce(string_agg(column_title, ' '), ' ')), 'C') || 
-               setweight(to_tsvector(coalesce(universe, ' ')), 'D') as document 
+               setweight(to_tsvector(coalesce(subject_area, ' ')), 'B') ||
+               setweight(to_tsvector(coalesce(string_agg(column_title, ' '), ' ')), 'C') ||
+               setweight(to_tsvector(coalesce(universe, ' ')), 'D') as document
         FROM (
             SELECT DISTINCT t.tabulation_code,
                             t.table_title,
@@ -129,6 +129,8 @@ UPDATE search_metadata SET text3 = 'consolidated city' WHERE text2 = '170' AND t
 UPDATE search_metadata SET text3 = 'Alaska native regional corporation' WHERE text2 = '230' AND type = 'profile';
 UPDATE search_metadata SET text3 = 'native area' WHERE text2 = '250' AND type = 'profile';
 UPDATE search_metadata SET text3 = 'tribal subdivision' WHERE text2 = '251' AND type = 'profile';
+UPDATE search_metadata SET text3 = 'native area (reservation)' WHERE text2 = '252' AND type = 'profile';
+UPDATE search_metadata SET text3 = 'native area (off-reservation trust land)/Hawaiian Homeland' WHERE text2 = '254' AND type = 'profile';
 UPDATE search_metadata SET text3 = 'tribal census tract' WHERE text2 = '256' AND type = 'profile';
 UPDATE search_metadata SET text3 = 'MSA' WHERE text2 = '300' AND type = 'profile';
 UPDATE search_metadata SET text3 = 'CBSA' WHERE text2 = '310' AND type = 'profile';
