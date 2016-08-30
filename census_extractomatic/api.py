@@ -68,7 +68,7 @@ allowed_tiger = [
 ]
 
 allowed_searches = [
-    'table', 
+    'table',
     'profile',
     'topic',
     'all'
@@ -2168,7 +2168,7 @@ def full_text_search():
         present, so are B10001B, ... , B10001I.)
         """
 
-        tabulation_code = tables[0][1:6]
+        tabulation_code = re.match(r'^(B|C)(\d+)[A-Z]?',tables[0]).group(2)
 
         # 'C' table with no iterations, e.g., C10001
         if 'C' + tabulation_code in tables:
