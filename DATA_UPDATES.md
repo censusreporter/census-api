@@ -135,6 +135,18 @@ Adding new data release
     - Commit the changes
     - Run fabric to deploy those changes: `fab -i ~/.ssh/censusreporter.ec2_key.pem -u ubuntu -H 52.71.251.119 deploy`
 
+- Update the Postgres full text index (from the EC2 instance)
+    - cd /home/ubuntu
+    - git clone https://github.com/censusreporter/census-api.git
+    - cd census-api
+    - Set the PGHOST environment variable: `export PGHOST=censusreporter.redacted.us-east-1.rds.amazonaws.com`
+    - `psql -d census -U census -f /home/ubuntu/census-api/full-text-search/metadata_script.sql`
+    - Scrape the topic pages:
+        - `virtualenv --no-site-packages env`
+        - `source env/bin/activate`
+        - `pip install htmlparser psycopg2`
+        - `python /home/ubuntu/census-api/full-text-search/topic_scraper.py`
+
 - After embargo, remember to check in your work:
     - census-postgres/acs2013_1yr
     - census-table-metadata/precomputed/acs2013_1yr
