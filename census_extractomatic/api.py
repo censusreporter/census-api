@@ -64,6 +64,7 @@ default_table_search_release = allowed_acs[1]
 
 # Allowed TIGER releases in newest order
 allowed_tiger = [
+    'tiger2015',
     'tiger2014',
     'tiger2013',
 ]
