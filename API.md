@@ -6,14 +6,11 @@ The goal of this API is to make it easy to access any chunk of that spreadsheet 
 
 To continue with the spreadsheet metaphor, the endpoints for this API can be roughly broken into 3 pieces:
 
-1. information about columns
+1. information about data (columns)
 2. information about geographies (rows)
 3. data at the intersection of one or more of the above
 
-Endpoints labeled *experimental* depend on our project to implement ElasticSearch for CensusReporter data, and may change API and/or return imperfect results.
-
 ### Column, Table, and Tabulations
-
 
 #### `GET /1.0/tabulation/<tabulation_id>`
 
@@ -146,10 +143,11 @@ $ curl "http://api.censusreporter.org/2.0/table/latest/B01001A"
 
 ### Geography
 
-#### `GET /1.0/geo/tiger2013/tiles/<sumlevel>/<zoom>/<x>/<y>.geojson`
+#### `GET /1.0/geo/<release>/tiles/<sumlevel>/<zoom>/<x>/<y>.geojson`
 
  URL Argument    | Type   | Required? | Description
 :----------------|:-------|:----------|:-----------
+ `release`       | string | Yes       | The TIGER release to use in the tile.
  `sumlevel`      | string | Yes       | The summary to use in the tile.
  `zoom`          | int    | Yes       | The zoom level for the tile.
  `x`             | int    | Yes       | The x value for the tile.
@@ -157,10 +155,11 @@ $ curl "http://api.censusreporter.org/2.0/table/latest/B01001A"
 
 Returns a [GeoJSON](http://geojson.org/) representation of all geographies at summary level `sumlevel` and contained within a [map tile](http://www.maptiler.org/google-maps-coordinates-tile-bounds-projection/) specified by the `zoom`, `x`, and `y` parameters. You can use this to create a map of Census geographies on top of an existing map. The returned GeoJSON data includes attributes for the name and geoid of the geography.
 
-#### `GET /1.0/geo/tiger2013/<geoid>`
+#### `GET /1.0/geo/<release>/<geoid>`
 
  URL Argument    | Type   | Required? | Description
 :----------------|:-------|:----------|:-----------
+ `release`       | string | Yes       | The TIGER release to use retrieve data from.
  `geoid`         | string | Yes       | The geography identifier to retrieve data for.
 
  Query Argument | Type   | Required? | Description
@@ -215,10 +214,11 @@ $ curl "http://api.censusreporter.org/1.0/geo/tiger2013/04000US55?geom=true"
 }
 ```
 
-#### `GET /1.0/geo/tiger2013/<geoid>/parents`
+#### `GET /1.0/geo/<release>/<geoid>/parents`
 
  URL Argument    | Type   | Required? | Description
 :----------------|:-------|:----------|:-----------
+ `release`       | string | Yes       | The TIGER release to use.
  `geoid`         | string | Yes       | The geography identifier to retrieve parent geographies for.
 
 Returns a list of geographies that might be considered the parent of the specified geography. The information returned includes the name, geoid, and summary level code for each geography.
@@ -298,7 +298,11 @@ $ curl "http://api.censusreporter.org/1.0/geo/tiger2013/16000US1714000/parents"
 }
 ```
 
-#### `GET /1.0/geo/show/tiger2013`
+#### `GET /1.0/geo/show/<release>`
+
+ URL Argument    | Type   | Required? | Description
+:----------------|:-------|:----------|:-----------
+ `release`       | string | Yes       | The TIGER release to use.
 
  Query Argument | Type   | Required? | Description
 :---------------|:-------|:----------|:-----------
