@@ -1461,7 +1461,7 @@ def geo_tiles(release, sumlevel, zoom, x, y):
             app.logger.warn('Skipping cache set for {} because {}'.format(cache_key, e.message))
 
     resp.headers.set('Content-Type', 'application/json')
-    resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600*4))
+    resp.headers.set('Cache-Control', 'public,max-age=86400') # 1 day
     return resp
 
 
