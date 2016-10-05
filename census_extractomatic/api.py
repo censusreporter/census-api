@@ -2631,7 +2631,7 @@ def download_specified_data(acs):
         acs_to_try = [acs]
         expand_geoids_with = acs
     elif acs == 'latest':
-        acs_to_try = list(allowed_acs)
+        acs_to_try = allowed_acs[:3]  # The first three releases
         expand_geoids_with = release_to_expand_with
     else:
         abort(404, 'The %s release isn\'t supported.' % get_acs_name(acs))
