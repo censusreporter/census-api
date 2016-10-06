@@ -2722,11 +2722,6 @@ def download_specified_data(acs):
                 geoid = row.pop('geoid')
                 data_for_geoid = OrderedDict()
 
-                # If we end up at the 'most complete' release, we should include every bit of
-                # data we can instead of erroring out on the user.
-                # See https://www.pivotaltracker.com/story/show/70906084
-                this_geo_has_data = False or acs == allowed_acs[-1]
-
                 cols_iter = iter(sorted(row.items(), key=lambda tup: tup[0]))
                 for table_id, data_iter in groupby(cols_iter, lambda x: x[0][:-3].upper()):
                     table_for_geoid = OrderedDict()
@@ -2737,16 +2732,10 @@ def download_specified_data(acs):
                         col_name = col_name.upper()
                         (moe_name, moe_value) = next(cols_iter)
 
-                        if value is not None and moe_value is not None:
-                            this_geo_has_data = True
-
                         table_for_geoid['estimate'][col_name] = value
                         table_for_geoid['error'][col_name] = moe_value
 
-                    if this_geo_has_data:
-                        data_for_geoid[table_id] = table_for_geoid
-                    else:
-                        raise ShowDataException("The %s release doesn't have data for table %s, geoid %s." % (get_acs_name(acs), table_id, geoid))
+                    data_for_geoid[table_id] = table_for_geoid
 
                 data[geoid] = data_for_geoid
 
