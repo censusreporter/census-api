@@ -1,5 +1,5 @@
 server {
-    listen 80;
+    listen 1443;
     server_name %(domainname)s;
 
     real_ip_header     X-Forwarded-For;
@@ -15,4 +15,11 @@ server {
 
     access_log /var/log/nginx/%(domainname)s.access.log;
     error_log /var/log/nginx/%(domainname)s.error.log;
+}
+
+server {
+    listen 80;
+    server_name %(domainname)s;
+
+    rewrite ^ https://%(domainname)s$request_uri? permanent;
 }
