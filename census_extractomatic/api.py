@@ -15,6 +15,7 @@ from collections import OrderedDict
 import decimal
 import operator
 import math
+from math import log10, log
 from datetime import timedelta
 import re
 import os
@@ -49,8 +50,8 @@ except Exception, e:
 
 # Allowed ACS's in "best" order (newest and smallest range preferred)
 allowed_acs = [
-    'acs2014_1yr',
-    'acs2014_1yr', #TODO
+    'acs2015_1yr',
+    'acs2015_5yr',
 ]
 # When expanding a container geoid shorthand (i.e. 140|05000US12127),
 # use this ACS. It should always be a 5yr release so as to include as
@@ -62,14 +63,20 @@ default_table_search_release = allowed_acs[1]
 
 # Allowed TIGER releases in newest order
 allowed_tiger = [
+    'tiger2015',
     'tiger2014',
-    'tiger2014', #TODO
+]
+
+allowed_searches = [
+    'table',
+    'profile',
+    'topic',
+    'all'
 ]
 
 ACS_NAMES = {
-    'acs2014_1yr': {'name': 'ACS 2014 1-year', 'years': '2014'},
-    'acs2014_5yr': {'name': 'ACS 2014 5-year', 'years': '2010-2014'},
-    'acs2013_3yr': {'name': 'ACS 2013 3-year', 'years': '2011-2013'},
+    'acs2015_1yr': {'name': 'ACS 2015 1-year', 'years': '2015'},
+    'acs2015_5yr': {'name': 'ACS 2015 5-year', 'years': '2011-2015'},
 }
 
 PARENT_CHILD_CONTAINMENT = {
@@ -92,8 +99,10 @@ SUMLEV_NAMES = {
     "160": {"name": "place", "plural": "places", "tiger_table": "place"},
     "170": {"name": "consolidated city", "plural": "consolidated cities", "tiger_table": "concity"},
     "230": {"name": "Alaska native regional corporation", "plural": "Alaska native regional corporations", "tiger_table": "anrc"},
-    "250": {"name": "native area", "plural": "native areas", "tiger_table": "aiannh"},
+    "250": {"name": "native area", "plural": "native areas", "tiger_table": "aiannh250"},
     "251": {"name": "tribal subdivision", "plural": "tribal subdivisions", "tiger_table": "aits"},
+    "252": {"name": "native area (reservation)", "plural": "native areas (reservation)", "tiger_table": "aiannh252"},
+    "254": {"name": "native area (off-trust land)", "plural": "native areas (off-trust land)", "tiger_table": "aiannh254"},
     "256": {"name": "tribal census tract", "plural": "tribal census tracts", "tiger_table": "ttract"},
     "300": {"name": "MSA", "plural": "MSAs", "tiger_table": "metdiv"},
     "310": {"name": "CBSA", "plural": "CBSAs", "tiger_table": "cbsa"},
@@ -511,7 +520,7 @@ def compute_profile_item_levels(geoid):
 
     if sumlevel in ('140', '150', '160', '310', '330', '350', '860', '950', '960', '970'):
         result = db.session.execute(
-            """SELECT * FROM tiger2014.census_geo_containment
+            """SELECT * FROM tiger2015.census_geo_containment
                WHERE child_geoid=:geoid
                ORDER BY percent_covered ASC
             """,
@@ -571,7 +580,7 @@ def geo_profile(acs, geoid):
 
     result = db.session.execute(
         """SELECT DISTINCT full_geoid,sumlevel,display_name,simple_name,aland
-           FROM tiger2014.census_name_lookup
+           FROM tiger2015.census_name_lookup
            WHERE full_geoid IN :geoids;""",
         {'geoids': tuple(comparison_geoids)}
     )
@@ -1309,7 +1318,7 @@ def acs_geo_profile(acs, geoid):
     valid_acs, valid_geoid = find_geoid(geoid, acs)
 
     if not valid_acs:
-        abort(400, 'GeoID %s isn\'t included in the %s release.' % (geoid, get_acs_name(acs)))
+        abort(404, 'GeoID %s isn\'t included in the %s release.' % (geoid, get_acs_name(acs)))
 
     return geo_profile(valid_acs, valid_geoid)
 
@@ -1319,12 +1328,21 @@ def latest_geo_profile(geoid):
     valid_acs, valid_geoid = find_geoid(geoid)
 
     if not valid_acs:
-        abort(400, 'None of the supported ACS releases include GeoID %s.' % (geoid))
+        abort(404, 'None of the supported ACS releases include GeoID %s.' % (geoid))
 
     return geo_profile("latest", valid_geoid)
 
 
 ## GEO LOOKUPS ##
+
+def convert_row(row):
+    data = dict()
+    data['sumlevel'] = row['sumlevel']
+    data['full_geoid'] = row['full_geoid']
+    data['full_name'] = row['display_name']
+    if 'geom' in row and row['geom']:
+        data['geom'] = json.loads(row['geom'])
+    return data
 
 # Example: /1.0/geo/search?q=spok
 # Example: /1.0/geo/search?q=spok&sumlevs=050,160
@@ -1364,26 +1382,17 @@ def geo_search():
 
     if with_geom:
         sql = """SELECT DISTINCT geoid,sumlevel,population,display_name,full_geoid,priority,ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geom
-            FROM tiger2014.census_name_lookup
+            FROM tiger2015.census_name_lookup
             WHERE %s
             ORDER BY priority, population DESC NULLS LAST
             LIMIT 25;""" % (where)
     else:
         sql = """SELECT DISTINCT geoid,sumlevel,population,display_name,full_geoid,priority
-            FROM tiger2014.census_name_lookup
+            FROM tiger2015.census_name_lookup
             WHERE %s
             ORDER BY priority, population DESC NULLS LAST
             LIMIT 25;""" % (where)
     result = db.session.execute(sql, where_args)
-
-    def convert_row(row):
-        data = dict()
-        data['sumlevel'] = row['sumlevel']
-        data['full_geoid'] = row['full_geoid']
-        data['full_name'] = row['display_name']
-        if 'geom' in row and row['geom']:
-            data['geom'] = json.loads(row['geom'])
-        return data
 
     return jsonify(results=[convert_row(row) for row in result])
 
@@ -1402,9 +1411,9 @@ def num2deg(xtile, ytile, zoom):
 @crossdomain(origin='*')
 def geo_tiles(release, sumlevel, zoom, x, y):
     if release not in allowed_tiger:
-        abort(400, "Unknown TIGER release")
+        abort(404, "Unknown TIGER release")
     if sumlevel not in SUMLEV_NAMES:
-        abort(400, "Unknown sumlevel")
+        abort(404, "Unknown sumlevel")
     if sumlevel == '010':
         abort(400, "Don't support US tiles")
 
@@ -1448,7 +1457,7 @@ def geo_tiles(release, sumlevel, zoom, x, y):
             app.logger.warn('Skipping cache set for {} because {}'.format(cache_key, e.message))
 
     resp.headers.set('Content-Type', 'application/json')
-    resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600*4))
+    resp.headers.set('Cache-Control', 'public,max-age=86400') # 1 day
     return resp
 
 
@@ -1461,12 +1470,12 @@ def geo_tiles(release, sumlevel, zoom, x, y):
 @crossdomain(origin='*')
 def geo_lookup(release, geoid):
     if release not in allowed_tiger:
-        abort(400, "Unknown TIGER release")
+        abort(404, "Unknown TIGER release")
 
     geoid = geoid.upper() if geoid else geoid
     geoid_parts = geoid.split('US')
     if len(geoid_parts) is not 2:
-        abort(400, 'Invalid GeoID')
+        abort(404, 'Invalid GeoID')
 
     cache_key = str('1.0/geo/%s/show/%s.json?geom=%s' % (release, geoid, request.qwargs.geom))
     cached = get_from_cache(cache_key)
@@ -1494,7 +1503,7 @@ def geo_lookup(release, geoid):
         result = result.fetchone()
 
         if not result:
-            abort(400, 'Unknown GeoID')
+            abort(404, 'Unknown GeoID')
 
         result = dict(result)
         geom = result.pop('geom', None)
@@ -1518,7 +1527,7 @@ def geo_lookup(release, geoid):
 @crossdomain(origin='*')
 def geo_parent(release, geoid):
     if release not in allowed_tiger:
-        abort(400, "Unknown TIGER release")
+        abort(404, "Unknown TIGER release")
 
     geoid = geoid.upper()
 
@@ -1573,7 +1582,7 @@ def geo_parent(release, geoid):
 @crossdomain(origin='*')
 def show_specified_geo_data(release):
     if release not in allowed_tiger:
-        abort(400, "Unknown TIGER release")
+        abort(404, "Unknown TIGER release")
     geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids, release_to_expand_with)
 
     max_geoids = current_app.config.get('MAX_GEOIDS_TO_SHOW', 3000)
@@ -1610,7 +1619,7 @@ def show_specified_geo_data(release):
 
     invalid_geo_ids = set(geo_ids) - set(valid_geo_ids)
     if invalid_geo_ids:
-        abort(400, "GeoID(s) %s are not valid." % (','.join(invalid_geo_ids)))
+        abort(404, "GeoID(s) %s are not valid." % (','.join(invalid_geo_ids)))
 
     resp_data = json.dumps({
         'type': 'FeatureCollection',
@@ -1795,7 +1804,7 @@ def tabulation_details(tabulation_id):
     row = result.fetchone()
 
     if not row:
-        abort(400, "Tabulation %s not found." % tabulation_id)
+        abort(404, "Tabulation %s not found." % tabulation_id)
 
     row = dict(row)
 
@@ -1841,7 +1850,7 @@ def table_details(table_id):
         row = result.fetchone()
 
         if not row:
-            abort(400, "Table %s not found in release %s. Try specifying another release." % (table_id.upper(), release))
+            abort(404, "Table %s not found in release %s. Try specifying another release." % (table_id.upper(), release))
 
         data = OrderedDict([
             ("table_id", row['table_id']),
@@ -1889,7 +1898,7 @@ def table_details_with_release(release, table_id):
     elif release == 'latest':
         acs_to_try = list(allowed_acs)
     else:
-        abort(400, 'The %s release isn\'t supported.' % get_acs_name(release))
+        abort(404, 'The %s release isn\'t supported.' % get_acs_name(release))
 
     table_id = table_id.upper() if table_id else table_id
 
@@ -1948,7 +1957,7 @@ def table_details_with_release(release, table_id):
 
         return resp
 
-    abort(400, "Table %s not found in releases %s. Try specifying another release." % (table_id, ', '.join(acs_to_try)))
+    abort(404, "Table %s not found in releases %s. Try specifying another release." % (table_id, ', '.join(acs_to_try)))
 
 
 # Example: /1.0/table/compare/rowcounts/B01001?year=2011&sumlevel=050&within=04000US53
@@ -2013,6 +2022,287 @@ def table_geo_comparison_rowcount(table_id):
 
     return resp
 
+## COMBINED LOOKUPS ##
+
+@app.route("/2.1/full-text/search")
+@qwarg_validate({
+    'q':   {'valid': NonemptyString()},
+    'type': {'valid': OneOf(allowed_searches), 'default': allowed_searches[3]},
+})
+@crossdomain(origin='*')
+def full_text_search():
+
+    def do_search(db, q, object_type):
+        """ Search for objects (profiles, tables, topics) matching query q.
+
+        Return a list, because it's easier to work with than a SQLAlchemy
+        ResultProxy object (notably, the latter does not support indexing).
+        """
+
+        if object_type == 'profile':
+            query = """SELECT text1 AS display_name,
+                              text2 AS sumlevel,
+                              text3 AS sumlevel_name,
+                              text4 AS full_geoid,
+                              text5 AS population,
+                              text6 AS priority,
+                              ts_rank(document, to_tsquery('simple', :search_term)) AS relevance,
+                              type
+                       FROM search_metadata
+                       WHERE document @@ to_tsquery('simple', :search_term)
+                       AND type = 'profile'
+                       ORDER BY CAST(text6 as INT) ASC,
+                                   CAST(text5 as INT) DESC,
+                                   relevance DESC;"""
+
+        elif object_type == 'table':
+            query = """SELECT text1 AS tabulation_code,
+                              text2 AS table_title,
+                              text3 AS topics,
+                              text4 AS simple_table_title,
+                              text5 AS tables,
+                              ts_rank(document, to_tsquery(:search_term), 2|8|32) AS relevance,
+                              type
+                       FROM search_metadata
+                       WHERE document @@ to_tsquery(:search_term)
+                       AND type = 'table'
+                       ORDER BY relevance DESC;"""
+
+        elif object_type == 'topic':
+            query = """SELECT text1 as topic_name,
+                              text3 as url,
+                              ts_rank(document, to_tsquery(:search_term)) AS relevance,
+                              type
+                       FROM search_metadata
+                       WHERE document @@ to_tsquery(:search_term)
+                       AND type = 'topic'
+                       ORDER BY relevance DESC;"""
+
+        objects = db.session.execute(query, {"search_term": q})
+        return [row for row in objects]
+
+    def compute_score(row):
+        """ Compute a ranking score in range [0, 1] from a row result.
+
+        params: row - SQLAlchemy RowProxy object, which is returned by queries
+        return: score in range [0, 1]
+        """
+
+        object_type = row['type']
+
+        # Topics; set somewhat-arbitrary cutoff for PSQL relevance, above which
+        # the result should appear first, and below which it should simply be
+        # multiplied by some amount to make it appear slightly higher
+
+        if object_type == 'topic':
+            relevance = row['relevance']
+
+            if relevance > 0.4:
+                return 1
+
+            else:
+                return relevance * 2
+
+        # Tables; take the PSQL relevance score, which (from our testing)
+        # appears to always be in the range [1E-8, 1E-2]. For safety, we
+        # generalize that to [1E-9, 1E-1] (factor of 10 on each side).
+        #
+        # The log sends [1E-9, 1E-1] to [-9, -1]; add 9 to send it to [0, 8];
+        # divide by 8 to send it to [0, 1].
+
+        elif object_type == 'table':
+            relevance = row['relevance']
+            return (log10(relevance) + 9) / 8.0
+
+        # Profiles; compute score based off priority and population. In
+        # general, larger, more populous areas should be returned first.
+
+        elif object_type == 'profile':
+            priority = row['priority']
+            population = row['population']
+
+            # Priority bounds are 5 (nation) to 320 (whatever the smallest one
+            # is), so the actual range is the difference, 315.
+            PRIORITY_RANGE = 320.0 - 5
+
+            # Approximate value, but realistically it shouldn't matter much.
+            POP_US = 318857056.0
+
+            # Make population nonzero (catch both empty string and string '0')
+            if not population or not int(population):
+                population = 1
+
+            priority, population = int(priority), int(population)
+
+            # Decrement priority by 5, to map [5, 320] to [0, 315].
+            priority -= 5
+
+            # Since priority is now in [0, 315], and PRIORITY_RANGE = 315, the
+            # function (1 - priority / PRIORITY_RANGE) sends 0 -> 0, 315 -> 1.
+            # Similarly, the second line incorporating population maps the range
+            # [0, max population] to [0, 1].
+            #
+            # We weight priority more than population, because from testing it
+            # gives the most relevant results; the 0.8 and 0.2 can be tweaked
+            # so long as they add up to 1.
+            return ((1 - priority / PRIORITY_RANGE) * 0.8 +
+                    (1 + log(population / POP_US) / log(POP_US)) * 0.2)
+
+    def choose_table(tables):
+        """ Choose a representative table for a list of table_ids.
+
+        In the case where a tabulation has multiple iterations / subtables, we
+        want one that is representative of all of them. The preferred order is:
+            'C' table with no iterations
+          > 'B' table with no iterationks
+          > 'C' table with iterations (arbitrarily choosing 'A' iteration)
+          > 'B' table with iterations (arbitrarily choosing 'A' iteration)
+        since, generally, simpler, more complete tables are more useful. This
+        function selects the most relevant table based on the hierarchy above.
+
+        Table IDs are in the format [B/C]#####[A-I]. The first character is
+        'B' or 'C', followed by five digits (the tabulation code), optionally
+        ending with a character representing that this is a race iteration.
+        If any iteration is present, all of them are (e.g., if B10001A is
+        present, so are B10001B, ... , B10001I.)
+        """
+
+        tabulation_code = re.match(r'^(B|C)(\d+)[A-Z]?',tables[0]).group(2)
+
+        # 'C' table with no iterations, e.g., C10001
+        if 'C' + tabulation_code in tables:
+            return 'C' + tabulation_code
+
+        # 'B' table with no iterations, e.g., B10001
+        if 'B' + tabulation_code in tables:
+            return 'B' + tabulation_code
+
+        # 'C' table with iterations, choosing 'A' iteration, e.g., C10001A
+        if 'C' + tabulation_code + 'A' in tables:
+            return 'C' + tabulation_code + 'A'
+
+        # 'B' table with iterations, choosing 'A' iteration, e.g., B10001A
+        if 'B' + tabulation_code + 'A' in tables:
+            return 'B' + tabulation_code + 'A'
+
+        else:
+            return ''
+
+    def process_result(row):
+        """ Converts a SQLAlchemy RowProxy to a dictionary.
+
+        params: row - row object returned from a query
+        return: dictionary with either profile or table attributes """
+
+        row = dict(row)
+
+        if row['type'] == 'profile':
+            result = {
+                'type': 'profile',
+                'full_geoid': row['full_geoid'],
+                'full_name': row['display_name'],
+                'sumlevel': row['sumlevel'],
+                'sumlevel_name': row['sumlevel_name'] if row['sumlevel_name'] else '',
+                'url': build_profile_url(row['full_geoid']),
+                'relevance': compute_score(row) #TODO remove this
+            }
+
+        elif row['type'] == 'table':
+            table_id = choose_table(row['tables'].split())
+
+            result = {
+                'type': 'table',
+                'table_id': table_id,
+                'tabulation_code': row['tabulation_code'],
+                'table_name': row['table_title'],
+                'simple_table_name': row['simple_table_title'],
+                'topics': row['topics'].split(', '),
+                'unique_key': row['tabulation_code'],
+                'subtables': row['tables'].split(),
+                'url': build_table_url(table_id),
+                'relevance': compute_score(row) #TODO remove this
+
+            }
+
+        elif row['type'] == 'topic':
+            result = {
+                'type': 'topic',
+                'topic_name': row['topic_name'],
+                'url': row['url'],
+                'relevance': compute_score(row) #TODO remove this
+            }
+
+        return result
+
+    def build_profile_url(full_geoid):
+        ''' Builds the censusreporter URL out of the geoid.
+
+        Format: https://censusreporter.org/profiles/full_geoid
+        Note that this format is a valid link, and will redirect to the
+        "proper" URL with geoid and display name.
+
+        >>> build_profile_url("31000US18020")
+        "https://censusreporter.org/profiles/31000US18020/"
+
+        '''
+
+        return "https://censusreporter.org/profiles/" + full_geoid + "/"
+
+    def build_table_url(table_id):
+        ''' Builds the CensusReporter URL out of table_id.
+
+        Format: https://censusreporter.org/tables/table_id/"
+
+        >>> build_table_url("B06009")
+        "http://censusreporter.org/tables/B06009/"
+        '''
+
+        return "https://censusreporter.org/tables/" + table_id + "/"
+
+
+    # Build query by replacing apostrophes with spaces, separating words
+    # with '&', and adding a wildcard character to support prefix matching.
+    q = request.qwargs.q
+    q = ' & '.join(q.split())
+    q += ':*'
+
+    search_type = request.qwargs.type
+
+    # Support choice of 'search type' as returning table results, profile
+    # results, topic results, or all. Only the needed queries will get
+    # executed; e.g., for a profile search, the profiles list will be filled
+    # but tables and topics will be empty.
+    profiles, tables, topics = [], [], []
+
+    if search_type == 'profile' or search_type == 'all':
+        profiles = do_search(db, q, 'profile')
+
+    if search_type == 'table' or search_type == 'all':
+        tables = do_search(db, q, 'table')
+
+    if search_type == 'topic' or search_type == 'all':
+        topics = do_search(db, q, 'topic')
+
+    # Compute ranking scores of each object that we want to return
+    results = []
+
+    for row in profiles + tables + topics:
+        results.append((row, compute_score(row)))
+
+    # Sort by second entry (score), descending; the lambda pulls the second
+    # element of a tuple.
+    results = sorted(results, key = lambda x: x[1], reverse = True)
+
+    # Format of results is a list of tuples, with each tuple being a profile
+    # or table followed by its score. The profile or table is then result[0].
+    prepared_result = []
+
+    for result in results:
+        prepared_result.append(process_result(result[0]))
+
+    return jsonify(results = prepared_result)
+
+
 
 ## DATA RETRIEVAL ##
 
@@ -2053,7 +2343,7 @@ def get_child_geoids_by_coverage(release, parent_geoid, child_summary_level):
     db.session.execute("SET search_path=:acs,public;", {'acs': release})
     result = db.session.execute(
         """SELECT geoid, name
-           FROM tiger2014.census_geo_containment, geoheader
+           FROM tiger2015.census_geo_containment, geoheader
            WHERE geoheader.geoid = census_geo_containment.child_geoid
              AND census_geo_containment.parent_geoid = :parent_geoid
              AND census_geo_containment.child_geoid LIKE :child_geoids""",
@@ -2075,7 +2365,7 @@ def get_child_geoids_by_gis(release, parent_geoid, child_summary_level):
     child_geoids = []
     result = db.session.execute(
         """SELECT child.full_geoid
-           FROM tiger2014.census_name_lookup parent
+           FROM tiger2015.census_name_lookup parent
            JOIN tiger2014.census_name_lookup child ON ST_Intersects(parent.geom, child.geom) AND child.sumlevel=:child_sumlevel
            WHERE parent.full_geoid=:parent_geoid AND parent.sumlevel=:parent_sumlevel""",
         {'child_sumlevel': child_summary_level, 'parent_geoid': parent_geoid, 'parent_sumlevel': parent_sumlevel}
@@ -2175,7 +2465,7 @@ def show_specified_data(acs):
         acs_to_try = allowed_acs[:3]  # The first three releases
         expand_geoids_with = release_to_expand_with
     else:
-        abort(400, 'The %s release isn\'t supported.' % get_acs_name(acs))
+        abort(404, 'The %s release isn\'t supported.' % get_acs_name(acs))
 
     # valid_geo_ids only contains geos for which we want data
     requested_geo_ids = request.qwargs.geo_ids
@@ -2185,7 +2475,7 @@ def show_specified_data(acs):
         abort(400, e.message)
 
     if not valid_geo_ids:
-        abort(400, 'None of the geo_ids specified were valid: %s' % ', '.join(requested_geo_ids))
+        abort(404, 'None of the geo_ids specified were valid: %s' % ', '.join(requested_geo_ids))
 
     max_geoids = current_app.config.get('MAX_GEOIDS_TO_SHOW', 1000)
     if len(valid_geo_ids) > max_geoids:
@@ -2201,7 +2491,7 @@ def show_specified_data(acs):
     # Fill in the display name for the geos
     result = db.session.execute(
         """SELECT full_geoid,population,display_name
-           FROM tiger2014.census_name_lookup
+           FROM tiger2015.census_name_lookup
            WHERE full_geoid IN :geoids;""",
         {'geoids': tuple(named_geo_ids)}
     )
@@ -2337,10 +2627,10 @@ def download_specified_data(acs):
         acs_to_try = [acs]
         expand_geoids_with = acs
     elif acs == 'latest':
-        acs_to_try = list(allowed_acs)
+        acs_to_try = allowed_acs[:3]  # The first three releases
         expand_geoids_with = release_to_expand_with
     else:
-        abort(400, 'The %s release isn\'t supported.' % get_acs_name(acs))
+        abort(404, 'The %s release isn\'t supported.' % get_acs_name(acs))
 
     try:
         valid_geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids, release=expand_geoids_with)
@@ -2356,7 +2646,7 @@ def download_specified_data(acs):
         """SELECT full_geoid,
                   population,
                   display_name
-           FROM tiger2014.census_name_lookup
+           FROM tiger2015.census_name_lookup
            WHERE full_geoid IN :geo_ids;""",
         {'geo_ids': tuple(valid_geo_ids)}
     )
@@ -2428,11 +2718,6 @@ def download_specified_data(acs):
                 geoid = row.pop('geoid')
                 data_for_geoid = OrderedDict()
 
-                # If we end up at the 'most complete' release, we should include every bit of
-                # data we can instead of erroring out on the user.
-                # See https://www.pivotaltracker.com/story/show/70906084
-                this_geo_has_data = False or acs == allowed_acs[-1]
-
                 cols_iter = iter(sorted(row.items(), key=lambda tup: tup[0]))
                 for table_id, data_iter in groupby(cols_iter, lambda x: x[0][:-3].upper()):
                     table_for_geoid = OrderedDict()
@@ -2443,16 +2728,10 @@ def download_specified_data(acs):
                         col_name = col_name.upper()
                         (moe_name, moe_value) = next(cols_iter)
 
-                        if value is not None and moe_value is not None:
-                            this_geo_has_data = True
-
                         table_for_geoid['estimate'][col_name] = value
                         table_for_geoid['error'][col_name] = moe_value
 
-                    if this_geo_has_data:
-                        data_for_geoid[table_id] = table_for_geoid
-                    else:
-                        raise ShowDataException("The %s release doesn't have data for table %s, geoid %s." % (get_acs_name(acs), table_id, geoid))
+                    data_for_geoid[table_id] = table_for_geoid
 
                 data[geoid] = data_for_geoid
 
@@ -2503,7 +2782,7 @@ def download_specified_data(acs):
 def data_compare_geographies_within_parent(acs, table_id):
     # make sure we support the requested ACS release
     if acs not in allowed_acs:
-        abort(400, 'The %s release isn\'t supported.' % get_acs_name(acs))
+        abort(404, 'The %s release isn\'t supported.' % get_acs_name(acs))
     db.session.execute("SET search_path=:acs, public;", {'acs': acs})
 
     parent_geoid = request.qwargs.within
@@ -2537,7 +2816,7 @@ def data_compare_geographies_within_parent(acs, table_id):
     table_metadata = result.fetchall()
 
     if not table_metadata:
-        abort(400, 'Table %s isn\'t available in the %s release.' % (table_id.upper(), get_acs_name(acs)))
+        abort(404, 'Table %s isn\'t available in the %s release.' % (table_id.upper(), get_acs_name(acs)))
 
     validated_table_id = table_metadata[0]['table_id']
 
@@ -2583,7 +2862,7 @@ def data_compare_geographies_within_parent(acs, table_id):
         # get the parent geometry and add to API response
         result = db.session.execute(
             """SELECT ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geometry
-               FROM tiger2014.census_name_lookup
+               FROM tiger2015.census_name_lookup
                WHERE full_geoid=:geo_ids;""",
             {'geo_ids': parent_geoid}
         )
@@ -2597,7 +2876,7 @@ def data_compare_geographies_within_parent(acs, table_id):
         # get the child geometries and store for later
         result = db.session.execute(
             """SELECT geoid, ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geometry
-               FROM tiger2014.census_name_lookup
+               FROM tiger2015.census_name_lookup
                WHERE full_geoid IN :geo_ids
                ORDER BY full_geoid;""",
             {'geo_ids': tuple(child_geoid_list)}
