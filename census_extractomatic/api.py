@@ -50,8 +50,8 @@ except Exception, e:
 
 # Allowed ACS's in "best" order (newest and smallest range preferred)
 allowed_acs = [
-    'acs2014_1yr',
-    'acs2014_5yr',
+    'acs2015_1yr',
+    'acs2015_5yr',
 ]
 # When expanding a container geoid shorthand (i.e. 140|05000US12127),
 # use this ACS. It should always be a 5yr release so as to include as
@@ -63,21 +63,20 @@ default_table_search_release = allowed_acs[1]
 
 # Allowed TIGER releases in newest order
 allowed_tiger = [
+    'tiger2015',
     'tiger2014',
-    'tiger2013',
 ]
 
 allowed_searches = [
-    'table', 
+    'table',
     'profile',
     'topic',
     'all'
 ]
 
 ACS_NAMES = {
-    'acs2014_1yr': {'name': 'ACS 2014 1-year', 'years': '2014'},
-    'acs2014_5yr': {'name': 'ACS 2014 5-year', 'years': '2010-2014'},
-    'acs2013_3yr': {'name': 'ACS 2013 3-year', 'years': '2011-2013'},
+    'acs2015_1yr': {'name': 'ACS 2015 1-year', 'years': '2015'},
+    'acs2015_5yr': {'name': 'ACS 2015 5-year', 'years': '2011-2015'},
 }
 
 PARENT_CHILD_CONTAINMENT = {
@@ -521,7 +520,7 @@ def compute_profile_item_levels(geoid):
 
     if sumlevel in ('140', '150', '160', '310', '330', '350', '860', '950', '960', '970'):
         result = db.session.execute(
-            """SELECT * FROM tiger2014.census_geo_containment
+            """SELECT * FROM tiger2015.census_geo_containment
                WHERE child_geoid=:geoid
                ORDER BY percent_covered ASC
             """,
@@ -581,7 +580,7 @@ def geo_profile(acs, geoid):
 
     result = db.session.execute(
         """SELECT DISTINCT full_geoid,sumlevel,display_name,simple_name,aland
-           FROM tiger2014.census_name_lookup
+           FROM tiger2015.census_name_lookup
            WHERE full_geoid IN :geoids;""",
         {'geoids': tuple(comparison_geoids)}
     )
@@ -1383,13 +1382,13 @@ def geo_search():
 
     if with_geom:
         sql = """SELECT DISTINCT geoid,sumlevel,population,display_name,full_geoid,priority,ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geom
-            FROM tiger2014.census_name_lookup
+            FROM tiger2015.census_name_lookup
             WHERE %s
             ORDER BY priority, population DESC NULLS LAST
             LIMIT 25;""" % (where)
     else:
         sql = """SELECT DISTINCT geoid,sumlevel,population,display_name,full_geoid,priority
-            FROM tiger2014.census_name_lookup
+            FROM tiger2015.census_name_lookup
             WHERE %s
             ORDER BY priority, population DESC NULLS LAST
             LIMIT 25;""" % (where)
@@ -1458,7 +1457,7 @@ def geo_tiles(release, sumlevel, zoom, x, y):
             app.logger.warn('Skipping cache set for {} because {}'.format(cache_key, e.message))
 
     resp.headers.set('Content-Type', 'application/json')
-    resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600*4))
+    resp.headers.set('Cache-Control', 'public,max-age=86400') # 1 day
     return resp
 
 
@@ -2168,7 +2167,7 @@ def full_text_search():
         present, so are B10001B, ... , B10001I.)
         """
 
-        tabulation_code = tables[0][1:6]
+        tabulation_code = re.match(r'^(B|C)(\d+)[A-Z]?',tables[0]).group(2)
 
         # 'C' table with no iterations, e.g., C10001
         if 'C' + tabulation_code in tables:
@@ -2344,7 +2343,7 @@ def get_child_geoids_by_coverage(release, parent_geoid, child_summary_level):
     db.session.execute("SET search_path=:acs,public;", {'acs': release})
     result = db.session.execute(
         """SELECT geoid, name
-           FROM tiger2014.census_geo_containment, geoheader
+           FROM tiger2015.census_geo_containment, geoheader
            WHERE geoheader.geoid = census_geo_containment.child_geoid
              AND census_geo_containment.parent_geoid = :parent_geoid
              AND census_geo_containment.child_geoid LIKE :child_geoids""",
@@ -2366,7 +2365,7 @@ def get_child_geoids_by_gis(release, parent_geoid, child_summary_level):
     child_geoids = []
     result = db.session.execute(
         """SELECT child.full_geoid
-           FROM tiger2014.census_name_lookup parent
+           FROM tiger2015.census_name_lookup parent
            JOIN tiger2014.census_name_lookup child ON ST_Intersects(parent.geom, child.geom) AND child.sumlevel=:child_sumlevel
            WHERE parent.full_geoid=:parent_geoid AND parent.sumlevel=:parent_sumlevel""",
         {'child_sumlevel': child_summary_level, 'parent_geoid': parent_geoid, 'parent_sumlevel': parent_sumlevel}
@@ -2492,7 +2491,7 @@ def show_specified_data(acs):
     # Fill in the display name for the geos
     result = db.session.execute(
         """SELECT full_geoid,population,display_name
-           FROM tiger2014.census_name_lookup
+           FROM tiger2015.census_name_lookup
            WHERE full_geoid IN :geoids;""",
         {'geoids': tuple(named_geo_ids)}
     )
@@ -2628,7 +2627,7 @@ def download_specified_data(acs):
         acs_to_try = [acs]
         expand_geoids_with = acs
     elif acs == 'latest':
-        acs_to_try = list(allowed_acs)
+        acs_to_try = allowed_acs[:3]  # The first three releases
         expand_geoids_with = release_to_expand_with
     else:
         abort(404, 'The %s release isn\'t supported.' % get_acs_name(acs))
@@ -2647,7 +2646,7 @@ def download_specified_data(acs):
         """SELECT full_geoid,
                   population,
                   display_name
-           FROM tiger2014.census_name_lookup
+           FROM tiger2015.census_name_lookup
            WHERE full_geoid IN :geo_ids;""",
         {'geo_ids': tuple(valid_geo_ids)}
     )
@@ -2719,11 +2718,6 @@ def download_specified_data(acs):
                 geoid = row.pop('geoid')
                 data_for_geoid = OrderedDict()
 
-                # If we end up at the 'most complete' release, we should include every bit of
-                # data we can instead of erroring out on the user.
-                # See https://www.pivotaltracker.com/story/show/70906084
-                this_geo_has_data = False or acs == allowed_acs[-1]
-
                 cols_iter = iter(sorted(row.items(), key=lambda tup: tup[0]))
                 for table_id, data_iter in groupby(cols_iter, lambda x: x[0][:-3].upper()):
                     table_for_geoid = OrderedDict()
@@ -2734,16 +2728,10 @@ def download_specified_data(acs):
                         col_name = col_name.upper()
                         (moe_name, moe_value) = next(cols_iter)
 
-                        if value is not None and moe_value is not None:
-                            this_geo_has_data = True
-
                         table_for_geoid['estimate'][col_name] = value
                         table_for_geoid['error'][col_name] = moe_value
 
-                    if this_geo_has_data:
-                        data_for_geoid[table_id] = table_for_geoid
-                    else:
-                        raise ShowDataException("The %s release doesn't have data for table %s, geoid %s." % (get_acs_name(acs), table_id, geoid))
+                    data_for_geoid[table_id] = table_for_geoid
 
                 data[geoid] = data_for_geoid
 
@@ -2874,7 +2862,7 @@ def data_compare_geographies_within_parent(acs, table_id):
         # get the parent geometry and add to API response
         result = db.session.execute(
             """SELECT ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geometry
-               FROM tiger2014.census_name_lookup
+               FROM tiger2015.census_name_lookup
                WHERE full_geoid=:geo_ids;""",
             {'geo_ids': parent_geoid}
         )
@@ -2888,7 +2876,7 @@ def data_compare_geographies_within_parent(acs, table_id):
         # get the child geometries and store for later
         result = db.session.execute(
             """SELECT geoid, ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geometry
-               FROM tiger2014.census_name_lookup
+               FROM tiger2015.census_name_lookup
                WHERE full_geoid IN :geo_ids
                ORDER BY full_geoid;""",
             {'geo_ids': tuple(child_geoid_list)}
