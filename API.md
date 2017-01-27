@@ -154,7 +154,7 @@ $ curl "https://api.censusreporter.org/2.0/table/latest/B01001A"
  `y`             | int    | Yes       | The y value for the tile.
 
 Returns a [GeoJSON](
-//geojson.org/) representation of all geographies at summary level `sumlevel` and contained within a [map tile](http://www.maptiler.org/google-maps-coordinates-tile-bounds-projection/) specified by the `zoom`, `x`, and `y` parameters. You can use this to create a map of Census geographies on top of an existing map. The returned GeoJSON data includes attributes for the name and geoid of the geography.
+http://geojson.org/) representation of all geographies at summary level `sumlevel` and contained within a [map tile](http://www.maptiler.org/google-maps-coordinates-tile-bounds-projection/) specified by the `zoom`, `x`, and `y` parameters. You can use this to create a map of Census geographies on top of an existing map. The returned GeoJSON data includes attributes for the name and geoid of the geography.
 
 #### `GET /1.0/geo/<release>/<geoid>`
 
