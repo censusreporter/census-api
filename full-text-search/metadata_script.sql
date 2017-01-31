@@ -21,7 +21,7 @@ CREATE TABLE search_metadata AS (
            CAST(population as text) as text5,
            CAST(priority as text) as text6,
            'profile' AS type,
-           document AS document
+           document AS document -- add conditional and document || to tsvector
     FROM (
         SELECT display_name, sumlevel, full_geoid, population, priority,
                setweight(to_tsvector('simple', coalesce(display_name, ' ')), 'A') ||
@@ -155,3 +155,11 @@ UPDATE search_metadata SET text3 = 'unified school district' WHERE text2 = '970'
 ALTER TABLE search_metadata OWNER TO census;
 CREATE INDEX ON search_metadata (type);
 CREATE INDEX ON search_metadata USING GIN(document);
+
+-- Synonym support
+UPDATE search_metadata SET document = document || to_tsvector('simple', coalesce('saint', ' ')) WHERE text1 LIKE '%St.%' AND type = 'profile';
+UPDATE search_metadata SET document = document || to_tsvector('simple', coalesce('st', ' ')) WHERE text1 LIKE '%Saint%' AND type = 'profile';
+UPDATE search_metadata SET document = document || to_tsvector('simple', coalesce('fort', ' ')) WHERE text1 LIKE '%Ft%' AND type = 'profile';
+UPDATE search_metadata SET document = document || to_tsvector('simple', coalesce('ft', ' ')) WHERE text1 LIKE '%Fort%' AND type = 'profile';
+UPDATE search_metadata SET document = document || to_tsvector('simple', coalesce('number', ' ')) WHERE text1 LIKE '%No.%' AND type = 'profile';
+UPDATE search_metadata SET document = document || to_tsvector('simple', coalesce('no', ' ')) WHERE text1 LIKE '%Number%' AND type = 'profile';
