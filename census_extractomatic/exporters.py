@@ -1,6 +1,7 @@
 import urlparse
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from openpyxl.styles import Alignment
 
 Session = sessionmaker()
 
@@ -26,17 +27,39 @@ def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ide
     wb = openpyxl.workbook.Workbook()
     sheet_name = ', '.join(table_metadata)
     sheet = wb.active
-    sheet.title = sheet_name
+    sheet.title = sheet_name + ' Absolute'
 
-    header = ['geoid', 'name']
-    for (table_id, table) in table_metadata.iteritems():
+    sheet['A1'] = sheet_name
+
+    header = []
+    for i, (table_id, table) in enumerate(table_metadata.iteritems()):
+        # Write table titles on the first row
+        # i + 2 to account for 1-indexed and sheet name in A1
+        sheet.cell(row=1, column=i + 2).value = table['title']
+        # Column headers
         for column_id, column_info in table['columns'].iteritems():
-            column_name_utf8 = column_id.encode('utf-8')
+            column_name_utf8 = column_info['name'].encode('utf-8')
             header.append(column_name_utf8)
-            header.append(column_name_utf8 + ", Error")
+
+    sheet['A2'] = 'geoid'
+    sheet['B2'] = 'name'
+    sheet.merge_cells('A2:A3')
+    sheet.merge_cells('B2:B3')
 
     for i, h in enumerate(header):
-        sheet.cell(row=1, column=i+1).value = h
+        current_col = i * 2 + 3 # 1-based index, 'geoid' and 'name' already populate first two cols
+        current_cell = sheet.cell(row=2, column=current_col)
+        current_cell.value = h
+        current_cell.alignment = Alignment(horizontal='center')
+        sheet.merge_cells(start_row=2, start_column=current_col, end_row=2, end_column=current_col + 1)
+
+    for i in range(len(header) * 2):
+        if i % 2 != 0:
+            # 1-based index, 'geoid' and 'name' already populate first two cols
+            sheet.cell(row=3, column=i + 3).value = 'Value'
+        if i % 2 == 0:
+            # 1-based index, 'geoid' and 'name' already populate first two cols
+            sheet.cell(row=3, column=i + 3).value = 'Error'
 
     # this SQL echoed in OGR export but no geom so copying instead of factoring out
     # plus different binding when using SQLAlchemy
@@ -48,7 +71,7 @@ def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ide
         {'geoids': tuple(valid_geo_ids)}
     )
     for i, (geoid, name) in enumerate(result):
-        row_num = i + 2 # one-indexed, and there's a header
+        row_num = i + 4 # one-indexed, and there's three lines of header
         row_data = [geoid, name]
         for (table_id, table) in table_metadata.iteritems():
             table_estimates = data[geoid][table_id]['estimate']
@@ -58,6 +81,8 @@ def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ide
                 row_data.append(table_errors[column_id])
         for j, value in enumerate(row_data):
             sheet.cell(row=row_num,column=j+1).value = value
+
+    sheet_percents = wb.create_sheet(sheet_name + ' Percents')
 
     wb.save(out_filename)
 
