@@ -1,6 +1,7 @@
 import urlparse
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+import openpyxl
 from openpyxl.styles import Alignment
 
 Session = sessionmaker()
@@ -23,66 +24,82 @@ def get_sql_config(sql_url):
             db_details.path[1:])
 
 def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ident, out_filename, format):
-    import openpyxl
-    wb = openpyxl.workbook.Workbook()
-    sheet_name = ', '.join(table_metadata)
-    sheet = wb.active
-    sheet.title = sheet_name + ' Absolute'
+    def excel_helper(sheet, table_id, table, option):
+        """
+        Create excel sheet.
 
-    sheet['A1'] = sheet_name
+        :param option: 'value' or 'percent'
+        """
 
-    header = []
-    for i, (table_id, table) in enumerate(table_metadata.iteritems()):
-        # Write table titles on the first row
-        # i + 2 to account for 1-indexed and sheet name in A1
-        sheet.cell(row=1, column=i + 2).value = table['title']
+        # Write table id and title on the first row
+        sheet['A1'] = table_id
+        sheet['B1'] = table['title']
+
+        sheet['A2'] = 'geoid'
+        sheet['B2'] = 'name'
+
+        header = []
+        sheet.merge_cells('A2:A3')
+        sheet.merge_cells('B2:B3')
         # Column headers
         for column_id, column_info in table['columns'].iteritems():
             column_name_utf8 = column_info['name'].encode('utf-8')
             header.append(column_name_utf8)
+        for i, h in enumerate(header):
+            current_col = i * 2 + 3 # 1-based index, 'geoid' and 'name' already populate first two cols
+            current_cell = sheet.cell(row=2, column=current_col)
+            current_cell.value = h
+            current_cell.alignment = Alignment(horizontal='center')
+            sheet.merge_cells(start_row=2, start_column=current_col, end_row=2, end_column=current_col + 1)
 
-    sheet['A2'] = 'geoid'
-    sheet['B2'] = 'name'
-    sheet.merge_cells('A2:A3')
-    sheet.merge_cells('B2:B3')
+        for i in range(len(header) * 2):
+            if i % 2 == 0:
+                # 1-based index, 'geoid' and 'name' already populate first two cols
+                sheet.cell(row=3, column=i + 3).value = 'Value'
+            if i % 2 != 0:
+                # 1-based index, 'geoid' and 'name' already populate first two cols
+                sheet.cell(row=3, column=i + 3).value = 'Error'
 
-    for i, h in enumerate(header):
-        current_col = i * 2 + 3 # 1-based index, 'geoid' and 'name' already populate first two cols
-        current_cell = sheet.cell(row=2, column=current_col)
-        current_cell.value = h
-        current_cell.alignment = Alignment(horizontal='center')
-        sheet.merge_cells(start_row=2, start_column=current_col, end_row=2, end_column=current_col + 1)
+        # this SQL echoed in OGR export but no geom so copying instead of factoring out
+        # plus different binding when using SQLAlchemy
+        result = session(sql_url).execute(
+            """SELECT full_geoid,display_name
+                     FROM tiger2014.census_name_lookup
+                     WHERE full_geoid IN :geoids
+                     ORDER BY full_geoid""",
+            {'geoids': tuple(valid_geo_ids)}
+        )
+        for i, (geoid, name) in enumerate(result):
+            row_num = i + 4 # one-indexed, and there's three lines of header
+            row_data = [geoid, name]
+            for (table_id, table) in table_metadata.iteritems():
+                table_estimates = data[geoid][table_id]['estimate']
+                table_errors = data[geoid][table_id]['error']
+                if option == 'value':
+                    for column_id, column_info in table['columns'].iteritems():
+                        row_data.append(table_estimates[column_id])
+                        row_data.append(table_errors[column_id])
+                elif option == 'percent':
+                    base_estimate = data[geoid][table_id]['estimate'][table['denominator_column_id']]
+                    for column_id, column_info in table['columns'].iteritems():
+                        row_data.append(table_estimates[column_id] / base_estimate)
+                        row_data.append(table_errors[column_id] / base_estimate)
+            for j, value in enumerate(row_data):
+                sheet.cell(row=row_num,column=j+1).value = value
+                if option == 'percent':
+                    sheet.cell(row=row_num,column=j+1).number_format = '0.00%'
 
-    for i in range(len(header) * 2):
-        if i % 2 != 0:
-            # 1-based index, 'geoid' and 'name' already populate first two cols
-            sheet.cell(row=3, column=i + 3).value = 'Value'
-        if i % 2 == 0:
-            # 1-based index, 'geoid' and 'name' already populate first two cols
-            sheet.cell(row=3, column=i + 3).value = 'Error'
 
-    # this SQL echoed in OGR export but no geom so copying instead of factoring out
-    # plus different binding when using SQLAlchemy
-    result = session(sql_url).execute(
-        """SELECT full_geoid,display_name
-                 FROM tiger2014.census_name_lookup
-                 WHERE full_geoid IN :geoids
-                 ORDER BY full_geoid""",
-        {'geoids': tuple(valid_geo_ids)}
-    )
-    for i, (geoid, name) in enumerate(result):
-        row_num = i + 4 # one-indexed, and there's three lines of header
-        row_data = [geoid, name]
-        for (table_id, table) in table_metadata.iteritems():
-            table_estimates = data[geoid][table_id]['estimate']
-            table_errors = data[geoid][table_id]['error']
-            for column_id, column_info in table['columns'].iteritems():
-                row_data.append(table_estimates[column_id])
-                row_data.append(table_errors[column_id])
-        for j, value in enumerate(row_data):
-            sheet.cell(row=row_num,column=j+1).value = value
+    wb = openpyxl.workbook.Workbook()
 
-    sheet_percents = wb.create_sheet(sheet_name + ' Percents')
+    # For every table in table_metadata, make a two sheets (values and percentages)
+    for i, (table_id, table) in enumerate(table_metadata.iteritems()):
+        sheet = wb.active
+        sheet.title = table_id + ' Values'
+        excel_helper(sheet, table_id, table, 'value')
+
+        sheet_percents = wb.create_sheet(table_id + ' Percentages')
+        excel_helper(sheet_percents, table_id, table, 'percent')
 
     wb.save(out_filename)
 
