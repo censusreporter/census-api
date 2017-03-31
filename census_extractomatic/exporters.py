@@ -39,26 +39,35 @@ def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ide
         sheet['B2'] = 'name'
 
         header = []
-        sheet.merge_cells('A2:A3')
-        sheet.merge_cells('B2:B3')
+        max_indent = 0
         # Column headers
         for column_id, column_info in table['columns'].iteritems():
             column_name_utf8 = column_info['name'].encode('utf-8')
-            header.append(column_name_utf8)
-        for i, h in enumerate(header):
+            indent = column_info['indent']
+
+            header.append((column_name_utf8, indent))
+
+            if indent > max_indent:
+                max_indent = indent
+
+        for i, col_tuple in enumerate(header):
             current_col = i * 2 + 3 # 1-based index, 'geoid' and 'name' already populate first two cols
-            current_cell = sheet.cell(row=2, column=current_col)
-            current_cell.value = h
+            current_row = 2 + col_tuple[1]
+            current_cell = sheet.cell(row=current_row, column=current_col)
+            current_cell.value = col_tuple[0]
             current_cell.alignment = Alignment(horizontal='center')
-            sheet.merge_cells(start_row=2, start_column=current_col, end_row=2, end_column=current_col + 1)
+            sheet.merge_cells(start_row=current_row, start_column=current_col, end_row=2 + max_indent, end_column=current_col + 1)
+
+        sheet.merge_cells('A2:A' + str(2 + max_indent))
+        sheet.merge_cells('B2:B' + str(2 + max_indent))
 
         for i in range(len(header) * 2):
             if i % 2 == 0:
                 # 1-based index, 'geoid' and 'name' already populate first two cols
-                sheet.cell(row=3, column=i + 3).value = 'Value'
+                sheet.cell(row=3 + max_indent, column=i + 3).value = 'Value'
             if i % 2 != 0:
                 # 1-based index, 'geoid' and 'name' already populate first two cols
-                sheet.cell(row=3, column=i + 3).value = 'Error'
+                sheet.cell(row=3 + max_indent, column=i + 3).value = 'Error'
 
         # this SQL echoed in OGR export but no geom so copying instead of factoring out
         # plus different binding when using SQLAlchemy
@@ -70,7 +79,7 @@ def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ide
             {'geoids': tuple(valid_geo_ids)}
         )
         for i, (geoid, name) in enumerate(result):
-            row_num = i + 4 # one-indexed, and there's three lines of header
+            row_num = i + 3 + max_indent # one-indexed, and account for header
             row_data = [geoid, name]
             for (table_id, table) in table_metadata.iteritems():
                 table_estimates = data[geoid][table_id]['estimate']
