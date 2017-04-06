@@ -58,6 +58,8 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
 5. from the census-postgres-scripts dir on the EC2 instance, run:
     - ./12_download_tiger_2013.sh
     - psql -d census -U census -f 13_index_tiger_2015.sql
+6. Update the census-api api.py to add the new release to the `allowed_tiger` variable
+7. Update the static website redirection rules for S3 bucket `embed.censusreporter.com` to add a section for the new TIGER release.
 
 #### Update census-postgres
 
