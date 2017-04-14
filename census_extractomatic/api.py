@@ -994,7 +994,7 @@ def geo_profile(acs, geoid):
 
     households_distribution_dict = OrderedDict()
     households_dict['distribution'] = households_distribution_dict
-    add_metadata(households_dict['distribution'], 'b11001', 'Households', acs_name)
+    add_metadata(households_dict['distribution'], 'b11002', 'Households', acs_name)
 
     households_distribution_dict['married_couples'] = build_item('Married couples', data, item_levels,
         'b11002003 b11002001 / %')
