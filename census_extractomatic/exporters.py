@@ -52,13 +52,59 @@ def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ide
 
         # Populate first column with headers
         for i, col_tuple in enumerate(header):
-            current_row = i + 2 # 1-based index, 'geoid' and 'name' already populate first two cols
+            current_row = i + 4 # 1-based index, account for geographic headers
             current_cell = sheet.cell(row=current_row, column=1)
             current_cell.value = col_tuple[0]
             current_cell.alignment = Alignment(indent=col_tuple[1], wrap_text=True)
 
         # Resize column width
         sheet.column_dimensions['A'].width = 50
+
+        # this SQL echoed in OGR export but no geom so copying instead of factoring out
+        # plus different binding when using SQLAlchemy
+        result = session(sql_url).execute(
+            """SELECT full_geoid,display_name
+                     FROM tiger2014.census_name_lookup
+                     WHERE full_geoid IN :geoids
+                     ORDER BY full_geoid""",
+            {'geoids': tuple(valid_geo_ids)}
+        )
+
+        geo_headers = []
+        for i, (geoid, name) in enumerate(result):
+            geo_headers.append(name)
+            col_values = []
+            col_errors = []
+            for (table_id, table) in table_metadata.iteritems():
+                table_estimates = data[geoid][table_id]['estimate']
+                table_errors = data[geoid][table_id]['error']
+                if option == 'value':
+                    for column_id, column_info in table['columns'].iteritems():
+                        col_values.append(table_estimates[column_id])
+                        col_errors.append(table_errors[column_id])
+                elif option == 'percent':
+                    base_estimate = data[geoid][table_id]['estimate'][table['denominator_column_id']]
+                    for column_id, column_info in table['columns'].iteritems():
+                        col_values.append(table_estimates[column_id] / base_estimate)
+                        col_errors.append(table_errors[column_id] / base_estimate)
+            for j, value in enumerate(col_values):
+                col_num = (i + 1) * 2
+                row_num = j + 4
+                sheet.cell(row=row_num, column=col_num).value = value
+                sheet.cell(row=row_num, column=col_num + 1).value = col_errors[j]
+                if option == 'percent':
+                    sheet.cell(row=row_num, column=col_num).number_format = '0.00%'
+                    sheet.cell(row=row_num, column=col_num + 1).number_format = '0.00%'
+
+        # Write geo headers
+        for i in range(len(geo_headers)):
+            current_col = (i + 1) * 2
+            current_cell = sheet.cell(row=2, column=current_col)
+            current_cell.value = geo_headers[i]
+            current_cell.alignment = Alignment(horizontal='center')
+            sheet.merge_cells(start_row=2, end_row=2, start_column=current_col, end_column=current_col + 1)
+            sheet.cell(row=3, column=current_col).value = "Value"
+            sheet.cell(row=3, column=current_col + 1).value = "Error"
 
         # sheet['A2'] = 'geoid'
         # sheet['B2'] = 'name'
