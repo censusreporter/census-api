@@ -50,8 +50,8 @@ except Exception, e:
 
 # Allowed ACS's in "best" order (newest and smallest range preferred)
 allowed_acs = [
-    'acs2014_1yr',
-    'acs2014_5yr',
+    'acs2015_1yr',
+    'acs2015_5yr',
 ]
 # When expanding a container geoid shorthand (i.e. 140|05000US12127),
 # use this ACS. It should always be a 5yr release so as to include as
@@ -63,21 +63,20 @@ default_table_search_release = allowed_acs[1]
 
 # Allowed TIGER releases in newest order
 allowed_tiger = [
+    'tiger2015',
     'tiger2014',
-    'tiger2013',
 ]
 
 allowed_searches = [
-    'table', 
+    'table',
     'profile',
     'topic',
     'all'
 ]
 
 ACS_NAMES = {
-    'acs2014_1yr': {'name': 'ACS 2014 1-year', 'years': '2014'},
-    'acs2014_5yr': {'name': 'ACS 2014 5-year', 'years': '2010-2014'},
-    'acs2013_3yr': {'name': 'ACS 2013 3-year', 'years': '2011-2013'},
+    'acs2015_1yr': {'name': 'ACS 2015 1-year', 'years': '2015'},
+    'acs2015_5yr': {'name': 'ACS 2015 5-year', 'years': '2011-2015'},
 }
 
 PARENT_CHILD_CONTAINMENT = {
@@ -100,8 +99,10 @@ SUMLEV_NAMES = {
     "160": {"name": "place", "plural": "places", "tiger_table": "place"},
     "170": {"name": "consolidated city", "plural": "consolidated cities", "tiger_table": "concity"},
     "230": {"name": "Alaska native regional corporation", "plural": "Alaska native regional corporations", "tiger_table": "anrc"},
-    "250": {"name": "native area", "plural": "native areas", "tiger_table": "aiannh"},
+    "250": {"name": "native area", "plural": "native areas", "tiger_table": "aiannh250"},
     "251": {"name": "tribal subdivision", "plural": "tribal subdivisions", "tiger_table": "aits"},
+    "252": {"name": "native area (reservation)", "plural": "native areas (reservation)", "tiger_table": "aiannh252"},
+    "254": {"name": "native area (off-trust land)", "plural": "native areas (off-trust land)", "tiger_table": "aiannh254"},
     "256": {"name": "tribal census tract", "plural": "tribal census tracts", "tiger_table": "ttract"},
     "300": {"name": "MSA", "plural": "MSAs", "tiger_table": "metdiv"},
     "310": {"name": "CBSA", "plural": "CBSAs", "tiger_table": "cbsa"},
@@ -519,7 +520,7 @@ def compute_profile_item_levels(geoid):
 
     if sumlevel in ('140', '150', '160', '310', '330', '350', '860', '950', '960', '970'):
         result = db.session.execute(
-            """SELECT * FROM tiger2014.census_geo_containment
+            """SELECT * FROM tiger2015.census_geo_containment
                WHERE child_geoid=:geoid
                ORDER BY percent_covered ASC
             """,
@@ -586,7 +587,7 @@ def geo_profile(acs, geoid):
 
     result = db.session.execute(
         """SELECT DISTINCT full_geoid,sumlevel,display_name,simple_name,aland
-           FROM tiger2014.census_name_lookup
+           FROM tiger2015.census_name_lookup
            WHERE full_geoid IN :geoids;""",
         {'geoids': tuple(comparison_geoids)}
     )
@@ -1000,7 +1001,7 @@ def geo_profile(acs, geoid):
 
     households_distribution_dict = OrderedDict()
     households_dict['distribution'] = households_distribution_dict
-    add_metadata(households_dict['distribution'], 'b11001', 'Households', acs_name)
+    add_metadata(households_dict['distribution'], 'b11002', 'Households', acs_name)
 
     households_distribution_dict['married_couples'] = build_item('Married couples', data, item_levels,
         'b11002003 b11002001 / %')
@@ -1324,7 +1325,7 @@ def acs_geo_profile(acs, geoid):
     valid_acs, valid_geoid = find_geoid(geoid, acs)
 
     if not valid_acs:
-        abort(400, 'GeoID %s isn\'t included in the %s release.' % (geoid, get_acs_name(acs)))
+        abort(404, 'GeoID %s isn\'t included in the %s release.' % (geoid, get_acs_name(acs)))
 
     return geo_profile(valid_acs, valid_geoid)
 
@@ -1334,7 +1335,7 @@ def latest_geo_profile(geoid):
     valid_acs, valid_geoid = find_geoid(geoid)
 
     if not valid_acs:
-        abort(400, 'None of the supported ACS releases include GeoID %s.' % (geoid))
+        abort(404, 'None of the supported ACS releases include GeoID %s.' % (geoid))
 
     return geo_profile("latest", valid_geoid)
 
@@ -1388,13 +1389,13 @@ def geo_search():
 
     if with_geom:
         sql = """SELECT DISTINCT geoid,sumlevel,population,display_name,full_geoid,priority,ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geom
-            FROM tiger2014.census_name_lookup
+            FROM tiger2015.census_name_lookup
             WHERE %s
             ORDER BY priority, population DESC NULLS LAST
             LIMIT 25;""" % (where)
     else:
         sql = """SELECT DISTINCT geoid,sumlevel,population,display_name,full_geoid,priority
-            FROM tiger2014.census_name_lookup
+            FROM tiger2015.census_name_lookup
             WHERE %s
             ORDER BY priority, population DESC NULLS LAST
             LIMIT 25;""" % (where)
@@ -1417,9 +1418,9 @@ def num2deg(xtile, ytile, zoom):
 @crossdomain(origin='*')
 def geo_tiles(release, sumlevel, zoom, x, y):
     if release not in allowed_tiger:
-        abort(400, "Unknown TIGER release")
+        abort(404, "Unknown TIGER release")
     if sumlevel not in SUMLEV_NAMES:
-        abort(400, "Unknown sumlevel")
+        abort(404, "Unknown sumlevel")
     if sumlevel == '010':
         abort(400, "Don't support US tiles")
 
@@ -1463,7 +1464,7 @@ def geo_tiles(release, sumlevel, zoom, x, y):
             app.logger.warn('Skipping cache set for {} because {}'.format(cache_key, e.message))
 
     resp.headers.set('Content-Type', 'application/json')
-    resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600*4))
+    resp.headers.set('Cache-Control', 'public,max-age=86400') # 1 day
     return resp
 
 
@@ -1476,12 +1477,12 @@ def geo_tiles(release, sumlevel, zoom, x, y):
 @crossdomain(origin='*')
 def geo_lookup(release, geoid):
     if release not in allowed_tiger:
-        abort(400, "Unknown TIGER release")
+        abort(404, "Unknown TIGER release")
 
     geoid = geoid.upper() if geoid else geoid
     geoid_parts = geoid.split('US')
     if len(geoid_parts) is not 2:
-        abort(400, 'Invalid GeoID')
+        abort(404, 'Invalid GeoID')
 
     cache_key = str('1.0/geo/%s/show/%s.json?geom=%s' % (release, geoid, request.qwargs.geom))
     cached = get_from_cache(cache_key)
@@ -1509,7 +1510,7 @@ def geo_lookup(release, geoid):
         result = result.fetchone()
 
         if not result:
-            abort(400, 'Unknown GeoID')
+            abort(404, 'Unknown GeoID')
 
         result = dict(result)
         geom = result.pop('geom', None)
@@ -1533,7 +1534,7 @@ def geo_lookup(release, geoid):
 @crossdomain(origin='*')
 def geo_parent(release, geoid):
     if release not in allowed_tiger:
-        abort(400, "Unknown TIGER release")
+        abort(404, "Unknown TIGER release")
 
     geoid = geoid.upper()
 
@@ -1588,7 +1589,7 @@ def geo_parent(release, geoid):
 @crossdomain(origin='*')
 def show_specified_geo_data(release):
     if release not in allowed_tiger:
-        abort(400, "Unknown TIGER release")
+        abort(404, "Unknown TIGER release")
     geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids, release_to_expand_with)
 
     max_geoids = current_app.config.get('MAX_GEOIDS_TO_SHOW', 3000)
@@ -1625,7 +1626,7 @@ def show_specified_geo_data(release):
 
     invalid_geo_ids = set(geo_ids) - set(valid_geo_ids)
     if invalid_geo_ids:
-        abort(400, "GeoID(s) %s are not valid." % (','.join(invalid_geo_ids)))
+        abort(404, "GeoID(s) %s are not valid." % (','.join(invalid_geo_ids)))
 
     resp_data = json.dumps({
         'type': 'FeatureCollection',
@@ -1810,7 +1811,7 @@ def tabulation_details(tabulation_id):
     row = result.fetchone()
 
     if not row:
-        abort(400, "Tabulation %s not found." % tabulation_id)
+        abort(404, "Tabulation %s not found." % tabulation_id)
 
     row = dict(row)
 
@@ -1856,7 +1857,7 @@ def table_details(table_id):
         row = result.fetchone()
 
         if not row:
-            abort(400, "Table %s not found in release %s. Try specifying another release." % (table_id.upper(), release))
+            abort(404, "Table %s not found in release %s. Try specifying another release." % (table_id.upper(), release))
 
         data = OrderedDict([
             ("table_id", row['table_id']),
@@ -1904,7 +1905,7 @@ def table_details_with_release(release, table_id):
     elif release == 'latest':
         acs_to_try = list(allowed_acs)
     else:
-        abort(400, 'The %s release isn\'t supported.' % get_acs_name(release))
+        abort(404, 'The %s release isn\'t supported.' % get_acs_name(release))
 
     table_id = table_id.upper() if table_id else table_id
 
@@ -1963,7 +1964,7 @@ def table_details_with_release(release, table_id):
 
         return resp
 
-    abort(400, "Table %s not found in releases %s. Try specifying another release." % (table_id, ', '.join(acs_to_try)))
+    abort(404, "Table %s not found in releases %s. Try specifying another release." % (table_id, ', '.join(acs_to_try)))
 
 
 # Example: /1.0/table/compare/rowcounts/B01001?year=2011&sumlevel=050&within=04000US53
@@ -2173,7 +2174,7 @@ def full_text_search():
         present, so are B10001B, ... , B10001I.)
         """
 
-        tabulation_code = tables[0][1:6]
+        tabulation_code = re.match(r'^(B|C)(\d+)[A-Z]?',tables[0]).group(2)
 
         # 'C' table with no iterations, e.g., C10001
         if 'C' + tabulation_code in tables:
@@ -2349,7 +2350,7 @@ def get_child_geoids_by_coverage(release, parent_geoid, child_summary_level):
     db.session.execute("SET search_path=:acs,public;", {'acs': release})
     result = db.session.execute(
         """SELECT geoid, name
-           FROM tiger2014.census_geo_containment, geoheader
+           FROM tiger2015.census_geo_containment, geoheader
            WHERE geoheader.geoid = census_geo_containment.child_geoid
              AND census_geo_containment.parent_geoid = :parent_geoid
              AND census_geo_containment.child_geoid LIKE :child_geoids""",
@@ -2371,7 +2372,7 @@ def get_child_geoids_by_gis(release, parent_geoid, child_summary_level):
     child_geoids = []
     result = db.session.execute(
         """SELECT child.full_geoid
-           FROM tiger2014.census_name_lookup parent
+           FROM tiger2015.census_name_lookup parent
            JOIN tiger2014.census_name_lookup child ON ST_Intersects(parent.geom, child.geom) AND child.sumlevel=:child_sumlevel
            WHERE parent.full_geoid=:parent_geoid AND parent.sumlevel=:parent_sumlevel""",
         {'child_sumlevel': child_summary_level, 'parent_geoid': parent_geoid, 'parent_sumlevel': parent_sumlevel}
@@ -2471,7 +2472,7 @@ def show_specified_data(acs):
         acs_to_try = allowed_acs[:3]  # The first three releases
         expand_geoids_with = release_to_expand_with
     else:
-        abort(400, 'The %s release isn\'t supported.' % get_acs_name(acs))
+        abort(404, 'The %s release isn\'t supported.' % get_acs_name(acs))
 
     # valid_geo_ids only contains geos for which we want data
     requested_geo_ids = request.qwargs.geo_ids
@@ -2481,7 +2482,7 @@ def show_specified_data(acs):
         abort(400, e.message)
 
     if not valid_geo_ids:
-        abort(400, 'None of the geo_ids specified were valid: %s' % ', '.join(requested_geo_ids))
+        abort(404, 'None of the geo_ids specified were valid: %s' % ', '.join(requested_geo_ids))
 
     max_geoids = current_app.config.get('MAX_GEOIDS_TO_SHOW', 1000)
     if len(valid_geo_ids) > max_geoids:
@@ -2497,7 +2498,7 @@ def show_specified_data(acs):
     # Fill in the display name for the geos
     result = db.session.execute(
         """SELECT full_geoid,population,display_name
-           FROM tiger2014.census_name_lookup
+           FROM tiger2015.census_name_lookup
            WHERE full_geoid IN :geoids;""",
         {'geoids': tuple(named_geo_ids)}
     )
@@ -2633,10 +2634,10 @@ def download_specified_data(acs):
         acs_to_try = [acs]
         expand_geoids_with = acs
     elif acs == 'latest':
-        acs_to_try = list(allowed_acs)
+        acs_to_try = allowed_acs[:3]  # The first three releases
         expand_geoids_with = release_to_expand_with
     else:
-        abort(400, 'The %s release isn\'t supported.' % get_acs_name(acs))
+        abort(404, 'The %s release isn\'t supported.' % get_acs_name(acs))
 
     try:
         valid_geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids, release=expand_geoids_with)
@@ -2652,7 +2653,7 @@ def download_specified_data(acs):
         """SELECT full_geoid,
                   population,
                   display_name
-           FROM tiger2014.census_name_lookup
+           FROM tiger2015.census_name_lookup
            WHERE full_geoid IN :geo_ids;""",
         {'geo_ids': tuple(valid_geo_ids)}
     )
@@ -2724,11 +2725,6 @@ def download_specified_data(acs):
                 geoid = row.pop('geoid')
                 data_for_geoid = OrderedDict()
 
-                # If we end up at the 'most complete' release, we should include every bit of
-                # data we can instead of erroring out on the user.
-                # See https://www.pivotaltracker.com/story/show/70906084
-                this_geo_has_data = False or acs == allowed_acs[-1]
-
                 cols_iter = iter(sorted(row.items(), key=lambda tup: tup[0]))
                 for table_id, data_iter in groupby(cols_iter, lambda x: x[0][:-3].upper()):
                     table_for_geoid = OrderedDict()
@@ -2739,16 +2735,10 @@ def download_specified_data(acs):
                         col_name = col_name.upper()
                         (moe_name, moe_value) = next(cols_iter)
 
-                        if value is not None and moe_value is not None:
-                            this_geo_has_data = True
-
                         table_for_geoid['estimate'][col_name] = value
                         table_for_geoid['error'][col_name] = moe_value
 
-                    if this_geo_has_data:
-                        data_for_geoid[table_id] = table_for_geoid
-                    else:
-                        raise ShowDataException("The %s release doesn't have data for table %s, geoid %s." % (get_acs_name(acs), table_id, geoid))
+                    data_for_geoid[table_id] = table_for_geoid
 
                 data[geoid] = data_for_geoid
 
@@ -2799,7 +2789,7 @@ def download_specified_data(acs):
 def data_compare_geographies_within_parent(acs, table_id):
     # make sure we support the requested ACS release
     if acs not in allowed_acs:
-        abort(400, 'The %s release isn\'t supported.' % get_acs_name(acs))
+        abort(404, 'The %s release isn\'t supported.' % get_acs_name(acs))
     db.session.execute("SET search_path=:acs, public;", {'acs': acs})
 
     parent_geoid = request.qwargs.within
@@ -2833,7 +2823,7 @@ def data_compare_geographies_within_parent(acs, table_id):
     table_metadata = result.fetchall()
 
     if not table_metadata:
-        abort(400, 'Table %s isn\'t available in the %s release.' % (table_id.upper(), get_acs_name(acs)))
+        abort(404, 'Table %s isn\'t available in the %s release.' % (table_id.upper(), get_acs_name(acs)))
 
     validated_table_id = table_metadata[0]['table_id']
 
@@ -2879,7 +2869,7 @@ def data_compare_geographies_within_parent(acs, table_id):
         # get the parent geometry and add to API response
         result = db.session.execute(
             """SELECT ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geometry
-               FROM tiger2014.census_name_lookup
+               FROM tiger2015.census_name_lookup
                WHERE full_geoid=:geo_ids;""",
             {'geo_ids': parent_geoid}
         )
@@ -2893,7 +2883,7 @@ def data_compare_geographies_within_parent(acs, table_id):
         # get the child geometries and store for later
         result = db.session.execute(
             """SELECT geoid, ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geometry
-               FROM tiger2014.census_name_lookup
+               FROM tiger2015.census_name_lookup
                WHERE full_geoid IN :geo_ids
                ORDER BY full_geoid;""",
             {'geo_ids': tuple(child_geoid_list)}

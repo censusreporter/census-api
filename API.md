@@ -1,19 +1,16 @@
 ## Census Reporter API
 
-Think of the American Community Survey as a spreadshet with thousands of columns and hundreds of thousands of rows (geographies). At the intersection of each of these is an estimate.
+Think of the American Community Survey as a spreadsheet with thousands of columns and hundreds of thousands of rows (geographies). At the intersection of each of these is an estimate.
 
 The goal of this API is to make it easy to access any chunk of that spreadsheet with simple HTTP calls and get the result as an easy-to-parse JSON object.
 
 To continue with the spreadsheet metaphor, the endpoints for this API can be roughly broken into 3 pieces:
 
-1. information about columns
+1. information about data (columns)
 2. information about geographies (rows)
 3. data at the intersection of one or more of the above
 
-Endpoints labeled *experimental* depend on our project to implement ElasticSearch for CensusReporter data, and may change API and/or return imperfect results.
-
 ### Column, Table, and Tabulations
-
 
 #### `GET /1.0/tabulation/<tabulation_id>`
 
@@ -25,7 +22,7 @@ Returns information about the specified tabulation. A tabulation is a grouping o
 
 Examples:
 ```bash
-$ curl "http://api.censusreporter.org/1.0/tabulation/01001"
+$ curl "https://api.censusreporter.org/1.0/tabulation/01001"
 {
     "tabulation_code": "01001",
     "table_title": "Sex by Age",
@@ -73,7 +70,7 @@ Returns information about the specified table in the specified release. Informat
 
 Examples:
 ```bash
-$ curl "http://api.censusreporter.org/1.0/table/B01001A"
+$ curl "https://api.censusreporter.org/1.0/table/B01001A"
 {
     "table_id": "B01001A",
     "table_title": "Sex by Age (White Alone)",
@@ -115,7 +112,7 @@ The `acs` parameter specifies which release to use. If you aren't sure, use the 
 
 Examples:
 ```bash
-$ curl "http://api.censusreporter.org/2.0/table/latest/B01001A"
+$ curl "https://api.censusreporter.org/2.0/table/latest/B01001A"
 {
     "table_id": "B01001A",
     "table_title": "Sex by Age (White Alone)",
@@ -146,10 +143,11 @@ $ curl "http://api.censusreporter.org/2.0/table/latest/B01001A"
 
 ### Geography
 
-#### `GET /1.0/geo/tiger2013/tiles/<sumlevel>/<zoom>/<x>/<y>.geojson`
+#### `GET /1.0/geo/<release>/tiles/<sumlevel>/<zoom>/<x>/<y>.geojson`
 
  URL Argument    | Type   | Required? | Description
 :----------------|:-------|:----------|:-----------
+ `release`       | string | Yes       | The TIGER release to use in the tile.
  `sumlevel`      | string | Yes       | The summary to use in the tile.
  `zoom`          | int    | Yes       | The zoom level for the tile.
  `x`             | int    | Yes       | The x value for the tile.
@@ -157,10 +155,11 @@ $ curl "http://api.censusreporter.org/2.0/table/latest/B01001A"
 
 Returns a [GeoJSON](http://geojson.org/) representation of all geographies at summary level `sumlevel` and contained within a [map tile](http://www.maptiler.org/google-maps-coordinates-tile-bounds-projection/) specified by the `zoom`, `x`, and `y` parameters. You can use this to create a map of Census geographies on top of an existing map. The returned GeoJSON data includes attributes for the name and geoid of the geography.
 
-#### `GET /1.0/geo/tiger2013/<geoid>`
+#### `GET /1.0/geo/<release>/<geoid>`
 
  URL Argument    | Type   | Required? | Description
 :----------------|:-------|:----------|:-----------
+ `release`       | string | Yes       | The TIGER release to use retrieve data from.
  `geoid`         | string | Yes       | The geography identifier to retrieve data for.
 
  Query Argument | Type   | Required? | Description
@@ -171,7 +170,7 @@ Returns a [GeoJSON](http://geojson.org/) representation of the specified Census 
 
 Examples:
 ```bash
-$ curl "http://api.censusreporter.org/1.0/geo/tiger2013/04000US55"
+$ curl "https://api.censusreporter.org/1.0/geo/tiger2015/04000US55"
 {
     "geometry": null,
     "type": "Feature",
@@ -186,7 +185,7 @@ $ curl "http://api.censusreporter.org/1.0/geo/tiger2013/04000US55"
     }
 }
 
-$ curl "http://api.censusreporter.org/1.0/geo/tiger2013/04000US55?geom=true"
+$ curl "https://api.censusreporter.org/1.0/geo/tiger2015/04000US55?geom=true"
 {
     "geometry": {
         "type": "MultiPolygon",
@@ -215,10 +214,11 @@ $ curl "http://api.censusreporter.org/1.0/geo/tiger2013/04000US55?geom=true"
 }
 ```
 
-#### `GET /1.0/geo/tiger2013/<geoid>/parents`
+#### `GET /1.0/geo/<release>/<geoid>/parents`
 
  URL Argument    | Type   | Required? | Description
 :----------------|:-------|:----------|:-----------
+ `release`       | string | Yes       | The TIGER release to use.
  `geoid`         | string | Yes       | The geography identifier to retrieve parent geographies for.
 
 Returns a list of geographies that might be considered the parent of the specified geography. The information returned includes the name, geoid, and summary level code for each geography.
@@ -229,7 +229,7 @@ This endpoint will also return the specified geography with a `relation` of `thi
 
 Examples:
 ```bash
-$ curl "http://api.censusreporter.org/1.0/geo/tiger2013/04000US55/parents"
+$ curl "https://api.censusreporter.org/1.0/geo/tiger2015/04000US55/parents"
 {
     "parents": [
         {
@@ -249,7 +249,7 @@ $ curl "http://api.censusreporter.org/1.0/geo/tiger2013/04000US55/parents"
     ]
 }
 
-$ curl "http://api.censusreporter.org/1.0/geo/tiger2013/16000US1714000/parents"
+$ curl "http://api.censusreporter.org/1.0/geo/tiger2015/16000US1714000/parents"
 {
     "parents": [
         {
@@ -298,7 +298,11 @@ $ curl "http://api.censusreporter.org/1.0/geo/tiger2013/16000US1714000/parents"
 }
 ```
 
-#### `GET /1.0/geo/show/tiger2013`
+#### `GET /1.0/geo/show/<release>`
+
+ URL Argument    | Type   | Required? | Description
+:----------------|:-------|:----------|:-----------
+ `release`       | string | Yes       | The TIGER release to use.
 
  Query Argument | Type   | Required? | Description
 :---------------|:-------|:----------|:-----------
@@ -329,7 +333,7 @@ The `acs` parameter specifies which release to use. If you aren't sure, use the 
 
 Examples:
 ```bash
-$ curl "http://api.censusreporter.org/1.0/data/show/latest?table_ids=B13016&geo_ids=04000US55"
+$ curl "https://api.censusreporter.org/1.0/data/show/latest?table_ids=B13016&geo_ids=04000US55"
 {
     "release": {
         "id": "acs2013_1yr",
