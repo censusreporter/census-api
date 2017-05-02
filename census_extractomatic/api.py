@@ -549,6 +549,13 @@ def compute_profile_item_levels(geoid):
             'coverage': 100.0,
         })
 
+    if sumlevel in ('314'):
+        levels.append({
+            'relation': 'CBSA',
+            'geoid': '31000US' + id_part[:5],
+            'coverage': 100.0,
+            })
+
     if sumlevel != '010':
         levels.append({
             'relation': 'nation',
@@ -1533,6 +1540,7 @@ def geo_parent(release, geoid):
 
     cache_key = str('%s/show/%s.parents.json' % (release, geoid))
     cached = get_from_cache(cache_key)
+
     if cached:
         resp = make_response(cached)
     else:
