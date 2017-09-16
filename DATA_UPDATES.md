@@ -28,7 +28,7 @@ Adding new data release
 7. Update the `unified_metadata.csv`:
     - Update the `releases_to_analyze` variable in `analyze_metadata.py` to include the new release
     - python analyze_metadata.py
-    - git add
+    - git add precomputed/unified_metadata.csv
     - git commit
     - git push
 
@@ -127,7 +127,7 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
         - git pull
     - Open a psql terminal: `psql -U census census` (it should connect using the `PGHOST` envvar from above)
         - Copy and execute in the psql terminal the CREATE TABLE and CREATE INDEX's for the new release from `census_metadata.sql`
-        - Run the following in the psql terminal:
+        - Run the following in the psql terminal (adapted for your release):
             - \copy acs2014_1yr.census_table_metadata  FROM '/home/ubuntu/census-table-metadata/precomputed/acs2014_1yr/census_table_metadata.csv' WITH csv ENCODING 'utf8' HEADER
             - \copy acs2014_1yr.census_column_metadata FROM '/home/ubuntu/census-table-metadata/precomputed/acs2014_1yr/census_column_metadata.csv' WITH csv ENCODING 'utf8' HEADER
 
