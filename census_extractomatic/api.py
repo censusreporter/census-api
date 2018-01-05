@@ -683,15 +683,22 @@ def geo_tiles(release, sumlevel, zoom, x, y):
         (miny, minx) = num2deg(x, y, zoom)
         (maxy, maxx) = num2deg(x + 1, y + 1, zoom)
 
+        tiles_across = 2**zoom
+        deg_per_tile = 360.0 / tiles_across
+        deg_per_pixel = deg_per_tile / 256
+        tile_buffer = 10 * deg_per_pixel # ~ 10 pixel buffer
+        simplify_threshold = deg_per_pixel / 5
+
         result = db.session.execute(
             """SELECT
                 ST_AsGeoJSON(ST_SimplifyPreserveTopology(
-                    ST_Intersection(ST_Buffer(ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 4326), 0.09, 'endcap=square'), geom),
-                    ST_Perimeter(geom) / 2500), 6) as geom,
+                    ST_Intersection(ST_Buffer(ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 4326), %f, 'join=mitre'), geom),
+                    %f), 5) as geom,
                 full_geoid,
                 display_name
                FROM %s.census_name_lookup
-               WHERE sumlevel=:sumlev AND ST_Intersects(ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 4326), geom)""" % (release,),
+               WHERE sumlevel=:sumlev AND ST_Intersects(ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 4326), geom)""" % (
+                tile_buffer, simplify_threshold, release,),
             {'minx': minx, 'miny': miny, 'maxx': maxx, 'maxy': maxy, 'sumlev': sumlevel}
         )
 
@@ -703,10 +710,10 @@ def geo_tiles(release, sumlevel, zoom, x, y):
                     "geoid": row['full_geoid'],
                     "name": row['display_name']
                 },
-                "geometry": json.loads(row['geom'])
+                "geometry": json.loads(row['geom']) if row['geom'] else None
             })
 
-        result = json.dumps(dict(type="FeatureCollection", features=results))
+        result = json.dumps(dict(type="FeatureCollection", features=results), separators=(',', ':'))
 
         resp = make_response(result)
         try:
