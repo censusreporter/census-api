@@ -208,7 +208,7 @@ def put_in_cache(cache_key, value, memcache=True, try_s3=True, content_type='app
         b = current_app.s3.get_bucket('embed.censusreporter.org', validate=False)
         k = Key(b, cache_key)
         k.metadata['Content-Type'] = content_type
-        k.set_contents_from_string(value, reduced_redundancy=True, policy='public-read')
+        k.set_contents_from_string(value, policy='public-read')
 
 
 def crossdomain(origin=None, methods=None, headers=None,
