@@ -750,7 +750,7 @@ def geo_lookup(release, geoid):
         if request.qwargs.geom:
             result = db.session.execute(
                 """SELECT display_name,simple_name,sumlevel,full_geoid,population,aland,awater,
-                   ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,ST_Perimeter(geom) / 1700)) as geom
+                   ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom, 0.0005)) as geom
                    FROM %s.census_name_lookup
                    WHERE full_geoid=:geoid
                    LIMIT 1""" % (release,),
@@ -775,7 +775,7 @@ def geo_lookup(release, geoid):
         if geom:
             geom = json.loads(geom)
 
-        result = json.dumps(dict(type="Feature", properties=result, geometry=geom))
+        result = json.dumps(dict(type="Feature", properties=result, geometry=geom), separators=(',', ':'))
 
         resp = make_response(result)
         put_in_cache(cache_key, result)
