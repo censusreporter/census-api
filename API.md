@@ -170,7 +170,7 @@ Returns a [GeoJSON](http://geojson.org/) representation of the specified Census 
 
 Examples:
 ```bash
-$ curl "https://api.censusreporter.org/1.0/geo/tiger2015/04000US55"
+$ curl "https://api.censusreporter.org/1.0/geo/tiger2016/04000US55"
 {
     "geometry": null,
     "type": "Feature",
@@ -185,7 +185,7 @@ $ curl "https://api.censusreporter.org/1.0/geo/tiger2015/04000US55"
     }
 }
 
-$ curl "https://api.censusreporter.org/1.0/geo/tiger2015/04000US55?geom=true"
+$ curl "https://api.censusreporter.org/1.0/geo/tiger2016/04000US55?geom=true"
 {
     "geometry": {
         "type": "MultiPolygon",
@@ -229,7 +229,7 @@ This endpoint will also return the specified geography with a `relation` of `thi
 
 Examples:
 ```bash
-$ curl "https://api.censusreporter.org/1.0/geo/tiger2015/04000US55/parents"
+$ curl "https://api.censusreporter.org/1.0/geo/tiger2016/04000US55/parents"
 {
     "parents": [
         {
@@ -249,7 +249,7 @@ $ curl "https://api.censusreporter.org/1.0/geo/tiger2015/04000US55/parents"
     ]
 }
 
-$ curl "http://api.censusreporter.org/1.0/geo/tiger2015/16000US1714000/parents"
+$ curl "http://api.censusreporter.org/1.0/geo/tiger2016/16000US1714000/parents"
 {
     "parents": [
         {
