@@ -30,7 +30,7 @@ CREATE TABLE search_metadata AS (
         FROM (
             SELECT DISTINCT display_name, sumlevel, full_geoid,
                             population, priority
-            FROM tiger2014.census_name_lookup
+            FROM tiger2016.census_name_lookup
             WHERE sumlevel NOT IN ('067', '258', '355')
             ) profile_search
         ) profile_documents
@@ -69,7 +69,7 @@ CREATE TABLE search_metadata AS (
     -- column names. For full detail, refer to the psql docs.
     --
     -- This creates a table with one row for every table in the
-    -- acs2014_1yr schema, with columns table_id, table_title, etc.,
+    -- acs2016_1yr schema, with columns table_id, table_title, etc.,
     -- and document (the tsvector, the most important for search).
     --
     -- From this, we take the columns directly used in search results
@@ -102,7 +102,7 @@ CREATE TABLE search_metadata AS (
                             t.universe,
                             c.column_title
             FROM census_tabulation_metadata t
-            JOIN acs2014_1yr.census_column_metadata c
+            JOIN acs2016_1yr.census_column_metadata c
             ON t.tables_in_one_yr[1] = c.table_id
             ) table_search
         WHERE tabulation_code = table_search.tabulation_code
