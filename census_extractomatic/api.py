@@ -50,8 +50,9 @@ except Exception, e:
 
 # Allowed ACS's in "best" order (newest and smallest range preferred)
 allowed_acs = [
-    'acs2016_1yr',
+    'acs2017_1yr',
     'acs2016_5yr',
+    'acs2016_1yr',
 ]
 # When expanding a container geoid shorthand (i.e. 140|05000US12127),
 # use this ACS. It should always be a 5yr release so as to include as
@@ -63,6 +64,7 @@ default_table_search_release = allowed_acs[1]
 
 # Allowed TIGER releases in newest order
 allowed_tiger = [
+    'tiger2017',
     'tiger2016',
 ]
 
@@ -74,6 +76,7 @@ allowed_searches = [
 ]
 
 ACS_NAMES = {
+    'acs2017_1yr': {'name': 'ACS 2017 1-year', 'years': '2017'},
     'acs2016_1yr': {'name': 'ACS 2016 1-year', 'years': '2016'},
     'acs2016_5yr': {'name': 'ACS 2016 5-year', 'years': '2012-2016'},
 }
