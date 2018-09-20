@@ -758,7 +758,7 @@ def geo_lookup(release, geoid):
         if request.qwargs.geom:
             result = db.session.execute(
                 """SELECT display_name,simple_name,sumlevel,full_geoid,population,aland,awater,
-                   ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom, 0.0005)) as geom
+                   ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom, 0.00005)) as geom
                    FROM %s.census_name_lookup
                    WHERE full_geoid=:geoid
                    LIMIT 1""" % (release,),
