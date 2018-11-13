@@ -1208,7 +1208,8 @@ def table_details_with_release(release, table_id):
             result = db.session.execute(
                 """SELECT *
                    FROM census_column_metadata
-                   WHERE table_id=:table_id""",
+                   WHERE table_id=:table_id
+                   ORDER By line_number""",
                 {'table_id': row['table_id']}
             )
 
