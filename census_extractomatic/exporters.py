@@ -85,8 +85,13 @@ def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ide
                 elif option == 'percent':
                     base_estimate = data[geoid][table_id]['estimate'][table['denominator_column_id']]
                     for column_id, column_info in table['columns'].iteritems():
-                        col_values.append(table_estimates[column_id] / base_estimate)
-                        col_errors.append(table_errors[column_id] / base_estimate)
+                        if base_estimate != 0:
+                            col_values.append(table_estimates[column_id] / base_estimate)
+                            col_errors.append(table_errors[column_id] / base_estimate)
+                        else:
+                            col_values.append('-')
+                            col_errors.append('-')
+
             for j, value in enumerate(col_values):
                 col_num = (i + 1) * 2
                 row_num = j + 4
