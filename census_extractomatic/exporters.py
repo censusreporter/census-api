@@ -71,6 +71,7 @@ def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ide
         )
 
         geo_headers = []
+        any_zero_denominators = False
         for i, (geoid, name) in enumerate(result):
             geo_headers.append(name)
             col_values = []
@@ -89,8 +90,9 @@ def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ide
                             col_values.append(table_estimates[column_id] / base_estimate)
                             col_errors.append(table_errors[column_id] / base_estimate)
                         else:
-                            col_values.append('-')
-                            col_errors.append('-')
+                            any_zero_denominators = True
+                            col_values.append('*')
+                            col_errors.append('')
 
             for j, value in enumerate(col_values):
                 col_num = (i + 1) * 2
@@ -100,6 +102,11 @@ def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ide
                 if option == 'percent':
                     sheet.cell(row=row_num, column=col_num).number_format = '0.00%'
                     sheet.cell(row=row_num, column=col_num + 1).number_format = '0.00%'
+            
+            if any_zero_denominators:
+                annotation_cell = sheet.cell(row=(row_num + 1), column=1)
+                annotation_cell.value = "* Base value of zero; no percentage available"
+                annotation_cell.font = Font(italic=True)
 
         # Write geo headers
         for i in range(len(geo_headers)):
