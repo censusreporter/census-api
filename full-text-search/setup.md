@@ -8,7 +8,7 @@ Refer to the instructions in [abbreviations.md](abbreviations.md) to configure t
 	psql census < metadata_script.sql
 Note that this may take a while, because it indexes all of the place names.
 
-**Notes**: This script requires the presence of `tiger2014.census_name_lookup`, `acs2014_1yr.census_column_metadata`, and `census_tabulation_metadata`. It does not access any other tables. It will likely need to be modified if these tables are not present or to index tigeer data from other years, 3 year data, etc.
+**Notes**: This script requires the presence of `tiger2017.census_name_lookup`, `acs2017_1yr.census_column_metadata`, and `census_tabulation_metadata`. It does not access any other tables. It will likely need to be modified if these tables are not present or to index tigeer data from other years, 3 year data, etc.
 
 Finally, we want to add topic pages to the `search_metadata` table. This is done via a Python script that scrapes the live topic pages off Census Reporter, `topic_scraper.py`. Run `python topic_scraper.py` to scrape and add the topic pages to `search_metadata`.
 
