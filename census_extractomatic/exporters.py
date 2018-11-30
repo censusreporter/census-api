@@ -52,10 +52,15 @@ def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ide
 
         # Populate first column with headers
         for i, col_tuple in enumerate(header):
+            header = col_tuple[0]
             current_row = i + 4 # 1-based index, account for geographic headers
             current_cell = sheet.cell(row=current_row, column=1)
-            current_cell.value = col_tuple[0]
-            current_cell.alignment = Alignment(indent=col_tuple[1], wrap_text=True)
+            current_cell.value = header
+            indent = col_tuple[1]
+            if indent is None:
+                log.warn("Null indent for {} {}".format(table_id, header))
+                indent = 0
+            current_cell.alignment = Alignment(indent=indent, wrap_text=True)
 
         # Resize column width
         sheet.column_dimensions['A'].width = 50
@@ -72,6 +77,7 @@ def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ide
 
         geo_headers = []
         any_zero_denominators = False
+        has_denominator_column = False
         for i, (geoid, name) in enumerate(result):
             geo_headers.append(name)
             col_values = []
@@ -84,15 +90,21 @@ def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ide
                         col_values.append(table_estimates[column_id])
                         col_errors.append(table_errors[column_id])
                 elif option == 'percent':
-                    base_estimate = data[geoid][table_id]['estimate'][table['denominator_column_id']]
-                    for column_id, column_info in table['columns'].iteritems():
-                        if base_estimate != 0:
-                            col_values.append(table_estimates[column_id] / base_estimate)
-                            col_errors.append(table_errors[column_id] / base_estimate)
-                        else:
-                            any_zero_denominators = True
-                            col_values.append('*')
-                            col_errors.append('')
+                    if table['denominator_column_id'] is not None:
+                        has_denominator_column = True
+                        base_estimate = data[geoid][table_id]['estimate'][table['denominator_column_id']]
+                        for column_id, column_info in table['columns'].iteritems():
+                            if base_estimate != 0:
+                                col_values.append(table_estimates[column_id] / base_estimate)
+                                col_errors.append(table_errors[column_id] / base_estimate)
+                            else:
+                                any_zero_denominators = True
+                                col_values.append('*')
+                                col_errors.append('')
+                    else:
+                        col_values.append('*')
+                        col_errors.append('')
+
 
             for j, value in enumerate(col_values):
                 col_num = (i + 1) * 2
@@ -103,10 +115,15 @@ def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ide
                     sheet.cell(row=row_num, column=col_num).number_format = '0.00%'
                     sheet.cell(row=row_num, column=col_num + 1).number_format = '0.00%'
             
+        if option == 'percent' and (any_zero_denominators or not has_denominator_column):
+            annotation_cell = sheet.cell(row=(row_num + 1), column=1)
+            annotation_cell.font = Font(italic=True)
             if any_zero_denominators:
-                annotation_cell = sheet.cell(row=(row_num + 1), column=1)
                 annotation_cell.value = "* Base value of zero; no percentage available"
-                annotation_cell.font = Font(italic=True)
+            elif not has_denominator_column:
+                annotation_cell.value = "* Percentage values not appropriate for this table"
+            else:
+                annotation_cell.value = "* Unexpected error. Please contact Census Reporter at https://censusreporter.uservoice.com/ and let us know the page from where you downloaded this data."
 
         # Write geo headers
         for i in range(len(geo_headers)):
