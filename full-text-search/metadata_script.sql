@@ -164,7 +164,6 @@ UPDATE search_metadata SET document = document || to_tsvector('simple', coalesce
 UPDATE search_metadata SET document = document || to_tsvector('simple', coalesce('number', ' ')) WHERE text1 LIKE '%No.%' AND type = 'profile';
 UPDATE search_metadata SET document = document || to_tsvector('simple', coalesce('no', ' ')) WHERE text1 LIKE '%Number%' AND type = 'profile';
 UPDATE search_metadata SET document = document || to_tsvector('simple', coalesce('isd', ' ')) WHERE lower(text1) LIKE '%independent school district%' AND type = 'profile';
-UPDATE search_metadata SET document = document || to_tsvector('simple', coalesce(sub.code, ' ')) WHERE text4 = sub.geoidlower(text2) = '500' AND type = 'profile';
 
 -- Support conventional short syntax for congressional districts
 UPDATE search_metadata 
