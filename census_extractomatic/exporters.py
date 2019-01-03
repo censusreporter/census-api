@@ -3,6 +3,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import openpyxl
 from openpyxl.styles import Alignment, Font
+import logging
+
+logger = logging.getLogger('exporters')
 
 Session = sessionmaker()
 
@@ -58,7 +61,7 @@ def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ide
             current_cell.value = header
             indent = col_tuple[1]
             if indent is None:
-                log.warn("Null indent for {} {}".format(table_id, header))
+                logger.warn("Null indent for {} {}".format(table_id, header))
                 indent = 0
             current_cell.alignment = Alignment(indent=indent, wrap_text=True)
 
