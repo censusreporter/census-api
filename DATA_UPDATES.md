@@ -166,6 +166,13 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
         - `pip install htmlparser psycopg2`
         - `python /home/ubuntu/census-api/full-text-search/topic_scraper.py`
 
+- Regenerate the sitemap files
+    - From a system which has the `census-api` and `censusreporter` repositories both checked out in the same parent directory, open an SSH tunnel to the database server tunneling on port `5433`
+    - change to the `census-api/sitemap` directory
+    - execute `python build_all.py`
+    - cd ../../censusreporter
+    - commit the new/updated Sitemap files to Git and deploy them as part of the `censusreporter` app
+
 - Update the `censusreporter` Django app to use a new set of keys for profile pages
     - If this is a 1yr release (meaning we now have a previous year's 5yr release and a current year's 1yr release) then we'll only change the S3 key around [this line of code](https://github.com/censusreporter/censusreporter/blob/6ac6de2/censusreporter/apps/census/views.py#L411-L412) to read the current year's ACS release instead of the previous year's.
     - If this is a 5yr release (meaning we now have a 1yr *and* a 5yr release for the current year in the database) then we shouldn't need to make any changes to the S3 key, but we do need to clear out the S3 keys for the current year. This will force us to re-create existing datasets with the possibly-newer data that was just added.
