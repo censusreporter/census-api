@@ -1,7 +1,6 @@
-Adding new data release
-=======================
+# Adding new data release
 
-#### Update census-table-metadata
+## Update census-table-metadata
 
 1. Makefile
     - add new line in `all` section
@@ -57,6 +56,7 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
 4. Update the repository on the EC2 instance to bring in the new scripts
 5. from the census-postgres-scripts dir on the EC2 instance, run:
     - ./12_download_tiger_2013.sh
+    - ./13_import_tiger_2013.sh
     - psql -d census -U census -f 13_index_tiger_2015.sql
 6. Update the census-api api.py to add the new release to the `allowed_tiger` variable
 7. Update the static website redirection rules for S3 bucket `embed.censusreporter.com` to add a section for the new TIGER release.
@@ -87,11 +87,11 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
 
 - copy non-changing sql files from previous release to this one:
     - cd acs2013_1yr
-    - cp ../acs2013_5yr/create_geoheader.sql \
-         ../acs2013_5yr/create_tmp_geoheader.sql \
-         ../acs2013_5yr/geoheader_comments.sql \
-         ../acs2013_5yr/parse_tmp_geoheader.sql \
-         ../acs2013_5yr/README.md \
+    - cp ../acs2017_5yr/create_geoheader.sql \
+         ../acs2017_5yr/create_tmp_geoheader.sql \
+         ../acs2017_5yr/geoheader_comments.sql \
+         ../acs2017_5yr/parse_tmp_geoheader.sql \
+         ../acs2017_5yr/README.md \
          .
 
 - update copied sql files to point to new release's schema
@@ -102,12 +102,16 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
     - vi README.md
 
 - Since you probably checked out the census-postgres repo with https, you can't commit from the EC2 instance, so copy this data you just created back to your laptop:
-    - scp -i ~/.ssh/censusreporter.ec2_key.pem -r \
+    -
+       ```
+       scp -i ~/.ssh/censusreporter.ec2_key.pem -r \
         ubuntu@ec2-23-20-252-114.compute-1.amazonaws.com:/home/ubuntu/census-postgres/acs2013_3yr .
+       ```
     - git add acs2013_3yr
     - git commit
     - git push
-    - (Once you do this, go back to the EC2 instance and rm the directory you made inside of census-postgres and pull it back down from git so you have a clean repo)
+    - Once you do this, go back to the EC2 instance and rm the directory you made inside of census-postgres and pull it back down from git so you have a clean repo
+
 
 #### Import data to database
 
@@ -116,7 +120,6 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
     - Set the PGHOST environment variable: `export PGHOST=censusreporter.redacted.us-east-1.rds.amazonaws.com`
     - Run `./03_import_acs_2013_1yr.sh`
     - You'll see a lot of NOTICEs flow by, but it's only important if it's an ERROR
-
 
 
 #### Update census-table-metadata
