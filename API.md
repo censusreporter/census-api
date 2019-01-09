@@ -166,7 +166,7 @@ Returns a [GeoJSON](http://geojson.org/) representation of all geographies at su
 :---------------|:-------|:----------|:-----------
  `geom`         | bool   | No        | Whether or not to include the geography portion of the GeoJSON.
 
-Returns a [GeoJSON](http://geojson.org/) representation of the specified Census geography specified by the `geoid` parameter. By default, the returned GeoJSON only contains the attributes for the geography (including the land and water area, name, and geography ID). You can include the geography by setting the `geom` query argument to `true`. Note that this will usually make the response significantly larger, but will allow you to draw it on a map.
+Returns a [GeoJSON](http://geojson.org/) representation of the Census geography specified by the `geoid` parameter. By default, the returned GeoJSON only contains the attributes for the geography (including the land and water area, name, and geography ID). You can include the geography by setting the `geom` query argument to `true`. Note that this will usually make the response significantly larger, but will allow you to draw it on a map.
 
 Examples:
 ```bash
@@ -188,16 +188,14 @@ $ curl "https://api.censusreporter.org/1.0/geo/tiger2016/04000US55"
 $ curl "https://api.censusreporter.org/1.0/geo/tiger2016/04000US55?geom=true"
 {
     "geometry": {
-        "type": "MultiPolygon",
+        "type": "Polygon",
         "coordinates": [
             [
                 [
-                    [
-                        -92.674543,
-                        45.382868
-                    ],
-                    ...
-                ]
+                    -92.887067,
+                    45.644148
+                ],
+                ...
             ]
         ]
     },
@@ -329,7 +327,7 @@ The attributes in the response will only include the geography name and the geoi
 
 Returns the data for the given comma-separated list of table IDs in the given geo IDs. The data includes basic information about the specified tables and geographies along with the estimate and error data.
 
-The `acs` parameter specifies which release to use. If you aren't sure, use the word `latest` and we will pick the most recent release that contains data for all the tables across lal the geographies you asked for.
+The `acs` parameter specifies which release to use. If you aren't sure, use the word `latest` and we will pick the most recent release that contains data for all the tables across all the geographies you asked for.
 
 Examples:
 ```bash
