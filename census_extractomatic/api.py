@@ -1517,8 +1517,8 @@ def full_text_search():
         "https://censusreporter.org/profiles/31000US18020/"
 
         '''
-
-        return "https://censusreporter.org/profiles/" + full_geoid + "/"
+        URL_ROOT = app.config.get('CENSUS_REPORTER_URL_ROOT', 'https://censusreporter.org')
+        return "{}/profiles/{}/".format(URL_ROOT,full_geoid)
 
     def build_table_url(table_id):
         ''' Builds the CensusReporter URL out of table_id.
@@ -1529,7 +1529,8 @@ def full_text_search():
         "http://censusreporter.org/tables/B06009/"
         '''
 
-        return "https://censusreporter.org/tables/" + table_id + "/"
+        URL_ROOT = app.config.get('CENSUS_REPORTER_URL_ROOT', 'https://censusreporter.org')
+        return "{}/tables/{}/".format(URL_ROOT,table_id)
 
 
     # Build query by replacing apostrophes with spaces, separating words
