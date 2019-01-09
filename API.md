@@ -166,7 +166,7 @@ Returns a [GeoJSON](http://geojson.org/) representation of all geographies at su
 :---------------|:-------|:----------|:-----------
  `geom`         | bool   | No        | Whether or not to include the geography portion of the GeoJSON.
 
-Returns a [GeoJSON](http://geojson.org/) representation of the specified Census geography specified by the `geoid` parameter. By default, the returned GeoJSON only contains the attributes for the geography (including the land and water area, name, and geography ID). You can include the geography by setting the `geom` query argument to `true`. Note that this will usually make the response significantly larger, but will allow you to draw it on a map.
+Returns a [GeoJSON](http://geojson.org/) representation of the Census geography specified by the `geoid` parameter. By default, the returned GeoJSON only contains the attributes for the geography (including the land and water area, name, and geography ID). You can include the geography by setting the `geom` query argument to `true`. Note that this will usually make the response significantly larger, but will allow you to draw it on a map.
 
 Examples:
 ```bash
