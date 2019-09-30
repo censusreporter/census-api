@@ -19,9 +19,11 @@
     - Discover that Census added a worksheet to the shells .xls file that is formatted completely differently
         - Use Excel to move Sheet2 before Sheet1
     - The `ACS_1yr_Seq_Table_Number_Lookup.xls` for 2014 does not reflect the changes in [the new survey](https://www.census.gov/programs-surveys/acs/technical-documentation/table-and-geography-changes/2014/1-year.html), but the [text/CSV version](http://www2.census.gov/programs-surveys/acs/summary_file/2014/documentation/user_tools/ACS_1yr_Seq_Table_Number_Lookup.txt) does so I converted it to an XLS with Excel so that the rest of my existing process would work
+    - The 2018 1-yr release included a `ACS_1yr_Seq_Table_Number_Lookup.csv` and no `.xls` version. I converted it to an XLS with Excel so that the rest of my existing process would work
 6. Generate the 'precomputed' metadata stuff. From census-table-metadata:
+    - pipenv install && pipenv shell
     - make
-    - git add precomputed/acs2013_1yr
+    - git add precomputed/acs2018_1yr
     - git commit
     - git push
 7. Update the `unified_metadata.csv`:
@@ -58,6 +60,7 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
     - ./12_download_tiger_2013.sh
     - ./13_import_tiger_2013.sh
     - psql -d census -U census -f 13_index_tiger_2015.sql
+    - psql -d census -U census -c "drop schema tiger2014 cascade" (delete the old tiger data if the live API isn't using it)
 6. Update the census-api api.py to add the new release to the `allowed_tiger` variable
 7. Update the static website redirection rules for S3 bucket `embed.censusreporter.com` to add a section for the new TIGER release.
 
