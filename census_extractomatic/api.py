@@ -50,7 +50,7 @@ except Exception, e:
 
 # Allowed ACS's in "best" order (newest and smallest range preferred)
 allowed_acs = [
-    'acs2017_1yr',
+    'acs2018_1yr',
     'acs2017_5yr',
 ]
 # When expanding a container geoid shorthand (i.e. 140|05000US12127),
@@ -63,7 +63,7 @@ default_table_search_release = allowed_acs[1]
 
 # Allowed TIGER releases in newest order
 allowed_tiger = [
-    'tiger2017',
+    'tiger2018',
 ]
 
 allowed_searches = [
