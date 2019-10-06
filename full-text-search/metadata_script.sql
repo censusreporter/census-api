@@ -11,6 +11,8 @@
 -- and about tables (subquery after the UNION). This creates just one metadata
 -- table with all of the information we (currently) need for search.
 
+BEGIN;
+
 DROP TABLE IF EXISTS search_metadata;
 
 CREATE TABLE search_metadata AS (
@@ -175,3 +177,4 @@ UPDATE search_metadata
     ) subquery
     WHERE search_metadata.text4 = subquery.geoid;
 
+COMMIT;
