@@ -86,7 +86,7 @@ def query_all_levels(db_connect_string):
     conn = psycopg2.connect(db_connect_string)
     cur = conn.cursor()
 
-    q = "SELECT DISTINCT sumlevel FROM tiger2017.census_name_lookup order by sumlevel;"
+    q = "SELECT DISTINCT sumlevel FROM tiger2018.census_name_lookup order by sumlevel;"
     cur.execute(q)
     results = cur.fetchall()
     # Format of results is [('000',), ('001',), ...]
@@ -109,7 +109,7 @@ def query_one_level(level,db_connect_string):
     conn = psycopg2.connect(db_connect_string)
     cur = conn.cursor()
 
-    q = "SELECT display_name, full_geoid from tiger2017.census_name_lookup where sumlevel = '%s'" % (level)
+    q = "SELECT display_name, full_geoid from tiger2018.census_name_lookup where sumlevel = '%s'" % (level)
     cur.execute(q)
     results = cur.fetchall()
 

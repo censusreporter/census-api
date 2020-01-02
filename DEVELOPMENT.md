@@ -17,11 +17,8 @@ The easiest way to get a PostgreSQL database like ours up and running is to set 
 
 Access to your local database is configured in [`census_extractomatic/config.py`](https://github.com/censusreporter/census-api/blob/master/census_extractomatic/config.py#L16) If you change this, please be careful not to include those changes in any pull requests.
 
-### ElasticSearch
 
-Instructions TK. ElasticSearch is provision
-
-Python
+Python1
 ------
 Here's what you need to know to get a local version of the Census Reporter API up and running. These instructions assume you're using <a href="http://virtualenv.readthedocs.org/en/latest/">virtualenv</a> and <a href="http://virtualenvwrapper.readthedocs.org/en/latest/">virtualenvwrapper</a> to manage your development environments.
 

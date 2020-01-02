@@ -72,7 +72,7 @@ def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ide
         # plus different binding when using SQLAlchemy
         result = session(sql_url).execute(
             """SELECT full_geoid,display_name
-                     FROM tiger2017.census_name_lookup
+                     FROM tiger2018.census_name_lookup
                      WHERE full_geoid IN :geoids
                      ORDER BY full_geoid""",
             {'geoids': tuple(valid_geo_ids)}
@@ -186,7 +186,7 @@ def create_ogr_download(sql_url, data, table_metadata, valid_geo_ids, file_ident
 
     # this SQL echoed in Excel export but no geom so copying instead of factoring out
     sql = """SELECT geom,full_geoid,display_name
-             FROM tiger2017.census_name_lookup
+             FROM tiger2018.census_name_lookup
              WHERE full_geoid IN (%s)
              ORDER BY full_geoid""" % ', '.join("'%s'" % g.encode('utf-8') for g in valid_geo_ids)
     in_layer = conn.ExecuteSQL(sql)

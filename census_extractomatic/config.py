@@ -22,7 +22,7 @@ class Development(Config):
     # SQLALCHEMY_DATABASE_URI = 'postgresql://census:censuspassword@localhost/census'
 
     # Maybe change for local dev:
-    # CENSUS_REPORTER_URL_ROOT = 'http://localhost:8000'
+    CENSUS_REPORTER_URL_ROOT = 'http://localhost:8000'
 
     MEMCACHE_ADDR = ['127.0.0.1']
     JSONIFY_PRETTYPRINT_REGULAR = False
