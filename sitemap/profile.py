@@ -14,40 +14,42 @@ def write_profile_sitemaps(output_dir,db_connect_string='postgresql://census:cen
 
     '''
     sitemaps_created = []
-    for summary_level in query_all_levels(db_connect_string):
-        if summary_level not in EXCLUDED_SUMMARY_LEVELS:
-            print "querying level {}".format(summary_level)
-            results = query_one_level(summary_level, db_connect_string)
-            urls = []
 
-            for result in results:
-                (display_name, full_geoid) = result
-                urls.append(build_url(display_name, full_geoid))
+    with psycopg2.connect(db_connect_string) as conn:
+        for summary_level in query_all_levels(conn):
+            if summary_level not in EXCLUDED_SUMMARY_LEVELS:
+                print "querying level {}".format(summary_level)
+                results = query_one_level(summary_level, conn)
+                urls = []
 
-            num_urls = len(urls)
+                for result in results:
+                    (display_name, full_geoid) = result
+                    urls.append(build_url(display_name, full_geoid))
 
-            # If there are <= 50k URLs, write them immediately
-            if num_urls <= 50000:
-                filename = 'sitemap_' + summary_level + '.xml'
-                f = open(os.path.join(output_dir,filename), 'w')
+                num_urls = len(urls)
 
-                f.write(build_sitemap(urls))
-
-                print 'Wrote sitemap to file %s' % (filename)
-                sitemaps_created.append(filename)
-                f.close()
-
-            # Otherwise, split up the URLs into groups of 50,000
-            else:
-                num_files = num_urls / 50000 + 1
-
-                for i in range(num_files):
-                    filename = 'sitemap_' + summary_level + '_' + str(i + 1) + '.xml'
+                # If there are <= 50k URLs, write them immediately
+                if num_urls <= 50000:
+                    filename = 'sitemap_' + summary_level + '.xml'
                     f = open(os.path.join(output_dir,filename), 'w')
-                    f.write(build_sitemap(urls[i * 50000 : (i + 1) * 50000]))
+
+                    f.write(build_sitemap(urls))
+
                     print 'Wrote sitemap to file %s' % (filename)
                     sitemaps_created.append(filename)
                     f.close()
+
+                # Otherwise, split up the URLs into groups of 50,000
+                else:
+                    num_files = num_urls / 50000 + 1
+
+                    for i in range(num_files):
+                        filename = 'sitemap_' + summary_level + '_' + str(i + 1) + '.xml'
+                        f = open(os.path.join(output_dir,filename), 'w')
+                        f.write(build_sitemap(urls[i * 50000 : (i + 1) * 50000]))
+                        print 'Wrote sitemap to file %s' % (filename)
+                        sitemaps_created.append(filename)
+                        f.close()
 
     write_master_sitemap(output_dir, sitemaps_created)
 
@@ -75,7 +77,7 @@ def build_sitemap(page_data):
     return template.render(pages = page_data)
 
 
-def query_all_levels(db_connect_string):
+def query_all_levels(db_conn):
     ''' Queries database to get list of all sumlevels
 
     params: none
@@ -83,21 +85,19 @@ def query_all_levels(db_connect_string):
 
     '''
 
-    conn = psycopg2.connect(db_connect_string)
-    cur = conn.cursor()
+    with db_conn.cursor() as cur:
+        q = "SELECT DISTINCT sumlevel FROM tiger2018.census_name_lookup order by sumlevel;"
+        cur.execute(q)
+        results = cur.fetchall()
+        # Format of results is [('000',), ('001',), ...]
+        # so we make it into a straight list ['000', '001', ...]
 
-    q = "SELECT DISTINCT sumlevel FROM tiger2018.census_name_lookup order by sumlevel;"
-    cur.execute(q)
-    results = cur.fetchall()
-    # Format of results is [('000',), ('001',), ...]
-    # so we make it into a straight list ['000', '001', ...]
+        results_list = [c[0] for c in results]
 
-    results_list = [c[0] for c in results]
-
-    return results_list
+        return results_list
 
 
-def query_one_level(level,db_connect_string):
+def query_one_level(level, db_conn):
     ''' Queries database for one sumlevel ("level")
 
     params: level = string of the summary level code (e.g., "040")
@@ -106,14 +106,12 @@ def query_one_level(level,db_connect_string):
 
     '''
 
-    conn = psycopg2.connect(db_connect_string)
-    cur = conn.cursor()
+    with db_conn.cursor() as cur:
+        q = "SELECT display_name, full_geoid from tiger2018.census_name_lookup where sumlevel = '%s'" % (level)
+        cur.execute(q)
+        results = cur.fetchall()
 
-    q = "SELECT display_name, full_geoid from tiger2018.census_name_lookup where sumlevel = '%s'" % (level)
-    cur.execute(q)
-    results = cur.fetchall()
-
-    return results
+        return results
 
 
 def build_url(display_name, full_geoid):

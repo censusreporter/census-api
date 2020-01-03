@@ -46,27 +46,27 @@ def query_table_list(db_connect_string):
 	# we oughta parameterize this but feeling lazy...
 	# this is assuming that you're running the DB on a non-standard port, say
 	# as if you were SSH tunneling from production to your machine
-	conn = psycopg2.connect(db_connect_string)
-	cur = conn.cursor()
+	with psycopg2.connect(db_connect_string) as conn:
+		with conn.cursor() as cur:
 
-	q1 = "SELECT DISTINCT tables_in_one_yr from census_tabulation_metadata;"
-	cur.execute(q1)
-	results1 = cur.fetchall()
+			q1 = "SELECT DISTINCT tables_in_one_yr from census_tabulation_metadata;"
+			cur.execute(q1)
+			results1 = cur.fetchall()
 
-	q2 = "SELECT DISTINCT tables_in_five_yr from census_tabulation_metadata;"
-	cur.execute(q2)
-	results2 = cur.fetchall()
+			q2 = "SELECT DISTINCT tables_in_five_yr from census_tabulation_metadata;"
+			cur.execute(q2)
+			results2 = cur.fetchall()
 
-	# results1, results2 are "lists of 1-tuples of lists"
-	# i.e., [(['a'], ), (['b', 'c'], ), ( [ ... ], ), ...]
-	# so add to a set (which inherently has no duplicates)
+			# results1, results2 are "lists of 1-tuples of lists"
+			# i.e., [(['a'], ), (['b', 'c'], ), ( [ ... ], ), ...]
+			# so add to a set (which inherently has no duplicates)
 
-	tables = Set()
-	for result in results1 + results2:
-		for table in result[0]:
-			tables.add(table)
+			tables = Set()
+			for result in results1 + results2:
+				for table in result[0]:
+					tables.add(table)
 
-	return tables
+			return tables
 
 
 def build_table_page_list(table_names):
