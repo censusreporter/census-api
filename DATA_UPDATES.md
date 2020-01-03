@@ -26,7 +26,7 @@
     - Discover that the shells .xls file they include is actually an .xlsx and that python xlrd can't read the formatting info (Use Excel to save it as a normal .xls and replace the file)
     - Discover that Census added a worksheet to the shells .xls file that is formatted completely differently (Use Excel to move Sheet2 before Sheet1)
     - The `ACS_1yr_Seq_Table_Number_Lookup.xls` for 2014 does not reflect the changes in [the new survey](https://www.census.gov/programs-surveys/acs/technical-documentation/table-and-geography-changes/2014/1-year.html), but the [text/CSV version](http://www2.census.gov/programs-surveys/acs/summary_file/2014/documentation/user_tools/ACS_1yr_Seq_Table_Number_Lookup.txt) does so I converted it to an XLS with Excel so that the rest of my existing process would work
-    - The 2018 1-yr release included a `ACS_1yr_Seq_Table_Number_Lookup.csv` and no `.xls` version. I converted it to an XLS with Excel so that the rest of my existing process would work
+    - The 2018 1-yr and 5-yr releases included a `ACS_1yr_Seq_Table_Number_Lookup.csv` and no `.xls` version. I converted it to an XLS with Excel so that the rest of my existing process would work
 
 6. Generate the 'precomputed' metadata stuff. From census-table-metadata:
     - pipenv install && pipenv shell
