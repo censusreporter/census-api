@@ -228,4 +228,4 @@ def load_postgresql_data(releases=['acs2012_1yr', 'acs2012_3yr', 'acs2012_5yr', 
 
     sudo("psql -d census -c \"COPY public.census_tabulation_metadata FROM '/home/ubuntu/census-table-metadata/precomputed/unified_metadata.csv' WITH csv ENCODING 'utf8' HEADER;\"", user='postgres')
 
-    print "THIS IS INCOMPLETE. I'm only loading a tabulation metadata for now."
+    print("THIS IS INCOMPLETE. I'm only loading a tabulation metadata for now.")
