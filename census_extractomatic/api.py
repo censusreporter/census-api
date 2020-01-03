@@ -51,7 +51,7 @@ except Exception, e:
 # Allowed ACS's in "best" order (newest and smallest range preferred)
 allowed_acs = [
     'acs2018_1yr',
-    'acs2017_5yr',
+    'acs2018_5yr',
 ]
 # When expanding a container geoid shorthand (i.e. 140|05000US12127),
 # use this ACS. It should always be a 5yr release so as to include as
@@ -74,7 +74,7 @@ allowed_searches = [
 ]
 
 ACS_NAMES = {
-    'acs2017_5yr': {'name': 'ACS 2017 5-year', 'years': '2013-2017'},
+    'acs2018_5yr': {'name': 'ACS 2018 5-year', 'years': '2014-2018'},
     'acs2018_1yr': {'name': 'ACS 2018 1-year', 'years': '2018'},
 }
 
