@@ -511,11 +511,6 @@ def special_case_parents(geoid, levels):
             'geoid': '04000US51'
         })
 
-    # Louisville is not in Census 160 data but 170 consolidated city is equivalent
-    # we could try to convert 160 L-ville into 170, but that would overlap with
-    # 050 Jefferson  which should already be in there so we'll just pluck it out.
-    levels = [level for level in levels if not level['geoid'] == '16000US2148000']
-
     return levels
 
 def compute_profile_item_levels(geoid):
