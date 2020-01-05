@@ -85,20 +85,22 @@ def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ide
             geo_headers.append(name)
             col_values = []
             col_errors = []
-            for (table_id, table) in table_metadata.iteritems():
-                table_estimates = data[geoid][table_id]['estimate']
-                table_errors = data[geoid][table_id]['error']
-                if option == 'value':
-                    for column_id, column_info in table['columns'].iteritems():
-                        col_values.append(table_estimates[column_id])
-                        col_errors.append(table_errors[column_id])
-                elif option == 'percent':
-                    if table['denominator_column_id'] is not None:
-                        has_denominator_column = True
-                        base_estimate = data[geoid][table_id]['estimate'][table['denominator_column_id']]
+            for (table_id, table) in table_metadata.items():
+                table_estimates = data.get(geoid, {}).get(table_id, {}).get('estimate')
+                table_errors = data.get(geoid, {}).get(table_id, {}).get('error')
 
-                        for column_id, column_info in table['columns'].iteritems():
-                            if base_estimate is not None and base_estimate != 0:
+                if option == 'value':
+                    for column_id, column_info in table['columns'].items():
+                        col_values.append(table_estimates.get(column_id, ''))
+                        col_errors.append(table_errors.get(column_id, ''))
+                elif option == 'percent':
+                    denominator_column_id = table.get('denominator_column_id')
+                    if denominator_column_id:
+                        has_denominator_column = True
+                        base_estimate = data[geoid][table_id]['estimate'][denominator_column_id]
+
+                        for column_id, column_info in table['columns'].items():
+                            if base_estimate and column_id in table_estimates and column_id in table_errors:
                                 col_values.append(table_estimates[column_id] / base_estimate)
                                 col_errors.append(table_errors[column_id] / base_estimate)
                             else:
@@ -118,7 +120,7 @@ def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ide
                 if option == 'percent':
                     sheet.cell(row=row_num, column=col_num).number_format = '0.00%'
                     sheet.cell(row=row_num, column=col_num + 1).number_format = '0.00%'
-            
+
         if option == 'percent' and (any_zero_denominators or not has_denominator_column):
             annotation_cell = sheet.cell(row=(row_num + 1), column=1)
             annotation_cell.font = Font(italic=True)
