@@ -1,9 +1,9 @@
-import urlparse
+from openpyxl.styles import Alignment, Font
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-import openpyxl
-from openpyxl.styles import Alignment, Font
 import logging
+import openpyxl
+import six.moves.urllib.parse
 
 logger = logging.getLogger('exporters')
 
@@ -20,7 +20,7 @@ def session(sql_url):
 
 def get_sql_config(sql_url):
     """Return a tuple of strings: (host, user, password, database)"""
-    db_details = urlparse.urlparse(sql_url)
+    db_details = urllib.parse.urlparse(sql_url)
     return (db_details.hostname,
             db_details.username,
             db_details.password,
@@ -44,7 +44,7 @@ def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ide
         header = []
         max_indent = 0
         # get column headers
-        for column_id, column_info in table['columns'].iteritems():
+        for column_id, column_info in table['columns'].items():
             column_name_utf8 = column_info['name'].encode('utf-8')
             indent = column_info['indent']
 
@@ -85,7 +85,7 @@ def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ide
             geo_headers.append(name)
             col_values = []
             col_errors = []
-            for (table_id, table) in table_metadata.items():
+            for table_id, table in table_metadata.items():
                 table_estimates = data.get(geoid, {}).get(table_id, {}).get('estimate')
                 table_errors = data.get(geoid, {}).get(table_id, {}).get('error')
 
@@ -144,7 +144,7 @@ def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ide
     wb = openpyxl.workbook.Workbook()
 
     # For every table in table_metadata, make a two sheets (values and percentages)
-    for i, (table_id, table) in enumerate(table_metadata.iteritems()):
+    for i, (table_id, table) in enumerate(table_metadata.items()):
         sheet = wb.active
         sheet.title = table_id + ' Values'
         excel_helper(sheet, table_id, table, 'value')
@@ -175,8 +175,8 @@ def create_ogr_download(sql_url, data, table_metadata, valid_geo_ids, file_ident
     out_layer = out_data.CreateLayer(file_ident.encode('utf-8'), srs=out_srs, geom_type=ogr.wkbMultiPolygon)
     out_layer.CreateField(ogr.FieldDefn('geoid', ogr.OFTString))
     out_layer.CreateField(ogr.FieldDefn('name', ogr.OFTString))
-    for (table_id, table) in table_metadata.iteritems():
-        for column_id, column_info in table['columns'].iteritems():
+    for (table_id, table) in table_metadata.items():
+        for column_id, column_info in table['columns'].items():
             column_name_utf8 = column_id.encode('utf-8')
             if driver_name == "ESRI Shapefile":
                 # Work around the Shapefile column name length limits
@@ -201,10 +201,10 @@ def create_ogr_download(sql_url, data, table_metadata, valid_geo_ids, file_ident
         geoid = in_feat.GetField('full_geoid')
         out_feat.SetField('geoid', geoid)
         out_feat.SetField('name', in_feat.GetField('display_name'))
-        for (table_id, table) in table_metadata.iteritems():
+        for (table_id, table) in table_metadata.items():
             table_estimates = data[geoid][table_id]['estimate']
             table_errors = data[geoid][table_id]['error']
-            for column_id, column_info in table['columns'].iteritems():
+            for column_id, column_info in table['columns'].items():
                 column_name_utf8 = column_id.encode('utf-8')
                 if column_id in table_estimates:
                     if format == 'shp':

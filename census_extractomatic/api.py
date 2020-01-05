@@ -1,6 +1,3 @@
-# For real division instead of sometimes-integer
-from __future__ import division
-
 from flask import (
     Flask,
     abort,
@@ -33,7 +30,7 @@ import re
 import shutil
 import tempfile
 import zipfile
-from validation import (
+from .validation import (
     qwarg_validate,
     NonemptyString,
     FloatRange,
@@ -59,7 +56,7 @@ if not app.debug:
 
 try:
     app.s3 = boto3.client('s3')
-except Exception, e:
+except Exception as e:
     app.s3 = None
     app.logger.warning("S3 Configuration failed.")
 
@@ -240,9 +237,9 @@ def crossdomain(origin=None, methods=None, headers=None,
                 automatic_options=True):
     if methods is not None:
         methods = ', '.join(sorted(x.upper() for x in methods))
-    if headers is not None and not isinstance(headers, basestring):
+    if headers is not None and not isinstance(headers, str):
         headers = ', '.join(x.upper() for x in headers)
-    if not isinstance(origin, basestring):
+    if not isinstance(origin, str):
         origin = ', '.join(origin)
     if isinstance(max_age, timedelta):
         max_age = max_age.total_seconds()
@@ -492,7 +489,7 @@ def get_data_fallback(table_ids, geoids, acs=None):
         for row in result.fetchall():
             row = dict(row)
             geoid = row.pop('geoid')
-            data[geoid] = dict([(col, val) for (col, val) in row.iteritems()])
+            data[geoid] = dict([(col, val) for (col, val) in row.items()])
 
         return data, acs
 
@@ -508,10 +505,10 @@ def get_data_fallback(table_ids, geoids, acs=None):
             for row in result.fetchall():
                 row = dict(row)
                 geoid = row.pop('geoid')
-                data[geoid] = dict([(col, val) for (col, val) in row.iteritems()])
+                data[geoid] = dict([(col, val) for (col, val) in row.items()])
 
             # Check to see if this release has our data
-            data_with_values = filter(lambda geoid_data: geoid_data.values()[0] is not None, data.values())
+            data_with_values = [geoid_data for geoid_data in list(data.values()) if list(geoid_data.values())[0] is not None]
             if len(geoids) == len(data) and len(geoids) == len(data_with_values):
                 return data, acs
             else:
@@ -528,7 +525,7 @@ def special_case_parents(geoid, levels):
         # compare Washington, D.C., to "parent" state of VA,
         # rather than comparing to self as own parent state
 
-        target = (index for (index, d) in enumerate(levels) if d['geoid'] == '04000US11').next()
+        target = next((index for (index, d) in enumerate(levels) if d['geoid'] == '04000US11'))
         levels[target].update({
             'coverage': 0,
             'display_name': 'Virginia',
@@ -833,7 +830,7 @@ def geo_parent(release, geoid):
     else:
         try:
             parents = compute_profile_item_levels(geoid)
-        except Exception, e:
+        except Exception as e:
             abort(400, "Could not compute parents: " + e.message)
         parent_geoids = [p['geoid'] for p in parents]
 
@@ -1773,7 +1770,7 @@ def show_specified_data(acs):
     requested_geo_ids = request.qwargs.geo_ids
     try:
         valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release=expand_geoids_with)
-    except ShowDataException, e:
+    except ShowDataException as e:
         abort(400, e.message)
 
     if not valid_geo_ids:
@@ -1874,7 +1871,7 @@ def show_specified_data(acs):
                 # See https://www.pivotaltracker.com/story/show/70906084
                 this_geo_has_data = False or acs == allowed_acs[1]
 
-                cols_iter = iter(sorted(row.items(), key=lambda tup: tup[0]))
+                cols_iter = iter(sorted(list(row.items()), key=lambda tup: tup[0]))
                 for table_id, data_iter in groupby(cols_iter, lambda x: x[0][:-3].upper()):
                     table_for_geoid = OrderedDict()
                     table_for_geoid['estimate'] = OrderedDict()
@@ -1910,7 +1907,7 @@ def show_specified_data(acs):
             resp = make_response(resp_data)
             resp.headers['Content-Type'] = 'application/json'
             return resp
-        except ShowDataException, e:
+        except ShowDataException as e:
             continue
     abort(400, str(e))
 
@@ -1936,7 +1933,7 @@ def download_specified_data(acs):
 
     try:
         valid_geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids, release=expand_geoids_with)
-    except ShowDataException, e:
+    except ShowDataException as e:
         abort(400, e.message)
 
     max_geoids = current_app.config.get('MAX_GEOIDS_TO_DOWNLOAD', 1000)
@@ -2020,7 +2017,7 @@ def download_specified_data(acs):
                 geoid = row.pop('geoid')
                 data_for_geoid = OrderedDict()
 
-                cols_iter = iter(sorted(row.items(), key=lambda tup: tup[0]))
+                cols_iter = iter(sorted(list(row.items()), key=lambda tup: tup[0]))
                 for table_id, data_iter in groupby(cols_iter, lambda x: x[0][:-3].upper()):
                     table_for_geoid = OrderedDict()
                     table_for_geoid['estimate'] = OrderedDict()
@@ -2068,7 +2065,7 @@ def download_specified_data(acs):
             shutil.rmtree(temp_path)
 
             return resp
-        except ShowDataException, e:
+        except ShowDataException as e:
             continue
     abort(400, str(e))
 
@@ -2193,7 +2190,7 @@ def data_compare_geographies_within_parent(acs, table_id):
     parent_data.pop('geoid', None)
     column_data = []
     column_moe = []
-    sorted_data = iter(sorted(parent_data.items(), key=lambda tup: tup[0]))
+    sorted_data = iter(sorted(list(parent_data.items()), key=lambda tup: tup[0]))
     for (k, v) in sorted_data:
         (moe_k, moe_v) = next(sorted_data)
         column_data.append((k.upper(), v))
@@ -2220,7 +2217,7 @@ def data_compare_geographies_within_parent(acs, table_id):
 
             column_data = []
             column_moe = []
-            sorted_data = iter(sorted(record.items(), key=lambda tup: tup[0]))
+            sorted_data = iter(sorted(list(record.items()), key=lambda tup: tup[0]))
             for (k, v) in sorted_data:
 
                 if v is not None and moe_v is not None:

@@ -133,11 +133,11 @@ def qwarg_validate(validators):
             errors = {}
             qwargs = QueryArgs()
 
-            for name, value in request.args.iteritems():
+            for name, value in request.args.items():
                 if name not in validators:
                     qwargs[name] = value
 
-            for (name, validator_dict) in validators.iteritems():
+            for (name, validator_dict) in validators.items():
                 validation = validator_dict.get('valid')
                 if not validation:
                     raise ValueError('You must specify a validator for %s' % name)
