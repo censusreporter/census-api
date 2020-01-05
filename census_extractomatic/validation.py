@@ -55,6 +55,25 @@ class FloatRange(Validation):
         return "A float between %s and %s" % (self._min, self._max)
 
 
+class IntegerRange(Validation):
+    def __init__(self, minimum=0, maximum=15):
+        self._min = minimum
+        self._max = maximum
+
+    def validate(self, raw):
+        try:
+            val = int(raw)
+            if self._min <= val <= self._max:
+                return val
+            else:
+                raise ValidationException()
+        except ValueError:
+            raise ValidationException()
+
+    def help_text(self):
+        return "An integer between %s and %s" % (self._min, self._max)
+
+
 class StringList(Validation):
     def __init__(self, sep=',', item_validator=NonemptyString()):
         self._sep = sep

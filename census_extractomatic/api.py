@@ -27,7 +27,7 @@ import mockcache
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 from boto.exception import S3ResponseError
-from validation import qwarg_validate, NonemptyString, FloatRange, StringList, Bool, OneOf, ClientRequestValidationException
+from validation import qwarg_validate, NonemptyString, FloatRange, IntegerRange, StringList, Bool, OneOf, ClientRequestValidationException
 
 from census_extractomatic.exporters import create_ogr_download, create_excel_download, supported_formats
 
@@ -1300,11 +1300,12 @@ def table_geo_comparison_rowcount(table_id):
 @qwarg_validate({
     'q':   {'valid': NonemptyString()},
     'type': {'valid': OneOf(allowed_searches), 'default': allowed_searches[3]},
+    'limit': {'valid': IntegerRange(1, 50), 'default': 10},
 })
 @crossdomain(origin='*')
 def full_text_search():
 
-    def do_search(db, q, object_type):
+    def do_search(db, q, object_type, limit):
         """ Search for objects (profiles, tables, topics) matching query q.
 
         Return a list, because it's easier to work with than a SQLAlchemy
@@ -1325,7 +1326,8 @@ def full_text_search():
                        AND type = 'profile'
                        ORDER BY CAST(text6 as INT) ASC,
                                    CAST(text5 as INT) DESC,
-                                   relevance DESC;"""
+                                   relevance DESC
+                       LIMIT :limit;"""
 
         elif object_type == 'table':
             query = """SELECT text1 AS tabulation_code,
@@ -1338,7 +1340,8 @@ def full_text_search():
                        FROM search_metadata
                        WHERE document @@ plainto_tsquery(:search_term)
                        AND type = 'table'
-                       ORDER BY relevance DESC;"""
+                       ORDER BY relevance DESC
+                       LIMIT :limit;"""
 
         elif object_type == 'topic':
             query = """SELECT text1 as topic_name,
@@ -1348,9 +1351,10 @@ def full_text_search():
                        FROM search_metadata
                        WHERE document @@ plainto_tsquery(:search_term)
                        AND type = 'topic'
-                       ORDER BY relevance DESC;"""
+                       ORDER BY relevance DESC
+                       LIMIT :limit;"""
 
-        objects = db.session.execute(query, {"search_term": q})
+        objects = db.session.execute(query, {"search_term": q, "limit": limit})
         return [row for row in objects]
 
     def compute_score(row):
@@ -1548,13 +1552,13 @@ def full_text_search():
     profiles, tables, topics = [], [], []
 
     if search_type == 'profile' or search_type == 'all':
-        profiles = do_search(db, q, 'profile')
+        profiles = do_search(db, q, 'profile', limit)
 
     if search_type == 'table' or search_type == 'all':
-        tables = do_search(db, q, 'table')
+        tables = do_search(db, q, 'table', limit)
 
     if search_type == 'topic' or search_type == 'all':
-        topics = do_search(db, q, 'topic')
+        topics = do_search(db, q, 'topic', limit)
 
     # Compute ranking scores of each object that we want to return
     results = []
@@ -1570,7 +1574,7 @@ def full_text_search():
     # or table followed by its score. The profile or table is then result[0].
     prepared_result = []
 
-    for result in results:
+    for result in results[:limit]:
         prepared_result.append(process_result(result[0]))
 
     return jsonify(results = prepared_result)
