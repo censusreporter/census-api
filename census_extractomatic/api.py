@@ -1552,13 +1552,13 @@ def full_text_search():
     profiles, tables, topics = [], [], []
 
     if search_type == 'profile' or search_type == 'all':
-        profiles = do_search(db, q, 'profile', limit)
+        profiles = do_search(db, q, 'profile', request.qwargs.limit)
 
     if search_type == 'table' or search_type == 'all':
-        tables = do_search(db, q, 'table', limit)
+        tables = do_search(db, q, 'table', request.qwargs.limit)
 
     if search_type == 'topic' or search_type == 'all':
-        topics = do_search(db, q, 'topic', limit)
+        topics = do_search(db, q, 'topic', request.qwargs.limit)
 
     # Compute ranking scores of each object that we want to return
     results = []
