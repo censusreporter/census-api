@@ -9,5 +9,5 @@ mockcache
 openpyxl
 psycopg2
 pylibmc
-raven
+raven[flask]
 simplejson
