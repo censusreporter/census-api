@@ -1544,6 +1544,7 @@ def full_text_search():
     q += ':*'
 
     search_type = request.qwargs.type
+    limit = request.qwargs.limit
 
     # Support choice of 'search type' as returning table results, profile
     # results, topic results, or all. Only the needed queries will get
@@ -1552,13 +1553,13 @@ def full_text_search():
     profiles, tables, topics = [], [], []
 
     if search_type == 'profile' or search_type == 'all':
-        profiles = do_search(db, q, 'profile', request.qwargs.limit)
+        profiles = do_search(db, q, 'profile', limit)
 
     if search_type == 'table' or search_type == 'all':
-        tables = do_search(db, q, 'table', request.qwargs.limit)
+        tables = do_search(db, q, 'table', limit)
 
     if search_type == 'topic' or search_type == 'all':
-        topics = do_search(db, q, 'topic', request.qwargs.limit)
+        topics = do_search(db, q, 'topic', limit)
 
     # Compute ranking scores of each object that we want to return
     results = []
