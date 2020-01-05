@@ -450,8 +450,10 @@ def find_geoid(geoid, acs=None):
             """SELECT geoid
                FROM %s.geoheader
                WHERE geoid=:geoid""" % acs,
-            {'geoid': geoid}
+            {'geoid': geoid},
+            bind=db.get_engine(bind=acs),
         )
+
         if result.rowcount == 1:
             result = result.first()
             return (acs, result['geoid'])
@@ -982,7 +984,6 @@ def table_search():
         ids_found = set()
         while table_id_acs:
             # Matching for table id
-            db.session.execute("SET search_path=:acs, public;", {'acs': table_id_acs})
             result = db.session.execute(
                 """SELECT tab.table_id,
                           tab.table_title,
@@ -991,7 +992,8 @@ def table_search():
                           tab.topics
                    FROM census_table_metadata tab
                    WHERE lower(table_id) like lower(:table_id)""",
-                {'table_id': '{}%'.format(q)}
+                {'table_id': '{}%'.format(q)},
+                bind=db.get_engine(bind=table_id_acs),
             )
             for row in result:
                 if row['table_id'] not in ids_found:
@@ -1005,7 +1007,7 @@ def table_search():
             data.sort(key=lambda x: x['unique_key'])
             return json.dumps(data)
 
-    db.session.execute("SET search_path=:acs, public;", {'acs': acs})
+    engine_to_use = db.get_engine(bind=acs)
     table_where_parts = []
     table_where_args = {}
     column_where_parts = []
@@ -1044,7 +1046,8 @@ def table_search():
            FROM census_tabulation_metadata tab
            WHERE %s
            ORDER BY tab.weight DESC""" % (table_where),
-        table_where_args
+        table_where_args,
+        bind=engine_to_use,
     )
     for tabulation in result:
         tabulation = dict(tabulation)
@@ -1071,7 +1074,8 @@ def table_search():
                LEFT OUTER JOIN census_table_metadata tab USING (table_id)
                WHERE %s
                ORDER BY char_length(tab.table_id), tab.table_id""" % (column_where),
-            column_where_args
+            column_where_args,
+            bind=engine_to_use,
         )
         data.extend([format_table_search_result(column, 'column') for column in result])
 
@@ -1196,17 +1200,18 @@ def table_details_with_release(release, table_id):
 
     for release in acs_to_try:
         cache_key = str('tables/%s/%s.json' % (release, table_id))
-        cached = get_from_cache(cache_key)
+        cached = get_from_cache(cache_key, False)
         if cached:
             resp = make_response(cached)
         else:
-            db.session.execute("SET search_path=:acs, public;", {'acs': release})
+            engine_to_use = db.get_engine(bind=release)
 
             result = db.session.execute(
                 """SELECT *
                    FROM census_table_metadata tab
                    WHERE table_id=:table_id""",
-                {'table_id': table_id}
+                {'table_id': table_id},
+                bind=engine_to_use,
             )
             row = result.fetchone()
 
@@ -1228,7 +1233,8 @@ def table_details_with_release(release, table_id):
                    FROM census_column_metadata
                    WHERE table_id=:table_id
                    ORDER By line_number""",
-                {'table_id': row['table_id']}
+                {'table_id': row['table_id']},
+                bind=engine_to_use,
             )
 
             rows = []
@@ -1276,7 +1282,8 @@ def table_geo_comparison_rowcount(table_id):
     releases = sorted(releases)
 
     for acs in releases:
-        db.session.execute("SET search_path=:acs, public;", {'acs': acs})
+        engine_to_use = db.get_engine(bind=acs)
+
         release = OrderedDict()
         release['release_name'] = ACS_NAMES[acs]['name']
         release['release_slug'] = acs
@@ -1286,7 +1293,8 @@ def table_geo_comparison_rowcount(table_id):
             """SELECT *
                FROM census_table_metadata
                WHERE table_id=:table_id;""",
-            {'table_id': table_id}
+            {'table_id': table_id},
+            bind=engine_to_use,
         )
         table_record = result.fetchone()
         if table_record:
@@ -1302,7 +1310,8 @@ def table_geo_comparison_rowcount(table_id):
                     """SELECT COUNT(*)
                        FROM %s.%s
                        WHERE geoid IN :geoids""" % (acs, validated_table_id),
-                    {'geoids': tuple(child_geoids)}
+                    {'geoids': tuple(child_geoids)},
+                    bind=engine_to_use,
                 )
                 acs_rowcount = result.fetchone()
                 release['results'] = acs_rowcount['count']
@@ -1807,7 +1816,7 @@ def show_specified_data(acs):
 
     for acs in acs_to_try:
         try:
-            db.session.execute("SET search_path=:acs, public;", {'acs': acs})
+            engine_to_use = db.get_engine(bind=acs)
 
             # Check to make sure the tables requested are valid
             result = db.session.execute(
@@ -1822,7 +1831,8 @@ def show_specified_data(acs):
                    LEFT JOIN census_table_metadata tab USING (table_id)
                    WHERE table_id IN :table_ids
                    ORDER BY column_id;""",
-                {'table_ids': tuple(request.qwargs.table_ids)}
+                {'table_ids': tuple(request.qwargs.table_ids)},
+                bind=engine_to_use,
             )
 
             valid_table_ids = []
@@ -1854,7 +1864,7 @@ def show_specified_data(acs):
 
             sql = 'SELECT * FROM %s WHERE geoid IN :geoids;' % (from_stmt,)
 
-            result = db.session.execute(sql, {'geoids': tuple(valid_geo_ids)})
+            result = db.session.execute(sql, {'geoids': tuple(valid_geo_ids)}, bind=engine_to_use)
             data = OrderedDict()
 
             if result.rowcount != len(valid_geo_ids):

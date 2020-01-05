@@ -21,6 +21,11 @@ class Development(Config):
     # or if using a local database, use this:
     # SQLALCHEMY_DATABASE_URI = 'postgresql://census:censuspassword@localhost/census'
 
+    SQLALCHEMY_BINDS = {
+        'acs2018_1yr': 'sqlite:////Users/iandees/Downloads/2018_1yr/acs2018_1yr.db',
+        'acs2018_5yr': 'postgresql://census:censuspassword@localhost:5433/census?currentSchema=acs2018_5yr'
+    }
+
     # Maybe change for local dev:
     CENSUS_REPORTER_URL_ROOT = 'http://localhost:8000'
 
