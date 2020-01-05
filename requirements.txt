@@ -6,7 +6,6 @@ SQLAlchemy
 blinker
 boto
 mockcache
-newrelic
 openpyxl
 psycopg2
 pylibmc
