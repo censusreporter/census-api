@@ -20,10 +20,8 @@ from raven.contrib.flask import Sentry
 from werkzeug.exceptions import HTTPException
 import boto3
 import botocore
-import decimal
 import math
 import mockcache
-import operator
 import os
 import pylibmc
 import re
@@ -41,7 +39,7 @@ from .validation import (
     ClientRequestValidationException,
 )
 
-from census_extractomatic.exporters import create_ogr_download, create_excel_download, supported_formats
+from census_extractomatic.exporters import supported_formats
 
 app = Flask(__name__)
 app.config.from_object(os.environ.get('EXTRACTOMATIC_CONFIG_MODULE', 'census_extractomatic.config.Development'))
@@ -193,6 +191,7 @@ state_fips = {
     "78": "United States Virgin Islands"
 }
 
+
 def get_from_cache(cache_key, try_s3=True):
     # Try memcache first
     cached = g.cache.get(cache_key)
@@ -227,7 +226,6 @@ def put_in_cache(cache_key, value, memcache=True, try_s3=True, content_type='app
             Bucket='embed.censusreporter.org',
             Key=cache_key,
             ContentType=content_type,
-            #ACL='public-read', # Disabling in an attempt to reduce S3 bandwidth cost footprint
             Body=value,
         )
 
@@ -385,6 +383,7 @@ def get_data_fallback(table_ids, geoids, acs=None):
 
     return None, acs
 
+
 def special_case_parents(geoid, levels):
     '''
     Update/adjust the parents list for special-cased geographies.
@@ -407,6 +406,7 @@ def special_case_parents(geoid, levels):
 
     return levels
 
+
 def compute_profile_item_levels(geoid):
     levels = []
     geoid_parts = []
@@ -415,7 +415,7 @@ def compute_profile_item_levels(geoid):
         geoid = geoid.upper()
         geoid_parts = geoid.split('US')
 
-    if len(geoid_parts) is not 2:
+    if len(geoid_parts) != 2:
         raise Exception('Invalid geoid')
 
     levels.append({
@@ -463,7 +463,7 @@ def compute_profile_item_levels(geoid):
             'relation': 'CBSA',
             'geoid': '31000US' + id_part[:5],
             'coverage': 100.0,
-            })
+        })
 
     if sumlevel != '010':
         levels.append({
@@ -485,7 +485,9 @@ def get_acs_name(acs_slug):
     return acs_name
 
 
-## GEO LOOKUPS ##
+#
+# GEO LOOKUPS
+#
 
 def convert_row(row):
     data = dict()
@@ -580,7 +582,7 @@ def geo_tiles(release, sumlevel, zoom, x, y):
         tiles_across = 2**zoom
         deg_per_tile = 360.0 / tiles_across
         deg_per_pixel = deg_per_tile / 256
-        tile_buffer = 10 * deg_per_pixel # ~ 10 pixel buffer
+        tile_buffer = 10 * deg_per_pixel  # ~ 10 pixel buffer
         simplify_threshold = deg_per_pixel / 5
 
         result = db.session.execute(
@@ -616,7 +618,7 @@ def geo_tiles(release, sumlevel, zoom, x, y):
             app.logger.warn('Skipping cache set for {} because {}'.format(cache_key, e.message))
 
     resp.headers.set('Content-Type', 'application/json')
-    resp.headers.set('Cache-Control', 'public,max-age=86400') # 1 day
+    resp.headers.set('Cache-Control', 'public,max-age=86400')  # 1 day
     return resp
 
 
@@ -633,7 +635,7 @@ def geo_lookup(release, geoid):
 
     geoid = geoid.upper() if geoid else geoid
     geoid_parts = geoid.split('US')
-    if len(geoid_parts) is not 2:
+    if len(geoid_parts) != 2:
         abort(404, 'Invalid GeoID')
 
     cache_key = str('1.0/geo/%s/show/%s.json?geom=%s' % (release, geoid, request.qwargs.geom))
@@ -675,7 +677,7 @@ def geo_lookup(release, geoid):
         put_in_cache(cache_key, result)
 
     resp.headers.set('Content-Type', 'application/json')
-    resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600*4))
+    resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600 * 4))
 
     return resp
 
@@ -728,7 +730,7 @@ def geo_parent(release, geoid):
         put_in_cache(cache_key, result)
 
     resp.headers.set('Content-Type', 'application/json')
-    resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600*4))
+    resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600 * 4))
 
     return resp
 
@@ -791,7 +793,9 @@ def show_specified_geo_data(release):
     return resp
 
 
-## TABLE LOOKUPS ##
+#
+# TABLE LOOKUPS
+#
 
 def format_table_search_result(obj, obj_type):
     '''internal util for formatting each object in `table_search` API response'''
@@ -826,7 +830,7 @@ def format_table_search_result(obj, obj_type):
 @app.route("/1.0/table/search")
 @qwarg_validate({
     'acs': {'valid': OneOf(allowed_acs), 'default': default_table_search_release},
-    'q':   {'valid': NonemptyString()},
+    'q': {'valid': NonemptyString()},
     'topics': {'valid': StringList()}
 })
 @crossdomain(origin='*')
@@ -1044,7 +1048,7 @@ def table_details(table_id):
         put_in_cache(cache_key, result)
 
     resp.headers.set('Content-Type', 'application/json')
-    resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600*4))
+    resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600 * 4))
 
     return resp
 
@@ -1114,7 +1118,7 @@ def table_details_with_release(release, table_id):
             put_in_cache(cache_key, result)
 
         resp.headers.set('Content-Type', 'application/json')
-        resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600*4))
+        resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600 * 4))
 
         return resp
 
@@ -1134,7 +1138,6 @@ def table_geo_comparison_rowcount(table_id):
     years = request.qwargs.year.split(',')
     child_summary_level = request.qwargs.sumlevel
     parent_geoid = request.qwargs.within
-    parent_sumlevel = parent_geoid[:3]
 
     data = OrderedDict()
 
@@ -1183,11 +1186,14 @@ def table_geo_comparison_rowcount(table_id):
 
     return resp
 
-## COMBINED LOOKUPS ##
+#
+# COMBINED LOOKUPS
+#
+
 
 @app.route("/2.1/full-text/search")
 @qwarg_validate({
-    'q':   {'valid': NonemptyString()},
+    'q': {'valid': NonemptyString()},
     'type': {'valid': OneOf(allowed_searches), 'default': allowed_searches[3]},
     'limit': {'valid': IntegerRange(1, 50), 'default': 10},
 })
@@ -1332,7 +1338,7 @@ def full_text_search():
         present, so are B10001B, ... , B10001I.)
         """
 
-        tabulation_code = re.match(r'^(B|C)(\d+)[A-Z]?',tables[0]).group(2)
+        tabulation_code = re.match(r'^(B|C)(\d+)[A-Z]?', tables[0]).group(2)
 
         # 'C' table with no iterations, e.g., C10001
         if 'C' + tabulation_code in tables:
@@ -1369,7 +1375,7 @@ def full_text_search():
                 'sumlevel': row['sumlevel'],
                 'sumlevel_name': row['sumlevel_name'] if row['sumlevel_name'] else '',
                 'url': build_profile_url(row['full_geoid']),
-                'relevance': compute_score(row) #TODO remove this
+                'relevance': compute_score(row)  # TODO remove this
             }
 
         elif row['type'] == 'table':
@@ -1385,7 +1391,7 @@ def full_text_search():
                 'unique_key': row['tabulation_code'],
                 'subtables': row['tables'].split(),
                 'url': build_table_url(table_id),
-                'relevance': compute_score(row) #TODO remove this
+                'relevance': compute_score(row)  # TODO remove this
 
             }
 
@@ -1394,7 +1400,7 @@ def full_text_search():
                 'type': 'topic',
                 'topic_name': row['topic_name'],
                 'url': row['url'],
-                'relevance': compute_score(row) #TODO remove this
+                'relevance': compute_score(row)  # TODO remove this
             }
 
         return result
@@ -1411,7 +1417,7 @@ def full_text_search():
 
         '''
         URL_ROOT = app.config.get('CENSUS_REPORTER_URL_ROOT', 'https://censusreporter.org')
-        return "{}/profiles/{}/".format(URL_ROOT,full_geoid)
+        return "{}/profiles/{}/".format(URL_ROOT, full_geoid)
 
     def build_table_url(table_id):
         ''' Builds the CensusReporter URL out of table_id.
@@ -1423,8 +1429,7 @@ def full_text_search():
         '''
 
         URL_ROOT = app.config.get('CENSUS_REPORTER_URL_ROOT', 'https://censusreporter.org')
-        return "{}/tables/{}/".format(URL_ROOT,table_id)
-
+        return "{}/tables/{}/".format(URL_ROOT, table_id)
 
     # Build query by replacing apostrophes with spaces, separating words
     # with '&', and adding a wildcard character to support prefix matching.
@@ -1458,7 +1463,7 @@ def full_text_search():
 
     # Sort by second entry (score), descending; the lambda pulls the second
     # element of a tuple.
-    results = sorted(results, key = lambda x: x[1], reverse = True)
+    results = sorted(results, key=lambda x: x[1], reverse=True)
 
     # Format of results is a list of tuples, with each tuple being a profile
     # or table followed by its score. The profile or table is then result[0].
@@ -1467,11 +1472,12 @@ def full_text_search():
     for result in results[:limit]:
         prepared_result.append(process_result(result[0]))
 
-    return jsonify(results = prepared_result)
+    return jsonify(results=prepared_result)
 
+#
+#  DATA RETRIEVAL
+#
 
-
-## DATA RETRIEVAL ##
 
 # get geoheader data for children at the requested summary level
 def get_child_geoids(release, parent_geoid, child_summary_level):
@@ -1514,7 +1520,7 @@ def get_child_geoids_by_coverage(release, parent_geoid, child_summary_level):
            WHERE geoheader.geoid = census_geo_containment.child_geoid
              AND census_geo_containment.parent_geoid = :parent_geoid
              AND census_geo_containment.child_geoid LIKE :child_geoids""",
-        {'parent_geoid': parent_geoid, 'child_geoids': child_summary_level+'%'}
+        {'parent_geoid': parent_geoid, 'child_geoids': child_summary_level + '%'}
     )
 
     rowdicts = []
@@ -1572,7 +1578,7 @@ def get_child_geoids_by_prefix(release, parent_geoid, child_summary_level):
 
 def expand_geoids(geoid_list, release=None):
     if not release:
-        release = expand_geoids_with
+        release = release_to_expand_with
 
     # Look for geoid "groups" of the form `child_sumlevel|parent_geoid`.
     # These will expand into a list of geoids like the old comparison endpoint used to
@@ -2036,7 +2042,7 @@ def data_compare_geographies_within_parent(acs, table_id):
         parent_geometry = result.fetchone()
         try:
             parent_geography['geography']['geometry'] = json.loads(parent_geometry['geometry'])
-        except:
+        except Exception:
             # we may not have geometries for all sumlevs
             pass
 
@@ -2100,7 +2106,7 @@ def data_compare_geographies_within_parent(acs, table_id):
             if child_geodata_map:
                 try:
                     child_data['geography']['geometry'] = child_geodata_map[child_geoid.split('US')[1]]
-                except:
+                except Exception:
                     # we may not have geometries for all sumlevs
                     pass
 
@@ -2119,15 +2125,18 @@ def data_compare_geographies_within_parent(acs, table_id):
 def healthcheck():
     return 'OK'
 
+
 @app.route('/robots.txt')
 def robots_txt():
     response = make_response('User-agent: *\nDisallow: /\n')
     response.headers["Content-type"] = "text/plain"
     return response
 
+
 @app.route('/')
 def index():
     return redirect('https://github.com/censusreporter/census-api/blob/master/API.md')
+
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
