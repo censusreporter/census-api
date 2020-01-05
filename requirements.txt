@@ -1,10 +1,10 @@
-Fabric
+Fabric<2
 Flask
 Flask-SQLAlchemy
 GDAL==1.10.0
 SQLAlchemy
 blinker
-boto
+boto3
 mockcache
 openpyxl
 psycopg2-binary
