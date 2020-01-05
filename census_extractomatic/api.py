@@ -206,7 +206,7 @@ def get_from_cache(cache_key, try_s3=True):
             )
             cached = k['Body'].read()
         except botocore.exceptions.ClientError as e:
-            if e.response['Error']['Code'] == "404":
+            if e.response['Error']['Code'] == 'NoSuchKey':
                 # Key doesn't exist, so return null
                 return None
             else:
