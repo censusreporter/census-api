@@ -78,6 +78,7 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
     - psql -d census -U census -f 14_aiannh_tables_2018.sql
     - psql -d census -U census -f 15_cbsa_geocontainment_2018.sql
     - psql -d census -U census -c "drop schema tiger2018 cascade" (delete the old tiger data if the live API isn't using it)
+    - psql -d census -U census -c "update tiger2018.census_name_lookup set geom=st_makevalid(geom) where not st_isvalid(geom);"
 1. Update the census-api api.py to add the new release to the `allowed_tiger` variable
 1. Update the static website redirection rules for S3 bucket `embed.censusreporter.com` to add a section for the new TIGER release.
 
