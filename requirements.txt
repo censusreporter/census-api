@@ -7,7 +7,6 @@ blinker
 boto
 mockcache
 openpyxl
-psycopg2
+psycopg2-binary
 pylibmc
 raven[flask]
-simplejson

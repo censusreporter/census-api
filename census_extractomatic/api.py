@@ -1,33 +1,48 @@
 # For real division instead of sometimes-integer
 from __future__ import division
 
-from flask import Flask
-from flask import abort, request, g
-from flask import make_response, current_app, send_file
-from flask import jsonify, redirect
+from flask import (
+    Flask,
+    abort,
+    current_app,
+    g,
+    json,
+    jsonify,
+    make_response,
+    redirect,
+    request,
+    send_file,
+)
+from collections import OrderedDict
+from datetime import timedelta
 from flask_sqlalchemy import SQLAlchemy
-from raven.contrib.flask import Sentry
-from werkzeug.exceptions import HTTPException
 from functools import update_wrapper
 from itertools import groupby
-import simplejson as json
-from collections import OrderedDict
-import decimal
-import operator
-import math
 from math import log10, log
-from datetime import timedelta
-import re
+from raven.contrib.flask import Sentry
+from werkzeug.exceptions import HTTPException
+import boto3
+import botocore
+import decimal
+import math
+import mockcache
+import operator
 import os
+import pylibmc
+import re
 import shutil
 import tempfile
 import zipfile
-import pylibmc
-import mockcache
-from boto.s3.connection import S3Connection
-from boto.s3.key import Key
-from boto.exception import S3ResponseError
-from validation import qwarg_validate, NonemptyString, FloatRange, IntegerRange, StringList, Bool, OneOf, ClientRequestValidationException
+from validation import (
+    qwarg_validate,
+    NonemptyString,
+    FloatRange,
+    IntegerRange,
+    StringList,
+    Bool,
+    OneOf,
+    ClientRequestValidationException,
+)
 
 from census_extractomatic.exporters import create_ogr_download, create_excel_download, supported_formats
 
@@ -43,7 +58,7 @@ if not app.debug:
     app.logger.addHandler(file_handler)
 
 try:
-    app.s3 = S3Connection()
+    app.s3 = boto3.client('s3')
 except Exception, e:
     app.s3 = None
     app.logger.warning("S3 Configuration failed.")
@@ -187,13 +202,19 @@ def get_from_cache(cache_key, try_s3=True):
 
     if not cached and try_s3 and current_app.s3 is not None:
         # Try S3 next
-        b = current_app.s3.get_bucket('embed.censusreporter.org', validate=False)
-        k = Key(b)
-        k.key = cache_key
         try:
-            cached = k.get_contents_as_string()
-        except S3ResponseError:
-            cached = None
+            k = current_app.s3.get_object(
+                Bucket='embed.censusreporter.org',
+                Key=cache_key,
+            )
+            cached = k['Body'].read()
+        except botocore.exceptions.ClientError as e:
+            if e.response['Error']['Code'] == "404":
+                # Key doesn't exist, so return null
+                return None
+            else:
+                # Something else happened, so re-raise
+                raise
 
         # TODO Should stick the S3 thing back in memcache
 
@@ -205,10 +226,13 @@ def put_in_cache(cache_key, value, memcache=True, try_s3=True, content_type='app
         g.cache.set(cache_key, value)
 
     if try_s3 and current_app.s3 is not None:
-        b = current_app.s3.get_bucket('embed.censusreporter.org', validate=False)
-        k = Key(b, cache_key)
-        k.metadata['Content-Type'] = content_type
-        k.set_contents_from_string(value, policy='public-read')
+        current_app.s3.put_object(
+            Bucket='embed.censusreporter.org',
+            Key=cache_key,
+            ContentType=content_type,
+            #ACL='public-read', # Disabling in an attempt to reduce S3 bandwidth cost footprint
+            Body=value,
+        )
 
 
 def crossdomain(origin=None, methods=None, headers=None,
