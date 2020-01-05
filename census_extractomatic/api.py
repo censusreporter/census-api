@@ -1318,10 +1318,10 @@ def full_text_search():
                               text4 AS full_geoid,
                               text5 AS population,
                               text6 AS priority,
-                              ts_rank(document, to_tsquery('simple', :search_term)) AS relevance,
+                              ts_rank(document, plainto_tsquery('simple', :search_term)) AS relevance,
                               type
                        FROM search_metadata
-                       WHERE document @@ to_tsquery('simple', :search_term)
+                       WHERE document @@ plainto_tsquery('simple', :search_term)
                        AND type = 'profile'
                        ORDER BY CAST(text6 as INT) ASC,
                                    CAST(text5 as INT) DESC,
@@ -1333,20 +1333,20 @@ def full_text_search():
                               text3 AS topics,
                               text4 AS simple_table_title,
                               text5 AS tables,
-                              ts_rank(document, to_tsquery(:search_term), 2|8|32) AS relevance,
+                              ts_rank(document, plainto_tsquery(:search_term), 2|8|32) AS relevance,
                               type
                        FROM search_metadata
-                       WHERE document @@ to_tsquery(:search_term)
+                       WHERE document @@ plainto_tsquery(:search_term)
                        AND type = 'table'
                        ORDER BY relevance DESC;"""
 
         elif object_type == 'topic':
             query = """SELECT text1 as topic_name,
                               text3 as url,
-                              ts_rank(document, to_tsquery(:search_term)) AS relevance,
+                              ts_rank(document, plainto_tsquery(:search_term)) AS relevance,
                               type
                        FROM search_metadata
-                       WHERE document @@ to_tsquery(:search_term)
+                       WHERE document @@ plainto_tsquery(:search_term)
                        AND type = 'topic'
                        ORDER BY relevance DESC;"""
 
