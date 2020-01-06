@@ -78,7 +78,11 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
     - psql -d census -U census -f 14_aiannh_tables_2018.sql
     - psql -d census -U census -f 15_cbsa_geocontainment_2018.sql
     - psql -d census -U census -c "drop schema tiger2018 cascade" (delete the old tiger data if the live API isn't using it)
-    - psql -d census -U census -c "update tiger2018.census_name_lookup set geom=st_makevalid(geom) where not st_isvalid(geom);"
+1. TIGER errata:
+    - ~A dozen of the TIGER 2018 geometries are invalid, so you need to fix them:
+        psql -d census -U census -c "update tiger2018.census_name_lookup set geom=st_makevalid(geom) where not st_isvalid(geom);" ()
+    - The CBSA delineation/containment data in the spreadsheet used above includes a reference to a non-existent CBSA, so the containment needs to be deleted:
+        delete from tiger2018.census_geo_containment where child_geoid='31000US42460' and parent_geoid='33000US497';
 1. Update the census-api api.py to add the new release to the `allowed_tiger` variable
 1. Update the static website redirection rules for S3 bucket `embed.censusreporter.com` to add a section for the new TIGER release.
 
