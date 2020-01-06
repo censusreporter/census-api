@@ -3,20 +3,22 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import logging
 import openpyxl
-import six.moves.urllib.parse
+import six.moves.urllib as urllib
 
 logger = logging.getLogger('exporters')
 
 Session = sessionmaker()
-
 _sessions = {}
+
+
 def session(sql_url):
     try:
         return _sessions[sql_url]
-    except KeyError: # probably not super thread-safe, but repeated execution should be harmless
+    except KeyError:  # probably not super thread-safe, but repeated execution should be harmless
         engine = create_engine(sql_url)
         _sessions[sql_url] = Session(bind=engine.connect())
         return _sessions[sql_url]
+
 
 def get_sql_config(sql_url):
     """Return a tuple of strings: (host, user, password, database)"""
@@ -25,6 +27,7 @@ def get_sql_config(sql_url):
             db_details.username,
             db_details.password,
             db_details.path[1:])
+
 
 def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ident, out_filename, format):
     def excel_helper(sheet, table_id, table, option):
@@ -56,7 +59,7 @@ def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ide
         # Populate first column with headers
         for i, col_tuple in enumerate(header):
             header = col_tuple[0]
-            current_row = i + 4 # 1-based index, account for geographic headers
+            current_row = i + 4  # 1-based index, account for geographic headers
             current_cell = sheet.cell(row=current_row, column=1)
             current_cell.value = header
             indent = col_tuple[1]
@@ -111,7 +114,6 @@ def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ide
                         col_values.append('*')
                         col_errors.append('')
 
-
             for j, value in enumerate(col_values):
                 col_num = (i + 1) * 2
                 row_num = j + 4
@@ -153,6 +155,7 @@ def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ide
         excel_helper(sheet_percents, table_id, table, 'percent')
 
     wb.save(out_filename)
+
 
 def create_ogr_download(sql_url, data, table_metadata, valid_geo_ids, file_ident, out_filename, format):
     import ogr
@@ -223,10 +226,11 @@ def create_ogr_download(sql_url, data, table_metadata, valid_geo_ids, file_ident
         in_feat = in_layer.GetNextFeature()
     out_data.Destroy()
 
-supported_formats = { # these should all have a 'function' with the right signature
-    'shp':      {"function": create_ogr_download, "driver": "ESRI Shapefile"},
-    'kml':      {"function": create_ogr_download, "driver": "KML"},
-    'geojson':  {"function": create_ogr_download, "driver": "GeoJSON"},
-    'xlsx':     {"function": create_excel_download, "driver": "XLSX"},
-    'csv':      {"function": create_ogr_download, "driver": "CSV"},
+
+supported_formats = {  # these should all have a 'function' with the right signature
+    'shp': {"function": create_ogr_download, "driver": "ESRI Shapefile"},
+    'kml': {"function": create_ogr_download, "driver": "KML"},
+    'geojson': {"function": create_ogr_download, "driver": "GeoJSON"},
+    'xlsx': {"function": create_excel_download, "driver": "XLSX"},
+    'csv': {"function": create_ogr_download, "driver": "CSV"},
 }
