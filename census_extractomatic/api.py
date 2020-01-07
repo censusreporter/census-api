@@ -751,17 +751,19 @@ def show_specified_geo_data(release):
     if len(geo_ids) > max_geoids:
         abort(400, 'You requested %s geoids. The maximum is %s. Please contact us for bulk data.' % (len(geo_ids), max_geoids))
 
-    result = db.session.execute(
-        """SELECT full_geoid,
-            display_name,
-            aland,
-            awater,
-            population,
-            ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,ST_Perimeter(geom) / 2500)) as geom
-           FROM %s.census_name_lookup
-           WHERE geom is not null and full_geoid IN :geoids;""" % (release,),
-        {'geoids': tuple(geo_ids)}
-    )
+    result = []
+    if geo_ids:
+        result = db.session.execute(
+            """SELECT full_geoid,
+                display_name,
+                aland,
+                awater,
+                population,
+                ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,ST_Perimeter(geom) / 2500)) as geom
+            FROM %s.census_name_lookup
+            WHERE geom is not null and full_geoid IN :geoids;""" % (release,),
+            {'geoids': tuple(geo_ids)}
+        )
 
     results = []
     valid_geo_ids = []
