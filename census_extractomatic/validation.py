@@ -1,3 +1,4 @@
+import re
 from flask import request
 from werkzeug.exceptions import BadRequest
 from functools import wraps
@@ -19,10 +20,32 @@ class ClientRequestValidationException(BadRequest):
 
 class Validation(object):
     def validate(self, raw):
-        raise NotImplemented()
+        raise NotImplementedError
 
     def help_text(self):
-        raise NotImplemented()
+        raise NotImplementedError
+
+
+class Regex(Validation):
+    def __init__(self, regex, help=None):
+        self._help = help
+
+        if not hasattr(regex, "match"):
+            self._regex = regex
+        else:
+            self._regex = re.compile(regex)
+
+    def validate(self, raw):
+        if not raw:
+            raise ValidationException()
+
+        if self._regex and not self._regex.match(raw):
+            raise ValidationException()
+
+        return raw
+
+    def help_text(self):
+        return self._help if self._help else "A string that matches %s" % self._regex
 
 
 class NonemptyString(Validation):

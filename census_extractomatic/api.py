@@ -30,13 +30,14 @@ import tempfile
 import zipfile
 from .validation import (
     qwarg_validate,
-    NonemptyString,
+    Bool,
+    ClientRequestValidationException,
     FloatRange,
     IntegerRange,
-    StringList,
-    Bool,
+    NonemptyString,
     OneOf,
-    ClientRequestValidationException,
+    Regex,
+    StringList,
 )
 
 from census_extractomatic.exporters import supported_formats
@@ -190,6 +191,13 @@ state_fips = {
     "72": "Puerto Rico",
     "78": "United States Virgin Islands"
 }
+
+# A regex to match geoids (e.g. 31000US33340) or expandable geoids (e.g. 310|33000US376)
+expandable_geoid_re = re.compile(r"^((\d{3}\|))?(\d{5}US\d+)$")
+# A regex that will only match bare geoids (e.g. 31000US33340)
+geoid_re = re.compile(r"^\d{5}US\d+$")
+# A regex that matches things that look like table IDs
+table_re = re.compile(r"^[BC]\d{5}(?:[A-I]|PR)?$")
 
 
 def get_from_cache(cache_key, try_s3=True):
@@ -633,9 +641,7 @@ def geo_lookup(release, geoid):
     if release not in allowed_tiger:
         abort(404, "Unknown TIGER release")
 
-    geoid = geoid.upper() if geoid else geoid
-    geoid_parts = geoid.split('US')
-    if len(geoid_parts) != 2:
+    if not expandable_geoid_re.match(geoid):
         abort(404, 'Invalid GeoID')
 
     cache_key = str('1.0/geo/%s/show/%s.json?geom=%s' % (release, geoid, request.qwargs.geom))
@@ -690,7 +696,8 @@ def geo_parent(release, geoid):
     if release not in allowed_tiger:
         abort(404, "Unknown TIGER release")
 
-    geoid = geoid.upper()
+    if not geoid_re.match(geoid):
+        abort(404, 'Invalid GeoID')
 
     cache_key = str('%s/show/%s.parents.json' % (release, geoid))
     cached = get_from_cache(cache_key)
@@ -739,7 +746,7 @@ def geo_parent(release, geoid):
 # Example: /1.0/geo/show/tiger2014?geo_ids=160|04000US17,04000US56
 @app.route("/1.0/geo/show/<release>")
 @qwarg_validate({
-    'geo_ids': {'valid': StringList(), 'required': True},
+    'geo_ids': {'valid': StringList(item_validator=Regex(expandable_geoid_re)), 'required': True},
 })
 @crossdomain(origin='*')
 def show_specified_geo_data(release):
@@ -963,6 +970,9 @@ def table_search():
 @app.route("/1.0/tabulation/<tabulation_id>")
 @crossdomain(origin='*')
 def tabulation_details(tabulation_id):
+    if not table_re.match(tabulation_id):
+        abort(404, "Invalid tabulation ID")
+
     result = db.session.execute(
         """SELECT *
            FROM census_tabulation_metadata
@@ -1001,7 +1011,8 @@ def tabulation_details(tabulation_id):
 def table_details(table_id):
     release = request.qwargs.acs
 
-    table_id = table_id.upper() if table_id else table_id
+    if not table_re.match(table_id):
+        abort(404, "Invalid table ID")
 
     cache_key = str('tables/%s/%s.json' % (release, table_id))
     cached = get_from_cache(cache_key)
@@ -1069,7 +1080,8 @@ def table_details_with_release(release, table_id):
     else:
         abort(404, 'The %s release isn\'t supported.' % get_acs_name(release))
 
-    table_id = table_id.upper() if table_id else table_id
+    if not table_re.match(table_id):
+        abort(404, "Invalid table ID")
 
     for release in acs_to_try:
         cache_key = str('tables/%s/%s.json' % (release, table_id))
@@ -1135,7 +1147,7 @@ def table_details_with_release(release, table_id):
 @qwarg_validate({
     'year': {'valid': NonemptyString()},
     'sumlevel': {'valid': OneOf(SUMLEV_NAMES), 'required': True},
-    'within': {'valid': NonemptyString(), 'required': True},
+    'within': {'valid': Regex(table_re), 'required': True},
     'topics': {'valid': StringList()}
 })
 @crossdomain(origin='*')
@@ -1143,6 +1155,9 @@ def table_geo_comparison_rowcount(table_id):
     years = request.qwargs.year.split(',')
     child_summary_level = request.qwargs.sumlevel
     parent_geoid = request.qwargs.within
+
+    if not table_re.match(table_id):
+        abort(404, "Invalid table_id")
 
     data = OrderedDict()
 
@@ -1591,6 +1606,9 @@ def expand_geoids(geoid_list, release=None):
     explicit_geoids = []
     child_parent_map = {}
     for geoid_str in geoid_list:
+        if not expandable_geoid_re.match(geoid_str):
+            continue
+
         geoid_split = geoid_str.split('|')
         if len(geoid_split) == 2 and len(geoid_split[0]) == 3:
             (child_summary_level, parent_geoid) = geoid_split
@@ -1631,8 +1649,8 @@ class ShowDataException(Exception):
 # Example: /1.0/data/show/latest?table_ids=B01001&geo_ids=160|04000US17,04000US56
 @app.route("/1.0/data/show/<acs>")
 @qwarg_validate({
-    'table_ids': {'valid': StringList(), 'required': True},
-    'geo_ids': {'valid': StringList(), 'required': True},
+    'table_ids': {'valid': StringList(item_validator=Regex(table_re)), 'required': True},
+    'geo_ids': {'valid': StringList(item_validator=Regex(expandable_geoid_re)), 'required': True},
 })
 @crossdomain(origin='*')
 def show_specified_data(acs):
@@ -1795,8 +1813,8 @@ def show_specified_data(acs):
 # Example: /1.0/data/download/latest?table_ids=B01001&geo_ids=160|04000US17,04000US56
 @app.route("/1.0/data/download/<acs>")
 @qwarg_validate({
-    'table_ids': {'valid': StringList(), 'required': True},
-    'geo_ids': {'valid': StringList(), 'required': True},
+    'table_ids': {'valid': StringList(item_validator=Regex(table_re)), 'required': True},
+    'geo_ids': {'valid': StringList(item_validator=Regex(expandable_geoid_re)), 'required': True},
     'format': {'valid': OneOf(supported_formats), 'required': True},
 })
 @crossdomain(origin='*')
@@ -1955,7 +1973,7 @@ def download_specified_data(acs):
 # Example: /1.0/data/compare/acs2012_5yr/B01001?sumlevel=050&within=04000US53
 @app.route("/1.0/data/compare/<acs>/<table_id>")
 @qwarg_validate({
-    'within': {'valid': NonemptyString(), 'required': True},
+    'within': {'valid': Regex(geoid_re), 'required': True},
     'sumlevel': {'valid': OneOf(SUMLEV_NAMES), 'required': True},
     'geom': {'valid': Bool(), 'default': False}
 })
