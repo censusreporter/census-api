@@ -747,6 +747,9 @@ def show_specified_geo_data(release):
         abort(404, "Unknown TIGER release")
     geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids, release_to_expand_with)
 
+    if not geo_ids:
+        abort(404, 'None of the geo_ids specified were valid: %s' % ', '.join(geo_ids))
+
     max_geoids = current_app.config.get('MAX_GEOIDS_TO_SHOW', 3000)
     if len(geo_ids) > max_geoids:
         abort(400, 'You requested %s geoids. The maximum is %s. Please contact us for bulk data.' % (len(geo_ids), max_geoids))
@@ -1811,6 +1814,9 @@ def download_specified_data(acs):
         valid_geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids, release=expand_geoids_with)
     except ShowDataException as e:
         abort(400, e.message)
+
+    if not valid_geo_ids:
+        abort(404, 'None of the geo_ids specified were valid: %s' % ', '.join(valid_geo_ids))
 
     max_geoids = current_app.config.get('MAX_GEOIDS_TO_DOWNLOAD', 1000)
     if len(valid_geo_ids) > max_geoids:
