@@ -193,11 +193,11 @@ state_fips = {
 }
 
 # A regex to match geoids (e.g. 31000US33340) or expandable geoids (e.g. 310|33000US376)
-expandable_geoid_re = re.compile(r"^((\d{3}\|))?(\d{5}US\d+)$")
+expandable_geoid_re = re.compile(r"^((\d{3}\|))?([\dA-Z]{5}US[\d\-A-Z]*)$")
 # A regex that will only match bare geoids (e.g. 31000US33340)
-geoid_re = re.compile(r"^\d{5}US\d+$")
+geoid_re = re.compile(r"^[\dA-Z]{5}US[\d\-A-Z]*$")
 # A regex that matches things that look like table IDs
-table_re = re.compile(r"^[BC]\d{5}(?:[A-I]|PR)?$")
+table_re = re.compile(r"^[BC]\d{5,6}(?:[A-Z]{1,3})?$")
 
 
 def get_from_cache(cache_key, try_s3=True):
