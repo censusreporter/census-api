@@ -282,6 +282,7 @@ def crossdomain(origin=None, methods=None, headers=None,
 
 
 @app.errorhandler(400)
+@app.errorhandler(404)
 @app.errorhandler(500)
 @crossdomain(origin='*')
 def jsonify_error_handler(error):
@@ -294,7 +295,10 @@ def jsonify_error_handler(error):
     else:
         resp = jsonify(error=error.message)
         resp.status_code = 500
-    app.logger.exception("Handling exception %s, %s", error, error.message)
+
+    if resp.status_code >= 500:
+        app.logger.exception("Handling exception %s, %s", error, error.message)
+
     return resp
 
 
