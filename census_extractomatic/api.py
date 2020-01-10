@@ -970,7 +970,7 @@ def table_search():
 @app.route("/1.0/tabulation/<tabulation_id>")
 @crossdomain(origin='*')
 def tabulation_details(tabulation_id):
-    if not table_re.match(tabulation_id):
+    if not tabulation_id.isdigit():
         abort(404, "Invalid tabulation ID")
 
     result = db.session.execute(
