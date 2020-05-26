@@ -1007,16 +1007,19 @@ def tabulation_details(tabulation_id):
 
 # Example: /1.0/tabulations/?topics=comma,separated,string
 # Example: /1.0/tabulations/?prefix=digits
+# Example: /1.0/tabulations/?q=query+string
 @app.route("/1.0/tabulations/")
 @qwarg_validate({
     'prefix':   {'valid': NonemptyString()},
-    'topics': {'valid': StringList()}
+    'topics': {'valid': StringList()},
+    'q':   {'valid': NonemptyString()}
 })
 @crossdomain(origin='*')
 def search_tabulations():
 
     prefix = request.qwargs.prefix
     topics = request.qwargs.topics
+    q = request.qwargs.q
 
     table_where_parts = []
     table_where_args = {}
@@ -1028,6 +1031,10 @@ def search_tabulations():
     if prefix:
         table_where_parts.append('tab.tabulation_code like :prefix')
         table_where_args['prefix'] = "{}%".format(prefix)
+
+    if q:
+        table_where_parts.append('lower(tab.table_title) like lower(:q)')
+        table_where_args['q'] = "%{}%".format(q)
 
     if table_where_parts:
         table_where = ' AND '.join(table_where_parts)
