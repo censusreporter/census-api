@@ -1005,6 +1005,62 @@ def tabulation_details(tabulation_id):
 
     return resp
 
+# Example: /1.0/tabulations/?topics=comma,separated,string
+# Example: /1.0/tabulations/?prefix=digits
+@app.route("/1.0/tabulations/")
+@qwarg_validate({
+    'prefix':   {'valid': NonemptyString()},
+    'topics': {'valid': StringList()}
+})
+@crossdomain(origin='*')
+def search_tabulations():
+
+    prefix = request.qwargs.prefix
+    topics = request.qwargs.topics
+
+    table_where_parts = []
+    table_where_args = {}
+
+    if topics:
+        table_where_parts.append('tab.topics @> :topics')
+        table_where_args['topics'] = topics
+
+    if prefix:
+        table_where_parts.append('tab.tabulation_code like :prefix')
+        table_where_args['prefix'] = "{}%".format(prefix)
+
+    if table_where_parts:
+        table_where = ' AND '.join(table_where_parts)
+    else:
+        table_where = 'TRUE'
+
+    # retrieve matching tables.
+    result = db.session.execute(
+        """SELECT tab.tabulation_code,
+                  tab.table_title,
+                  tab.simple_table_title,
+                  tab.universe,
+                  tab.topics,
+                  tab.tables_in_one_yr,
+                  tab.tables_in_three_yr,
+                  tab.tables_in_five_yr
+           FROM census_tabulation_metadata tab
+           WHERE %s
+           ORDER BY tab.tabulation_code""" % (table_where),
+        table_where_args
+    )
+
+    data = []
+
+    for tabulation in result:
+        data.append( dict(tabulation))
+
+    text = json.dumps(data)
+    resp = make_response(text)
+    resp.headers.set('Content-Type', 'application/json')
+
+    return resp
+
 
 # Example: /1.0/table/B28001?release=acs2013_1yr
 @app.route("/1.0/table/<table_id>")

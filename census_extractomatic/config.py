@@ -6,6 +6,8 @@ class Config(object):
     MAX_GEOIDS_TO_SHOW = 3500
     MAX_GEOIDS_TO_DOWNLOAD = 3500
     CENSUS_REPORTER_URL_ROOT = 'https://censusreporter.org'
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    BYPASS_CACHE=False
 
 
 class Production(Config):
@@ -26,3 +28,4 @@ class Development(Config):
 
     MEMCACHE_ADDR = ['127.0.0.1']
     JSONIFY_PRETTYPRINT_REGULAR = False
+    BYPASS_CACHE=True
