@@ -54,7 +54,7 @@ if not app.debug:
     app.logger.addHandler(file_handler)
 
 try:
-    app.s3 = boto3.client('s3')
+    app.s3 = boto3.client('s3', endpoint_url=os.environ.get('AWS_ENDPOINT_URL'))
 except Exception as e:
     app.s3 = None
     app.logger.warning("S3 Configuration failed.")
