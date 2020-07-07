@@ -1,2 +1,3 @@
 *.pyc
 .vscode
+postgres/data/*.sql.gz
