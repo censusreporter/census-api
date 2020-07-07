@@ -20,6 +20,8 @@ services:
       AWS_DEFAULT_REGION: us-east-1
       AWS_ACCESS_KEY_ID: localstack
       AWS_SECRET_ACCESS_KEY: localstack
+      DATABASE_URL: postgresql://census:censuspassword@pg:5433/census
+      MEMCACHE_ADDR: memcached
     depends_on:
       - pg
       - memcached
