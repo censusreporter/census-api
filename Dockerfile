@@ -7,6 +7,7 @@ RUN apt-get -qq update && \
         gdal-bin \
         libgdal-dev \
         python-dev \
+        python-gdal \
         libmemcached-dev && \
     rm -rf /var/lib/apt/lists/*
 
