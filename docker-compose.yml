@@ -1,0 +1,62 @@
+version: '3'
+
+services:
+  api:
+    restart: always
+    build: .
+    ports:
+      - "80:8000"
+    links:
+      - pg:pg
+      - memcached:memcached
+    environment:
+      PORT: "8000"
+      PGDATABASE: census
+      PGUSER: census
+      PGPASSWORD: censuspassword
+      PGPORT: 5433
+      PGHOST: pg
+      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: localstack
+      AWS_SECRET_ACCESS_KEY: localstack
+    depends_on:
+      - pg
+      - memcached
+      - localstack
+
+  pg:
+    restart: always
+    build: postgres
+    environment:
+      POSTGRES_USER: census
+      POSTGRES_DB: census
+      POSTGRES_PASSWORD: censuspassword
+    ports:
+      - "5433:5433"
+    volumes:
+      - pgdata:/var/lib/postgresql/data/
+    command: -p 5433
+
+  memcached:
+    restart: always
+    image: memcached
+    ports:
+      - "11211:11211"
+
+  localstack:
+    image: localstack/localstack-light
+    restart: always
+    environment:
+      USE_LIGHT_IMAGE: 1
+      USE_SSL: 0
+      LOCALSTACK_SERVICES: s3
+      DATA_DIR: /tmp/localstack/data
+    ports:
+      - '4563-4599:4563-4599'
+    volumes:
+      - ./.localstack:/tmp/localstack
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  pgdata:
