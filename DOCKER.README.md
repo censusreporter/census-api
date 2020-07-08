@@ -47,11 +47,18 @@ You will need to have the [AWS CLI](https://docs.aws.amazon.com/cli/latest/userg
  $ aws --endpoint-url=http://localhost:4566 s3 mb s3://embed.censusreporter.org
 ``` 
 
+### Supporting full-text search
+
+If you want to use full text search during development:
+
+```
+ $ cat full-text-search/metadata_script.sql | docker-compose run -e PGPASSWORD=censuspassword pg psql -h pg -p 5433 -U census```
+
 ### Connect to the API
 
-You should now be able to connect to the API on your localhost. E.g.:
+You should now be able to connect to the API at localhost:5000. E.g.:
 
-[http://localhost/1.0/tabulation/01001](http://localhost/1.0/tabulation/01001)
+[http://localhost:5000/1.0/tabulation/01001](http://localhost:5000/1.0/tabulation/01001)
 
 
 ## Connecting to postgres with psql
