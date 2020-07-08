@@ -22,10 +22,13 @@ services:
       AWS_SECRET_ACCESS_KEY: localstack
       DATABASE_URL: postgresql://census:censuspassword@pg:5433/census
       MEMCACHE_ADDR: memcached
+    volumes:
+      - .:/census-api
     depends_on:
       - pg
       - memcached
       - localstack
+    command: gunicorn --bind 0.0.0.0:8000 --reload census_extractomatic.wsgi
 
   pg:
     restart: always
