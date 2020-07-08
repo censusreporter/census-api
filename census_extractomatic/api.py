@@ -201,9 +201,10 @@ table_re = re.compile(r"^[BC]\d{5,6}(?:[A-Z]{1,3})?$")
 
 
 def get_from_cache(cache_key, try_s3=True):
+    if current_app.config.get('BYPASS_CACHE'):
+        return
     # Try memcache first
     cached = g.cache.get(cache_key)
-
     if not cached and try_s3 and current_app.s3 is not None:
         # Try S3 next
         try:

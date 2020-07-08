@@ -14,6 +14,7 @@ class Production(Config):
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'postgresql://census:censuspassword@censusreporter.c7wefhiuybfb.us-east-1.rds.amazonaws.com:5432/census')
     MEMCACHE_ADDR = [os.environ.get('MEMCACHE_HOST', '127.0.0.1')]
     JSONIFY_PRETTYPRINT_REGULAR = False
+    BYPASS_CACHE = os.environ.get('BYPASS_CACHE', 'False').lower() in ['1', 'true']
 
 
 class Development(Config):
@@ -28,4 +29,4 @@ class Development(Config):
 
     MEMCACHE_ADDR = [os.environ.get('MEMCACHE_ADDR', '127.0.0.1')]
     JSONIFY_PRETTYPRINT_REGULAR = False
-    BYPASS_CACHE=True
+    BYPASS_CACHE = os.environ.get('BYPASS_CACHE', 'True').lower() in ['1', 'true']

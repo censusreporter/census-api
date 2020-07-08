@@ -1,5 +1,11 @@
 version: '3'
 
+# NOTE: `docker-compose restart` will NOT reload environment variables. Use
+# down/up to make environment changes.
+
+# Also: If env change are needed, we should consider moving some of these
+# variables to a developer specific .env file
+
 services:
   api:
     restart: always
@@ -22,6 +28,8 @@ services:
       AWS_SECRET_ACCESS_KEY: localstack
       DATABASE_URL: postgresql://census:censuspassword@pg:5433/census
       MEMCACHE_ADDR: memcached
+      PYTHONUNBUFFERED: 1
+      BYPASS_CACHE: 1
     volumes:
       - .:/census-api
     depends_on:
