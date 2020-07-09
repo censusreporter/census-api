@@ -1,4 +1,4 @@
-FROM python:2.7
+FROM python:2.7.10
 
 MAINTAINER Ian Dees "ian.dees@gmail.com"
 
@@ -15,6 +15,7 @@ ADD . /census-api
 
 WORKDIR /census-api
 
+RUN pip install --upgrade pip
 RUN CPLUS_INCLUDE_PATH=/usr/include/gdal \
     C_INCLUDE_PATH=/usr/include/gdal \
     pip install -r requirements.txt gunicorn

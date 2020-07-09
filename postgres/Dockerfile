@@ -1,4 +1,4 @@
-FROM postgis/postgis
+FROM postgis/postgis:10-2.5
 
 ADD https://raw.githubusercontent.com/censusreporter/census-table-metadata/master/precomputed/unified_metadata.csv /docker-entrypoint-initdb.d/
 RUN chmod 644 /docker-entrypoint-initdb.d/unified_metadata.csv

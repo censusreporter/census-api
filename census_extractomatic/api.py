@@ -3,13 +3,14 @@ from flask import (
     abort,
     current_app,
     g,
-    json,
     jsonify,
     make_response,
     redirect,
     request,
     send_file,
 )
+import decimal
+import json
 from collections import OrderedDict
 from datetime import timedelta
 from flask_sqlalchemy import SQLAlchemy
@@ -198,6 +199,15 @@ expandable_geoid_re = re.compile(r"^((\d{3}\|))?([\dA-Z]{5}US[\d\-A-Z]*)$")
 geoid_re = re.compile(r"^[\dA-Z]{5}US[\d\-A-Z]*$")
 # A regex that matches things that look like table IDs
 table_re = re.compile(r"^[BC]\d{5,6}(?:[A-Z]{1,3})?$")
+
+
+class DecimalEncoder(json.JSONEncoder):
+    """https://docs.python.org/2/library/json.html
+    """
+    def default(self, obj):
+        if isinstance(obj, decimal.Decimal):
+            return float(obj)
+        return json.JSONEncoder.default(self, obj)
 
 
 def get_from_cache(cache_key, try_s3=True):
@@ -682,7 +692,7 @@ def geo_lookup(release, geoid):
         if geom:
             geom = json.loads(geom)
 
-        result = json.dumps(dict(type="Feature", properties=result, geometry=geom), separators=(',', ':'))
+        result = json.dumps(dict(type="Feature", properties=result, geometry=geom), separators=(',', ':'), cls=DecimalEncoder)
 
         resp = make_response(result)
         put_in_cache(cache_key, result)
