@@ -54,6 +54,27 @@ If you want to use full text search during development:
 ```
  $ cat full-text-search/metadata_script.sql | docker-compose run -e PGPASSWORD=censuspassword pg psql -h pg -p 5433 -U census```
 
+
+### 5-year data
+
+You will probably want to load at least one of the 1-year data dumps to do
+development work. Some functionality, however, will still be broken if 5-year
+data has not been loaded. This is a substantial amount of data, with a single
+5-year dump being in the 100s of millions of rows, and is too much for many
+systems.
+
+I've had some initial success by loading a partial dump of 5-year data. E.g.:
+
+```
+ $ gzcat acs2018_5yr_backup.sql.gz|head -n 1000000 > acs2018_5yr_backup.1M.sql
+ $ cat ~/Downloads/acs2018_5yr_backup.1M.sql| docker-compose run -e PGPASSWORD=censuspassword pg psql -h pg -p 5433 -U census
+```
+
+This will, of course, result in missing data for most locations, but the
+general functionality of the application should be intact with data for some
+municipalities.
+
+
 ### Connect to the API
 
 You should now be able to connect to the API at localhost:5000. E.g.:
@@ -83,9 +104,7 @@ data volume, and bring everything back up:
 
 ```
  $ docker-compose down
- $ docker volume ls
- $ docker volume rm census-api_pgdata
- $ docker-compose up
+ $ rm -rf .pgdata
 ```
 
 You may need to do this, e.g., if you want to load additional data from the

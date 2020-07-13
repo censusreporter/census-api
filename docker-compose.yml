@@ -48,7 +48,7 @@ services:
     ports:
       - "5433:5433"
     volumes:
-      - pgdata:/var/lib/postgresql/data/
+      - ./.pgdata:/var/lib/postgresql/data/
     command: -p 5433
 
   memcached:
@@ -71,5 +71,5 @@ services:
       - ./.localstack:/tmp/localstack
       - /var/run/docker.sock:/var/run/docker.sock
 
-volumes:
-  pgdata:
+#volumes:
+#  pgdata:

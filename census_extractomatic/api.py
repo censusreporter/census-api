@@ -692,7 +692,10 @@ def geo_lookup(release, geoid):
         if geom:
             geom = json.loads(geom)
 
-        result = json.dumps(dict(type="Feature", properties=result, geometry=geom), separators=(',', ':'), cls=DecimalEncoder)
+        result = json.dumps(
+            dict(type="Feature", properties=result, geometry=geom),
+            separators=(',', ':'), cls=DecimalEncoder
+        )
 
         resp = make_response(result)
         put_in_cache(cache_key, result)
@@ -813,7 +816,7 @@ def show_specified_geo_data(release):
     resp_data = json.dumps({
         'type': 'FeatureCollection',
         'features': results
-    })
+    }, cls=DecimalEncoder)
 
     resp = make_response(resp_data)
     resp.headers['Content-Type'] = 'application/json'
