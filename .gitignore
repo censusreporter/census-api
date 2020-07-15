@@ -1,4 +1,6 @@
 *.pyc
 .vscode
 postgres/data/*.sql.gz
+postgres/data/*.sql
 .localstack/
+.pgdata/
