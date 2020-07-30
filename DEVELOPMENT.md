@@ -44,6 +44,6 @@ Make sure the database is running.
 
 Then from the root of your local copy of the repository, run
 
-    >> python census_extractomatic/api.py
+    >> flask run
 
 This starts Flask running locally, on port 5000. If everything is configured correctly, you should be able to load a URL like `http://localhost:5000/1.0/latest/16000US1714000/profile` and see JSON data. If not, [file an issue in this repository](https://github.com/censusreporter/census-api/issues) and we'll try to help you and improve this document.
