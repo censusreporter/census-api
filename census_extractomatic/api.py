@@ -1325,12 +1325,13 @@ def full_text_search():
                               text3 AS topics,
                               text4 AS simple_table_title,
                               text5 AS tables,
-                              ts_rank(document, plainto_tsquery(:search_term), 2|8|32) AS relevance,
+                              cast(text6 AS INT) AS priority,
+                              ts_rank(document, to_tsquery(:search_term), 2|8|32) AS relevance,
                               type
                        FROM search_metadata
-                       WHERE document @@ plainto_tsquery(:search_term)
+                       WHERE document @@ to_tsquery(:search_term)
                        AND type = 'table'
-                       ORDER BY relevance DESC
+                       ORDER BY priority DESC, relevance DESC
                        LIMIT :limit;"""
 
         elif object_type == 'topic':
@@ -1377,8 +1378,11 @@ def full_text_search():
         # divide by 8 to send it to [0, 1].
 
         elif object_type == 'table':
-            relevance = row['relevance']
-            return (log10(relevance) + 9) / 8.0
+            relevance = (log10(row['relevance']) + 9) / 8.0
+            TABLE_PRIORITY_RANGE = 100
+            priority = row['priority'] / TABLE_PRIORITY_RANGE
+            score = priority * 0.5 + relevance * 0.5
+            return score
 
         # Profiles; compute score based off priority and population. In
         # general, larger, more populous areas should be returned first.
