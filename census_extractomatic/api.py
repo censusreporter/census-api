@@ -1309,10 +1309,10 @@ def full_text_search():
                               text4 AS full_geoid,
                               text5 AS population,
                               text6 AS priority,
-                              ts_rank(document, plainto_tsquery('simple', :search_term)) AS relevance,
+                              ts_rank(document, to_tsquery('simple', :search_term)) AS relevance,
                               type
                        FROM search_metadata
-                       WHERE document @@ plainto_tsquery('simple', :search_term)
+                       WHERE document @@ to_tsquery('simple', :search_term)
                        AND type = 'profile'
                        ORDER BY CAST(text6 as INT) ASC,
                                    CAST(text5 as INT) DESC,
