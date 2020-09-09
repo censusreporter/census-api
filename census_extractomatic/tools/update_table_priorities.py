@@ -130,6 +130,9 @@ if __name__=='__main__':
     e.g.:
         python -m census_extractomatic.tools.update_table_priorities path/to/*.gz
     """
+    # a more likely command on the main server would be
+    # EXTRACTOMATIC_CONFIG_MODULE=census_extractomatic.config.Production python -m census_extractomatic.tools.update_table_priorities /var/log/nginx/censusreporter.org.access.log*gz
+    # after activating the proper virtual environment
     if len(sys.argv) < 2:
         print('\n.gz log files must be specified\n')
         exit()
