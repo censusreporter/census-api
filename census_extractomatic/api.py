@@ -1380,7 +1380,8 @@ def full_text_search():
         elif object_type == 'table':
             relevance = (log10(row['relevance']) + 9) / 8.0
             TABLE_PRIORITY_RANGE = 100
-            priority = row['priority'] / TABLE_PRIORITY_RANGE
+            raw_priority = row['priority'] if row['priority'] else 0
+            priority = raw_priority / TABLE_PRIORITY_RANGE
             score = priority * 0.5 + relevance * 0.5
             return score
 
