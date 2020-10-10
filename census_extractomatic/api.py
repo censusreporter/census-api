@@ -62,7 +62,7 @@ except Exception as e:
 
 # Allowed ACS's in "best" order (newest and smallest range preferred)
 allowed_acs = [
-    'acs2018_1yr',
+    'acs2019_1yr',
     'acs2018_5yr',
 ]
 # When expanding a container geoid shorthand (i.e. 140|05000US12127),
@@ -75,7 +75,7 @@ default_table_search_release = allowed_acs[1]
 
 # Allowed TIGER releases in newest order
 allowed_tiger = [
-    'tiger2018',
+    'tiger2019',
 ]
 
 allowed_searches = [
@@ -87,7 +87,7 @@ allowed_searches = [
 
 ACS_NAMES = {
     'acs2018_5yr': {'name': 'ACS 2018 5-year', 'years': '2014-2018'},
-    'acs2018_1yr': {'name': 'ACS 2018 1-year', 'years': '2018'},
+    'acs2019_1yr': {'name': 'ACS 2019 1-year', 'years': '2019'},
 }
 
 PARENT_CHILD_CONTAINMENT = {
@@ -442,7 +442,7 @@ def compute_profile_item_levels(geoid):
 
     if sumlevel in ('140', '150', '160', '310', '330', '350', '860', '950', '960', '970'):
         result = db.session.execute(
-            """SELECT * FROM tiger2018.census_geo_containment
+            """SELECT * FROM tiger2019.census_geo_containment
                WHERE child_geoid=:geoid
                ORDER BY percent_covered ASC
             """,
@@ -549,13 +549,13 @@ def geo_search():
 
     if with_geom:
         sql = """SELECT DISTINCT geoid,sumlevel,population,display_name,full_geoid,priority,ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geom
-            FROM tiger2018.census_name_lookup
+            FROM tiger2019.census_name_lookup
             WHERE %s
             ORDER BY priority, population DESC NULLS LAST
             LIMIT 25;""" % (where)
     else:
         sql = """SELECT DISTINCT geoid,sumlevel,population,display_name,full_geoid,priority
-            FROM tiger2018.census_name_lookup
+            FROM tiger2019.census_name_lookup
             WHERE %s
             ORDER BY priority, population DESC NULLS LAST
             LIMIT 25;""" % (where)
@@ -1012,10 +1012,10 @@ def tabulation_details(tabulation_id):
 # Example: /1.0/tabulations/?codes=01001,01002
 @app.route("/1.0/tabulations/")
 @qwarg_validate({
-    'prefix':   {'valid': NonemptyString()},
+    'prefix': {'valid': NonemptyString()},
     'topics': {'valid': StringList()},
     'codes': {'valid': StringList()},
-    'q':   {'valid': NonemptyString()}
+    'q': {'valid': NonemptyString()}
 })
 @crossdomain(origin='*')
 def search_tabulations():
@@ -1068,7 +1068,7 @@ def search_tabulations():
     data = []
 
     for tabulation in result:
-        data.append( dict(tabulation))
+        data.append(dict(tabulation))
 
     text = json.dumps(data)
     resp = make_response(text)
@@ -1616,7 +1616,7 @@ def get_child_geoids_by_coverage(release, parent_geoid, child_summary_level):
     db.session.execute("SET search_path=:acs,public;", {'acs': release})
     result = db.session.execute(
         """SELECT geoid, name
-           FROM tiger2018.census_geo_containment, geoheader
+           FROM tiger2019.census_geo_containment, geoheader
            WHERE geoheader.geoid = census_geo_containment.child_geoid
              AND census_geo_containment.parent_geoid = :parent_geoid
              AND census_geo_containment.child_geoid LIKE :child_geoids""",
@@ -1638,8 +1638,8 @@ def get_child_geoids_by_gis(release, parent_geoid, child_summary_level):
     child_geoids = []
     result = db.session.execute(
         """SELECT child.full_geoid
-           FROM tiger2018.census_name_lookup parent
-           JOIN tiger2018.census_name_lookup child ON ST_Intersects(parent.geom, child.geom) AND child.sumlevel=:child_sumlevel
+           FROM tiger2019.census_name_lookup parent
+           JOIN tiger2019.census_name_lookup child ON ST_Intersects(parent.geom, child.geom) AND child.sumlevel=:child_sumlevel
            WHERE parent.full_geoid=:parent_geoid AND parent.sumlevel=:parent_sumlevel""",
         {'child_sumlevel': child_summary_level, 'parent_geoid': parent_geoid, 'parent_sumlevel': parent_sumlevel}
     )
@@ -1767,7 +1767,7 @@ def show_specified_data(acs):
     # Fill in the display name for the geos
     result = db.session.execute(
         """SELECT full_geoid,population,display_name
-           FROM tiger2018.census_name_lookup
+           FROM tiger2019.census_name_lookup
            WHERE full_geoid IN :geoids;""",
         {'geoids': tuple(named_geo_ids)}
     )
@@ -1925,7 +1925,7 @@ def download_specified_data(acs):
         """SELECT full_geoid,
                   population,
                   display_name
-           FROM tiger2018.census_name_lookup
+           FROM tiger2019.census_name_lookup
            WHERE full_geoid IN :geo_ids;""",
         {'geo_ids': tuple(valid_geo_ids)}
     )
@@ -2141,7 +2141,7 @@ def data_compare_geographies_within_parent(acs, table_id):
         # get the parent geometry and add to API response
         result = db.session.execute(
             """SELECT ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geometry
-               FROM tiger2018.census_name_lookup
+               FROM tiger2019.census_name_lookup
                WHERE full_geoid=:geo_ids;""",
             {'geo_ids': parent_geoid}
         )
@@ -2155,7 +2155,7 @@ def data_compare_geographies_within_parent(acs, table_id):
         # get the child geometries and store for later
         result = db.session.execute(
             """SELECT geoid, ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geometry
-               FROM tiger2018.census_name_lookup
+               FROM tiger2019.census_name_lookup
                WHERE full_geoid IN :geo_ids
                ORDER BY full_geoid;""",
             {'geo_ids': tuple(child_geoid_list)}
