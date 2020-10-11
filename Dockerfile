@@ -1,7 +1,5 @@
 FROM python:3.8
 
-MAINTAINER Ian Dees "ian.dees@gmail.com"
-
 RUN apt-get -qq update && \
     apt-get install -qq -y \
         gdal-bin \
