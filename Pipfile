@@ -14,12 +14,13 @@ psycopg2-binary = "*"
 raven = {extras = ["flask"], version = "*"}
 Flask = "*"
 Flask-SQLAlchemy = "*"
-GDAL = "2.4.4"
+GDAL = "2.4.0"
 SQLAlchemy = "*"
 flask-cors = "*"
 flask-caching = "*"
 redis = "*"
 gunicorn = "*"
+simplejson = "*"
 
 [requires]
 python_version = "3.8"
