@@ -1,0 +1,23 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+fabric = "<2"
+
+[packages]
+blinker = "*"
+boto3 = "*"
+openpyxl = "*"
+psycopg2-binary = "*"
+raven = {extras = ["flask"], version = "*"}
+Flask = "*"
+Flask-SQLAlchemy = "*"
+SQLAlchemy = "*"
+flask-cors = "*"
+flask-caching = "*"
+redis = "*"
+
+[requires]
+python_version = "3.8"

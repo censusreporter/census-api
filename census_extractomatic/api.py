@@ -13,6 +13,7 @@ from flask import (
 )
 from collections import OrderedDict
 from datetime import timedelta
+from flask_cors import CORS, cross_origin
 from flask_sqlalchemy import SQLAlchemy
 from functools import update_wrapper
 from itertools import groupby
@@ -22,9 +23,7 @@ from werkzeug.exceptions import HTTPException
 import boto3
 import botocore
 import math
-import mockcache
 import os
-import pylibmc
 import re
 import shutil
 import tempfile
@@ -46,6 +45,7 @@ from census_extractomatic.exporters import supported_formats
 app = Flask(__name__)
 app.config.from_object(os.environ.get('EXTRACTOMATIC_CONFIG_MODULE', 'census_extractomatic.config.Development'))
 db = SQLAlchemy(app)
+cors = CORS(app)
 sentry = Sentry(app)
 
 if not app.debug:
@@ -239,53 +239,10 @@ def put_in_cache(cache_key, value, memcache=True, try_s3=True, content_type='app
         )
 
 
-def crossdomain(origin=None, methods=None, headers=None,
-                max_age=21600, attach_to_all=True,
-                automatic_options=True):
-    if methods is not None:
-        methods = ', '.join(sorted(x.upper() for x in methods))
-    if headers is not None and not isinstance(headers, str):
-        headers = ', '.join(x.upper() for x in headers)
-    if not isinstance(origin, str):
-        origin = ', '.join(origin)
-    if isinstance(max_age, timedelta):
-        max_age = max_age.total_seconds()
-
-    def get_methods():
-        if methods is not None:
-            return methods
-
-        options_resp = current_app.make_default_options_response()
-        return options_resp.headers['allow']
-
-    def decorator(f):
-        def wrapped_function(*args, **kwargs):
-            if automatic_options and request.method == 'OPTIONS':
-                resp = current_app.make_default_options_response()
-            else:
-                resp = make_response(f(*args, **kwargs))
-            if not attach_to_all and request.method != 'OPTIONS':
-                return resp
-
-            h = resp.headers
-
-            h['Access-Control-Allow-Origin'] = origin
-            h['Access-Control-Allow-Methods'] = get_methods()
-            h['Access-Control-Max-Age'] = str(max_age)
-            if headers is not None:
-                h['Access-Control-Allow-Headers'] = headers
-            return resp
-
-        f.provide_automatic_options = False
-        f.required_methods = ['OPTIONS']
-        return update_wrapper(wrapped_function, f)
-    return decorator
-
-
 @app.errorhandler(400)
 @app.errorhandler(404)
 @app.errorhandler(500)
-@crossdomain(origin='*')
+@cross_origin(origin='*')
 def jsonify_error_handler(error):
     if isinstance(error, ClientRequestValidationException):
         resp = jsonify(error=error.description, errors=error.errors)
@@ -335,12 +292,6 @@ def find_geoid(geoid, acs=None):
             result = result.first()
             return (acs, result['geoid'])
     return (None, None)
-
-
-@app.before_request
-def before_request():
-    memcache_addr = app.config.get('MEMCACHE_ADDR')
-    g.cache = pylibmc.Client(memcache_addr) if memcache_addr else mockcache.Client(memcache_addr)
 
 
 def get_data_fallback(table_ids, geoids, acs=None):
@@ -521,7 +472,7 @@ def convert_row(row):
     'sumlevs': {'valid': StringList(item_validator=OneOf(SUMLEV_NAMES))},
     'geom': {'valid': Bool()}
 })
-@crossdomain(origin='*')
+@cross_origin(origin='*')
 def geo_search():
     lat = request.qwargs.lat
     lon = request.qwargs.lon
@@ -575,7 +526,7 @@ def num2deg(xtile, ytile, zoom):
 # Example: /1.0/geo/tiger2014/tiles/160/10/261/373.geojson
 # Example: /1.0/geo/tiger2013/tiles/160/10/261/373.geojson
 @app.route("/1.0/geo/<release>/tiles/<sumlevel>/<int:zoom>/<int:x>/<int:y>.geojson")
-@crossdomain(origin='*')
+@cross_origin(origin='*')
 def geo_tiles(release, sumlevel, zoom, x, y):
     if release not in allowed_tiger:
         abort(404, "Unknown TIGER release")
@@ -641,7 +592,7 @@ def geo_tiles(release, sumlevel, zoom, x, y):
 @qwarg_validate({
     'geom': {'valid': Bool(), 'default': False}
 })
-@crossdomain(origin='*')
+@cross_origin(origin='*')
 def geo_lookup(release, geoid):
     if release not in allowed_tiger:
         abort(404, "Unknown TIGER release")
@@ -696,7 +647,7 @@ def geo_lookup(release, geoid):
 # Example: /1.0/geo/tiger2014/04000US53/parents
 # Example: /1.0/geo/tiger2013/04000US53/parents
 @app.route("/1.0/geo/<release>/<geoid>/parents")
-@crossdomain(origin='*')
+@cross_origin(origin='*')
 def geo_parent(release, geoid):
     if release not in allowed_tiger:
         abort(404, "Unknown TIGER release")
@@ -753,7 +704,7 @@ def geo_parent(release, geoid):
 @qwarg_validate({
     'geo_ids': {'valid': StringList(item_validator=Regex(expandable_geoid_re)), 'required': True},
 })
-@crossdomain(origin='*')
+@cross_origin(origin='*')
 def show_specified_geo_data(release):
     if release not in allowed_tiger:
         abort(404, "Unknown TIGER release")
@@ -850,7 +801,7 @@ def format_table_search_result(obj, obj_type):
     'q': {'valid': NonemptyString()},
     'topics': {'valid': StringList()}
 })
-@crossdomain(origin='*')
+@cross_origin(origin='*')
 def table_search():
     # allow choice of release, default to allowed_acs[0]
     acs = request.qwargs.acs
@@ -973,7 +924,7 @@ def table_search():
 
 # Example: /1.0/tabulation/01001
 @app.route("/1.0/tabulation/<tabulation_id>")
-@crossdomain(origin='*')
+@cross_origin(origin='*')
 def tabulation_details(tabulation_id):
     if not tabulation_id.isdigit():
         abort(404, "Invalid tabulation ID")
@@ -1017,7 +968,7 @@ def tabulation_details(tabulation_id):
     'codes': {'valid': StringList()},
     'q': {'valid': NonemptyString()}
 })
-@crossdomain(origin='*')
+@cross_origin(origin='*')
 def search_tabulations():
 
     prefix = request.qwargs.prefix
@@ -1082,7 +1033,7 @@ def search_tabulations():
 @qwarg_validate({
     'acs': {'valid': OneOf(allowed_acs), 'default': default_table_search_release}
 })
-@crossdomain(origin='*')
+@cross_origin(origin='*')
 def table_details(table_id):
     release = request.qwargs.acs
 
@@ -1146,7 +1097,7 @@ def table_details(table_id):
 
 # Example: /2.0/table/latest/B28001
 @app.route("/2.0/table/<release>/<table_id>")
-@crossdomain(origin='*')
+@cross_origin(origin='*')
 def table_details_with_release(release, table_id):
     if release in allowed_acs:
         acs_to_try = [release]
@@ -1225,7 +1176,7 @@ def table_details_with_release(release, table_id):
     'within': {'valid': Regex(table_re), 'required': True},
     'topics': {'valid': StringList()}
 })
-@crossdomain(origin='*')
+@cross_origin(origin='*')
 def table_geo_comparison_rowcount(table_id):
     years = request.qwargs.year.split(',')
     child_summary_level = request.qwargs.sumlevel
@@ -1292,7 +1243,7 @@ def table_geo_comparison_rowcount(table_id):
     'type': {'valid': OneOf(allowed_searches), 'default': allowed_searches[3]},
     'limit': {'valid': IntegerRange(1, 50), 'default': 10},
 })
-@crossdomain(origin='*')
+@cross_origin(origin='*')
 def full_text_search():
 
     def do_search(db, q, object_type, limit):
@@ -1732,7 +1683,7 @@ class ShowDataException(Exception):
     'table_ids': {'valid': StringList(item_validator=Regex(table_re)), 'required': True},
     'geo_ids': {'valid': StringList(item_validator=Regex(expandable_geoid_re)), 'required': True},
 })
-@crossdomain(origin='*')
+@cross_origin(origin='*')
 def show_specified_data(acs):
     if acs in allowed_acs:
         acs_to_try = [acs]
@@ -1897,7 +1848,7 @@ def show_specified_data(acs):
     'geo_ids': {'valid': StringList(item_validator=Regex(expandable_geoid_re)), 'required': True},
     'format': {'valid': OneOf(supported_formats), 'required': True},
 })
-@crossdomain(origin='*')
+@cross_origin(origin='*')
 def download_specified_data(acs):
     if acs in allowed_acs:
         acs_to_try = [acs]
@@ -2057,7 +2008,7 @@ def download_specified_data(acs):
     'sumlevel': {'valid': OneOf(SUMLEV_NAMES), 'required': True},
     'geom': {'valid': Bool(), 'default': False}
 })
-@crossdomain(origin='*')
+@cross_origin(origin='*')
 def data_compare_geographies_within_parent(acs, table_id):
     # make sure we support the requested ACS release
     if acs not in allowed_acs:
