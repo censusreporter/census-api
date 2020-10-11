@@ -204,8 +204,8 @@ table_re = re.compile(r"^[BC]\d{5,6}(?:[A-Z]{1,3})?$")
 
 
 def get_from_cache(cache_key, try_s3=True):
-    # Try memcache first
-    cached = g.cache.get(cache_key)
+    # Try Redis cache first
+    cached = cache.get(cache_key)
 
     if not cached and try_s3 and current_app.s3 is not None:
         # Try S3 next
@@ -228,9 +228,9 @@ def get_from_cache(cache_key, try_s3=True):
     return cached
 
 
-def put_in_cache(cache_key, value, memcache=True, try_s3=True, content_type='application/json', ):
-    if memcache:
-        g.cache.set(cache_key, value)
+def put_in_cache(cache_key, value, mem=True, try_s3=True, content_type='application/json',):
+    if mem:
+        cache.set(cache_key, value)
 
     if try_s3 and current_app.s3 is not None:
         current_app.s3.put_object(
@@ -579,7 +579,7 @@ def geo_tiles(release, sumlevel, zoom, x, y):
 
         resp = make_response(result)
         try:
-            put_in_cache(cache_key, result, memcache=False)
+            put_in_cache(cache_key, result, mem=False)
         except Exception as e:
             app.logger.warn('Skipping cache set for {} because {}'.format(cache_key, e.message))
 
