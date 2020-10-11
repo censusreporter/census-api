@@ -6,7 +6,7 @@ RUN apt-get -qq update && \
     apt-get install -qq -y \
         gdal-bin \
         libgdal-dev \
-        python-dev \
+        python-dev && \
     rm -rf /var/lib/apt/lists/*
 
 ADD . /census-api
