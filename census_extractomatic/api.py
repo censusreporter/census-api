@@ -21,8 +21,6 @@ from itertools import groupby
 from math import log10, log
 from raven.contrib.flask import Sentry
 from werkzeug.exceptions import HTTPException
-import boto3
-import botocore
 import math
 import os
 import re
@@ -49,12 +47,6 @@ db = SQLAlchemy(app)
 cache = Cache(app)
 cors = CORS(app)
 sentry = Sentry(app)
-
-try:
-    app.s3 = boto3.client('s3')
-except Exception as e:
-    app.s3 = None
-    app.logger.warning("S3 Configuration failed.")
 
 # Allowed ACS's in "best" order (newest and smallest range preferred)
 allowed_acs = [
@@ -195,44 +187,6 @@ expandable_geoid_re = re.compile(r"^((\d{3}\|))?([\dA-Z]{5}US[\d\-A-Z]*)$")
 geoid_re = re.compile(r"^[\dA-Z]{5}US[\d\-A-Z]*$")
 # A regex that matches things that look like table IDs
 table_re = re.compile(r"^[BC]\d{5,6}(?:[A-Z]{1,3})?$")
-
-
-def get_from_cache(cache_key, try_s3=True):
-    # Try Redis cache first
-    cached = cache.get(cache_key)
-
-    if not cached and try_s3 and current_app.s3 is not None:
-        # Try S3 next
-        try:
-            k = current_app.s3.get_object(
-                Bucket='embed.censusreporter.org',
-                Key=cache_key,
-            )
-            cached = k['Body'].read()
-        except botocore.exceptions.ClientError as e:
-            if e.response['Error']['Code'] == 'NoSuchKey':
-                # Key doesn't exist, so return null
-                return None
-            else:
-                # Something else happened, so re-raise
-                raise
-
-        # TODO Should stick the S3 thing back in memcache
-
-    return cached
-
-
-def put_in_cache(cache_key, value, mem=True, try_s3=True, content_type='application/json',):
-    if mem:
-        cache.set(cache_key, value)
-
-    if try_s3 and current_app.s3 is not None:
-        current_app.s3.put_object(
-            Bucket='embed.censusreporter.org',
-            Key=cache_key,
-            ContentType=content_type,
-            Body=value,
-        )
 
 
 @app.errorhandler(400)
@@ -532,7 +486,7 @@ def geo_tiles(release, sumlevel, zoom, x, y):
         abort(400, "Don't support US tiles")
 
     cache_key = str('1.0/geo/%s/tiles/%s/%s/%s/%s.geojson' % (release, sumlevel, zoom, x, y))
-    cached = get_from_cache(cache_key)
+    cached = cache.get(cache_key)
     if cached:
         resp = make_response(cached)
     else:
@@ -573,7 +527,7 @@ def geo_tiles(release, sumlevel, zoom, x, y):
 
         resp = make_response(result)
         try:
-            put_in_cache(cache_key, result, mem=False)
+            cache.set(cache_key, result)
         except Exception as e:
             app.logger.warn('Skipping cache set for {} because {}'.format(cache_key, e.message))
 
@@ -597,7 +551,7 @@ def geo_lookup(release, geoid):
         abort(404, 'Invalid GeoID')
 
     cache_key = str('1.0/geo/%s/show/%s.json?geom=%s' % (release, geoid, request.qwargs.geom))
-    cached = get_from_cache(cache_key)
+    cached = cache.get(cache_key)
     if cached:
         resp = make_response(cached)
     else:
@@ -632,7 +586,7 @@ def geo_lookup(release, geoid):
         result = json.dumps(dict(type="Feature", properties=result, geometry=geom), separators=(',', ':'))
 
         resp = make_response(result)
-        put_in_cache(cache_key, result)
+        cache.set(cache_key, result)
 
     resp.headers.set('Content-Type', 'application/json')
     resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600 * 4))
@@ -652,7 +606,7 @@ def geo_parent(release, geoid):
         abort(404, 'Invalid GeoID')
 
     cache_key = str('%s/show/%s.parents.json' % (release, geoid))
-    cached = get_from_cache(cache_key)
+    cached = cache.get(cache_key)
 
     if cached:
         resp = make_response(cached)
@@ -686,7 +640,7 @@ def geo_parent(release, geoid):
         result = json.dumps(dict(parents=parents))
 
         resp = make_response(result)
-        put_in_cache(cache_key, result)
+        cache.set(cache_key, result)
 
     resp.headers.set('Content-Type', 'application/json')
     resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600 * 4))
@@ -1037,7 +991,7 @@ def table_details(table_id):
         abort(404, "Invalid table ID")
 
     cache_key = str('tables/%s/%s.json' % (release, table_id))
-    cached = get_from_cache(cache_key)
+    cached = cache.get(cache_key)
     if cached:
         resp = make_response(cached)
     else:
@@ -1083,7 +1037,7 @@ def table_details(table_id):
         result = json.dumps(data)
 
         resp = make_response(result)
-        put_in_cache(cache_key, result)
+        cache.set(cache_key, result)
 
     resp.headers.set('Content-Type', 'application/json')
     resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600 * 4))
@@ -1107,7 +1061,7 @@ def table_details_with_release(release, table_id):
 
     for release in acs_to_try:
         cache_key = str('tables/%s/%s.json' % (release, table_id))
-        cached = get_from_cache(cache_key)
+        cached = cache.get(cache_key)
         if cached:
             resp = make_response(cached)
         else:
@@ -1154,7 +1108,7 @@ def table_details_with_release(release, table_id):
             result = json.dumps(data)
 
             resp = make_response(result)
-            put_in_cache(cache_key, result)
+            cache.set(cache_key, result)
 
         resp.headers.set('Content-Type', 'application/json')
         resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600 * 4))
