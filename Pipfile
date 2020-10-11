@@ -18,6 +18,7 @@ SQLAlchemy = "*"
 flask-cors = "*"
 flask-caching = "*"
 redis = "*"
+gunicorn = "*"
 
 [requires]
 python_version = "3.8"
