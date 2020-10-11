@@ -13,6 +13,7 @@ from flask import (
 )
 from collections import OrderedDict
 from datetime import timedelta
+from flask_caching import Cache
 from flask_cors import CORS, cross_origin
 from flask_sqlalchemy import SQLAlchemy
 from functools import update_wrapper
@@ -45,6 +46,7 @@ from census_extractomatic.exporters import supported_formats
 app = Flask(__name__)
 app.config.from_object(os.environ.get('EXTRACTOMATIC_CONFIG_MODULE', 'census_extractomatic.config.Development'))
 db = SQLAlchemy(app)
+cache = Cache(app)
 cors = CORS(app)
 sentry = Sentry(app)
 
