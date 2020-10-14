@@ -1922,7 +1922,7 @@ def download_specified_data(acs):
             out_filename = os.path.join(inner_path, '%s.%s' % (file_ident, request.qwargs.format))
             format_info = supported_formats.get(request.qwargs.format)
             builder_func = format_info['function']
-            builder_func(app.config['SQLALCHEMY_DATABASE_URI'], data, table_metadata, valid_geo_ids, file_ident, out_filename, request.qwargs.format)
+            builder_func(db.session, data, table_metadata, valid_geo_ids, file_ident, out_filename, request.qwargs.format)
 
             metadata_dict = {
                 'release': {
