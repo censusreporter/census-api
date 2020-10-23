@@ -201,7 +201,7 @@ def jsonify_error_handler(error):
         resp.status_code = 500
 
     if resp.status_code >= 500:
-        app.logger.exception("Handling exception %s, %s", error, error.args[0])
+        app.logger.exception("Handling exception %s, %s", error, error.args)
 
     return resp
 
