@@ -197,11 +197,11 @@ def jsonify_error_handler(error):
         resp = jsonify(error=error.description)
         resp.status_code = error.code
     else:
-        resp = jsonify(error=error.message)
+        resp = jsonify(error=error.args[0])
         resp.status_code = 500
 
     if resp.status_code >= 500:
-        app.logger.exception("Handling exception %s, %s", error, error.message)
+        app.logger.exception("Handling exception %s, %s", error, error.args[0])
 
     return resp
 
@@ -525,7 +525,7 @@ def geo_tiles(release, sumlevel, zoom, x, y):
         try:
             cache.set(cache_key, result)
         except Exception as e:
-            app.logger.warn('Skipping cache set for {} because {}'.format(cache_key, e.message))
+            app.logger.warn('Skipping cache set for {} because {}'.format(cache_key, e.args))
 
     resp.headers.set('Content-Type', 'application/json')
     resp.headers.set('Cache-Control', 'public,max-age=86400')  # 1 day
@@ -610,7 +610,7 @@ def geo_parent(release, geoid):
         try:
             parents = compute_profile_item_levels(geoid)
         except Exception as e:
-            abort(400, "Could not compute parents: " + e.message)
+            abort(400, "Could not compute parents: " + e.args[0])
         parent_geoids = [p['geoid'] for p in parents]
 
         def build_item(p):
