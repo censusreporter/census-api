@@ -1600,7 +1600,6 @@ def expand_geoids(geoid_list, release):
 
     # Check to make sure the geo ids the user entered are valid
     if explicit_geoids:
-        print(f"Checking {release} for geoids {explicit_geoids}")
         db.session.execute("SET search_path=:acs,public;", {'acs': release})
         result = db.session.execute(
             """SELECT geoid
