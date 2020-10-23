@@ -7,29 +7,17 @@ import six.moves.urllib as urllib
 
 logger = logging.getLogger('exporters')
 
-Session = sessionmaker()
-_sessions = {}
 
-
-def session(sql_url):
-    try:
-        return _sessions[sql_url]
-    except KeyError:  # probably not super thread-safe, but repeated execution should be harmless
-        engine = create_engine(sql_url)
-        _sessions[sql_url] = Session(bind=engine.connect())
-        return _sessions[sql_url]
-
-
-def get_sql_config(sql_url):
+def get_sql_config(session):
     """Return a tuple of strings: (host, user, password, database)"""
-    db_details = urllib.parse.urlparse(sql_url)
-    return (db_details.hostname,
-            db_details.username,
-            db_details.password,
-            db_details.path[1:])
+    bind = session.get_bind()
+    return (bind.url.host,
+            bind.url.username,
+            bind.url.password,
+            bind.url.database)
 
 
-def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ident, out_filename, format):
+def create_excel_download(session, data, table_metadata, valid_geo_ids, file_ident, out_filename, format):
     def excel_helper(sheet, table_id, table, option):
         """
         Create excel sheet.
@@ -73,9 +61,9 @@ def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ide
 
         # this SQL echoed in OGR export but no geom so copying instead of factoring out
         # plus different binding when using SQLAlchemy
-        result = session(sql_url).execute(
+        result = session.execute(
             """SELECT full_geoid,display_name
-                     FROM tiger2018.census_name_lookup
+                     FROM tiger2019.census_name_lookup
                      WHERE full_geoid IN :geoids
                      ORDER BY full_geoid""",
             {'geoids': tuple(valid_geo_ids)}
@@ -157,14 +145,14 @@ def create_excel_download(sql_url, data, table_metadata, valid_geo_ids, file_ide
     wb.save(out_filename)
 
 
-def create_ogr_download(sql_url, data, table_metadata, valid_geo_ids, file_ident, out_filename, format):
+def create_ogr_download(session, data, table_metadata, valid_geo_ids, file_ident, out_filename, format):
     import ogr
     import osr
     format_info = supported_formats[format]
     driver_name = format_info['driver']
     ogr.UseExceptions()
     in_driver = ogr.GetDriverByName("PostgreSQL")
-    host, user, password, database = get_sql_config(sql_url)
+    host, user, password, database = get_sql_config(session)
     conn = in_driver.Open("PG: host=%s dbname=%s user=%s password=%s" % (host, database, user, password))
 
     if conn is None:
@@ -175,25 +163,24 @@ def create_ogr_download(sql_url, data, table_metadata, valid_geo_ids, file_ident
     out_srs.ImportFromEPSG(4326)
     out_data = out_driver.CreateDataSource(out_filename)
     # See http://gis.stackexchange.com/questions/53920/ogr-createlayer-returns-typeerror
-    out_layer = out_data.CreateLayer(file_ident.encode('utf-8'), srs=out_srs, geom_type=ogr.wkbMultiPolygon)
+    out_layer = out_data.CreateLayer(file_ident, srs=out_srs, geom_type=ogr.wkbMultiPolygon)
     out_layer.CreateField(ogr.FieldDefn('geoid', ogr.OFTString))
     out_layer.CreateField(ogr.FieldDefn('name', ogr.OFTString))
     for (table_id, table) in table_metadata.items():
         for column_id, column_info in table['columns'].items():
-            column_name_utf8 = column_id.encode('utf-8')
             if driver_name == "ESRI Shapefile":
                 # Work around the Shapefile column name length limits
-                out_layer.CreateField(ogr.FieldDefn(column_name_utf8, ogr.OFTReal))
-                out_layer.CreateField(ogr.FieldDefn(column_name_utf8 + "e", ogr.OFTReal))
+                out_layer.CreateField(ogr.FieldDefn(column_id, ogr.OFTReal))
+                out_layer.CreateField(ogr.FieldDefn(column_id + "e", ogr.OFTReal))
             else:
-                out_layer.CreateField(ogr.FieldDefn(column_name_utf8, ogr.OFTReal))
-                out_layer.CreateField(ogr.FieldDefn(column_name_utf8 + ", Error", ogr.OFTReal))
+                out_layer.CreateField(ogr.FieldDefn(column_id, ogr.OFTReal))
+                out_layer.CreateField(ogr.FieldDefn(column_id + ", Error", ogr.OFTReal))
 
     # this SQL echoed in Excel export but no geom so copying instead of factoring out
     sql = """SELECT geom,full_geoid,display_name
-             FROM tiger2018.census_name_lookup
+             FROM tiger2019.census_name_lookup
              WHERE full_geoid IN (%s)
-             ORDER BY full_geoid""" % ', '.join("'%s'" % g.encode('utf-8') for g in valid_geo_ids)
+             ORDER BY full_geoid""" % ', '.join("'%s'" % g for g in valid_geo_ids)
     in_layer = conn.ExecuteSQL(sql)
 
     in_feat = in_layer.GetNextFeature()
@@ -208,15 +195,14 @@ def create_ogr_download(sql_url, data, table_metadata, valid_geo_ids, file_ident
             table_estimates = data[geoid][table_id]['estimate']
             table_errors = data[geoid][table_id]['error']
             for column_id, column_info in table['columns'].items():
-                column_name_utf8 = column_id.encode('utf-8')
                 if column_id in table_estimates:
                     if format == 'shp':
                         # Work around the Shapefile column name length limits
-                        estimate_col_name = column_name_utf8
-                        error_col_name = column_name_utf8 + "e"
+                        estimate_col_name = column_id
+                        error_col_name = column_id + "e"
                     else:
-                        estimate_col_name = column_name_utf8
-                        error_col_name = column_name_utf8 + ", Error"
+                        estimate_col_name = column_id
+                        error_col_name = column_id + ", Error"
 
                     out_feat.SetField(estimate_col_name, table_estimates[column_id])
                     out_feat.SetField(error_col_name, table_errors[column_id])
