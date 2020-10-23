@@ -1658,6 +1658,8 @@ def show_specified_data(acs):
     if len(valid_geo_ids) > max_geoids:
         abort(400, 'You requested %s geoids. The maximum is %s. Please contact us for bulk data.' % (len(valid_geo_ids), max_geoids))
 
+    app.logger.warn("Releases: %s, geoids: %s, tables: %s", releases_to_use, valid_geo_ids, request.qwargs.table_ids)
+
     # expand_geoids has validated parents of groups by getting children;
     # this will include those parent names in the reponse `geography` list
     # but leave them out of the response `data` list
