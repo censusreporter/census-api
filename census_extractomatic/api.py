@@ -1644,6 +1644,7 @@ def show_specified_data(acs):
         try:
             valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release)
             release_to_use = release
+            expand_error = None
             break
         except ShowDataException as e:
             expand_error = e.args[0]
@@ -1810,6 +1811,7 @@ def download_specified_data(acs):
         try:
             valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release)
             release_to_use = release
+            expand_error = None
             break
         except ShowDataException as e:
             expand_error = e.args[0]
