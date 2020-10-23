@@ -1767,9 +1767,9 @@ def show_specified_data(acs):
                 if this_geo_has_data:
                     data_for_geoid[table_id] = table_for_geoid
                 else:
-                    print("The %s release doesn't have data for table %s, geoid %s." % (get_acs_name(release_to_use), table_id, geoid))
+                    # The `release_to_use` release doesn't have data for table `table_id`, geoid `geoid`
+                    # so we'll skip it and rely on the next release to cover this case
                     continue
-                    # raise ShowDataException("The %s release doesn't have data for table %s, geoid %s." % (get_acs_name(release_to_use), table_id, geoid))
 
             data[geoid] = data_for_geoid
 
