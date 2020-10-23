@@ -1638,18 +1638,18 @@ def show_specified_data(acs):
 
     # look for the releases that have the requested geoids
     releases_to_use = set()
-    last_expand_error = None
+    expand_errors = []
     requested_geo_ids = request.qwargs.geo_ids
     for release in acs_to_try:
         try:
             valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release)
             releases_to_use.add(release)
         except ShowDataException as e:
-            last_expand_error = None
+            expand_errors.append(e)
             continue
 
     if not releases_to_use:
-        abort(400, 'None of the releases had all the requested geo_ids: %s' % last_expand_error)
+        abort(400, 'None of the releases had all the requested geo_ids: %s' % ', '.join(str(e) for e in expand_errors))
 
     if not valid_geo_ids:
         abort(404, 'None of the geo_ids specified were valid: %s' % ', '.join(requested_geo_ids))
@@ -1657,8 +1657,6 @@ def show_specified_data(acs):
     max_geoids = current_app.config.get('MAX_GEOIDS_TO_SHOW', 1000)
     if len(valid_geo_ids) > max_geoids:
         abort(400, 'You requested %s geoids. The maximum is %s. Please contact us for bulk data.' % (len(valid_geo_ids), max_geoids))
-
-    app.logger.warn("Releases: %s, geoids: %s, tables: %s", releases_to_use, valid_geo_ids, request.qwargs.table_ids)
 
     # expand_geoids has validated parents of groups by getting children;
     # this will include those parent names in the reponse `geography` list
@@ -1811,18 +1809,18 @@ def download_specified_data(acs):
 
     # look for the releases that have the requested geoids
     releases_to_use = set()
-    last_expand_error = None
+    expand_errors = []
     requested_geo_ids = request.qwargs.geo_ids
     for release in acs_to_try:
         try:
             valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release)
             releases_to_use.add(release)
         except ShowDataException as e:
-            last_expand_error = None
+            expand_errors.append(e)
             continue
 
     if not releases_to_use:
-        abort(400, 'None of the releases had all the requested geo_ids: %s' % last_expand_error)
+        abort(400, 'None of the releases had all the requested geo_ids: %s' % ', '.join(str(e) for e in expand_errors))
 
     if not valid_geo_ids:
         abort(404, 'None of the geo_ids specified were valid: %s' % ', '.join(valid_geo_ids))
