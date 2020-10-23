@@ -1636,21 +1636,20 @@ def show_specified_data(acs):
     else:
         abort(404, 'The %s release isn\'t supported.' % get_acs_name(acs))
 
-    # look for the best release that has the requested geoids
-    release_to_use = None
-    expand_error = None
+    # look for the releases that have the requested geoids
+    releases_to_use = set()
+    last_expand_error = None
     requested_geo_ids = request.qwargs.geo_ids
     for release in acs_to_try:
         try:
             valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release)
-            release_to_use = release
-            expand_error = None
-            break
+            releases_to_use.add(release)
         except ShowDataException as e:
-            expand_error = e.args[0]
+            last_expand_error = None
+            continue
 
-    if expand_error:
-        abort(400, 'None of the releases had all the requested geo_ids: %s' % expand_error)
+    if not releases_to_use:
+        abort(400, 'None of the releases had all the requested geo_ids: %s' % last_expand_error)
 
     if not valid_geo_ids:
         abort(404, 'None of the geo_ids specified were valid: %s' % ', '.join(requested_geo_ids))
@@ -1684,106 +1683,109 @@ def show_specified_data(acs):
         if geo['full_geoid'] in child_parent_map:
             geo_metadata[geo['full_geoid']]['parent_geoid'] = child_parent_map[geo['full_geoid']]
 
-    db.session.execute("SET search_path=:acs, public;", {'acs': release_to_use})
+    for release_to_use in releases_to_use:
+        db.session.execute("SET search_path=:acs, public;", {'acs': release_to_use})
 
-    # Check to make sure the tables requested are valid
-    result = db.session.execute(
-        """SELECT tab.table_id,
-                    tab.table_title,
-                    tab.universe,
-                    tab.denominator_column_id,
-                    col.column_id,
-                    col.column_title,
-                    col.indent
-            FROM census_column_metadata col
-            LEFT JOIN census_table_metadata tab USING (table_id)
-            WHERE table_id IN :table_ids
-            ORDER BY column_id;""",
-        {'table_ids': tuple(request.qwargs.table_ids)}
-    )
+        # Check to make sure the tables requested are valid
+        result = db.session.execute(
+            """SELECT tab.table_id,
+                        tab.table_title,
+                        tab.universe,
+                        tab.denominator_column_id,
+                        col.column_id,
+                        col.column_title,
+                        col.indent
+                FROM census_column_metadata col
+                LEFT JOIN census_table_metadata tab USING (table_id)
+                WHERE table_id IN :table_ids
+                ORDER BY column_id;""",
+            {'table_ids': tuple(request.qwargs.table_ids)}
+        )
 
-    valid_table_ids = []
-    table_metadata = OrderedDict()
-    for table, columns in groupby(result, lambda x: (x['table_id'], x['table_title'], x['universe'], x['denominator_column_id'])):
-        valid_table_ids.append(table[0])
-        table_metadata[table[0]] = OrderedDict([
-            ("title", table[1]),
-            ("universe", table[2]),
-            ("denominator_column_id", table[3]),
-            ("columns", OrderedDict([(
-                column['column_id'],
-                OrderedDict([
-                    ("name", column['column_title']),
-                    ("indent", column['indent'])
-                ])
-            ) for column in columns]))
-        ])
+        valid_table_ids = []
+        table_metadata = OrderedDict()
+        for table, columns in groupby(result, lambda x: (x['table_id'], x['table_title'], x['universe'], x['denominator_column_id'])):
+            valid_table_ids.append(table[0])
+            table_metadata[table[0]] = OrderedDict([
+                ("title", table[1]),
+                ("universe", table[2]),
+                ("denominator_column_id", table[3]),
+                ("columns", OrderedDict([(
+                    column['column_id'],
+                    OrderedDict([
+                        ("name", column['column_title']),
+                        ("indent", column['indent'])
+                    ])
+                ) for column in columns]))
+            ])
 
-    invalid_table_ids = set(request.qwargs.table_ids) - set(valid_table_ids)
-    if invalid_table_ids:
-        raise ShowDataException("The %s release doesn't include table(s) %s." % (get_acs_name(release_to_use), ','.join(invalid_table_ids)))
+        invalid_table_ids = set(request.qwargs.table_ids) - set(valid_table_ids)
+        if invalid_table_ids:
+            raise ShowDataException("The %s release doesn't include table(s) %s." % (get_acs_name(release_to_use), ','.join(invalid_table_ids)))
 
-    # Now fetch the actual data
-    from_stmt = '%s_moe' % (valid_table_ids[0])
-    if len(valid_table_ids) > 1:
-        from_stmt += ' '
-        from_stmt += ' '.join(['JOIN %s_moe USING (geoid)' % (table_id) for table_id in valid_table_ids[1:]])
+        # Now fetch the actual data
+        from_stmt = '%s_moe' % (valid_table_ids[0])
+        if len(valid_table_ids) > 1:
+            from_stmt += ' '
+            from_stmt += ' '.join(['JOIN %s_moe USING (geoid)' % (table_id) for table_id in valid_table_ids[1:]])
 
-    sql = 'SELECT * FROM %s WHERE geoid IN :geoids;' % (from_stmt,)
+        sql = 'SELECT * FROM %s WHERE geoid IN :geoids;' % (from_stmt,)
 
-    result = db.session.execute(sql, {'geoids': tuple(valid_geo_ids)})
-    data = OrderedDict()
+        result = db.session.execute(sql, {'geoids': tuple(valid_geo_ids)})
+        data = OrderedDict()
 
-    if result.rowcount != len(valid_geo_ids):
-        returned_geo_ids = set([row['geoid'] for row in result])
-        raise ShowDataException("The %s release doesn't include GeoID(s) %s." % (get_acs_name(release_to_use), ','.join(set(valid_geo_ids) - returned_geo_ids)))
+        if result.rowcount != len(valid_geo_ids):
+            returned_geo_ids = set([row['geoid'] for row in result])
+            raise ShowDataException("The %s release doesn't include GeoID(s) %s." % (get_acs_name(release_to_use), ','.join(set(valid_geo_ids) - returned_geo_ids)))
 
-    for row in result:
-        row = dict(row)
-        geoid = row.pop('geoid')
-        data_for_geoid = OrderedDict()
+        for row in result:
+            row = dict(row)
+            geoid = row.pop('geoid')
+            data_for_geoid = OrderedDict()
 
-        # If we end up at the 'most complete' release, we should include every bit of
-        # data we can instead of erroring out on the user.
-        # See https://www.pivotaltracker.com/story/show/70906084
-        this_geo_has_data = False or release_to_use == allowed_acs[1]
+            # If we end up at the 'most complete' release, we should include every bit of
+            # data we can instead of erroring out on the user.
+            # See https://www.pivotaltracker.com/story/show/70906084
+            this_geo_has_data = False or release_to_use == allowed_acs[1]
 
-        cols_iter = iter(sorted(list(row.items()), key=lambda tup: tup[0]))
-        for table_id, data_iter in groupby(cols_iter, lambda x: x[0][:-3].upper()):
-            table_for_geoid = OrderedDict()
-            table_for_geoid['estimate'] = OrderedDict()
-            table_for_geoid['error'] = OrderedDict()
+            cols_iter = iter(sorted(list(row.items()), key=lambda tup: tup[0]))
+            for table_id, data_iter in groupby(cols_iter, lambda x: x[0][:-3].upper()):
+                table_for_geoid = OrderedDict()
+                table_for_geoid['estimate'] = OrderedDict()
+                table_for_geoid['error'] = OrderedDict()
 
-            for (col_name, value) in data_iter:
-                col_name = col_name.upper()
-                (moe_name, moe_value) = next(cols_iter)
+                for (col_name, value) in data_iter:
+                    col_name = col_name.upper()
+                    (moe_name, moe_value) = next(cols_iter)
 
-                if value is not None and moe_value is not None:
-                    this_geo_has_data = True
+                    if value is not None and moe_value is not None:
+                        this_geo_has_data = True
 
-                table_for_geoid['estimate'][col_name] = value
-                table_for_geoid['error'][col_name] = moe_value
+                    table_for_geoid['estimate'][col_name] = value
+                    table_for_geoid['error'][col_name] = moe_value
 
-            if this_geo_has_data:
-                data_for_geoid[table_id] = table_for_geoid
-            else:
-                raise ShowDataException("The %s release doesn't have data for table %s, geoid %s." % (get_acs_name(release_to_use), table_id, geoid))
+                if this_geo_has_data:
+                    data_for_geoid[table_id] = table_for_geoid
+                else:
+                    raise ShowDataException("The %s release doesn't have data for table %s, geoid %s." % (get_acs_name(release_to_use), table_id, geoid))
 
-        data[geoid] = data_for_geoid
+            data[geoid] = data_for_geoid
 
-    resp_data = json.dumps({
-        'tables': table_metadata,
-        'geography': geo_metadata,
-        'data': data,
-        'release': {
-            'id': release_to_use,
-            'years': ACS_NAMES[release_to_use]['years'],
-            'name': ACS_NAMES[release_to_use]['name']
-        }
-    })
-    resp = make_response(resp_data)
-    resp.headers['Content-Type'] = 'application/json'
-    return resp
+        resp_data = json.dumps({
+            'tables': table_metadata,
+            'geography': geo_metadata,
+            'data': data,
+            'release': {
+                'id': release_to_use,
+                'years': ACS_NAMES[release_to_use]['years'],
+                'name': ACS_NAMES[release_to_use]['name']
+            }
+        })
+        resp = make_response(resp_data)
+        resp.headers['Content-Type'] = 'application/json'
+        return resp
+
+    return abort(400, "None of the releases had the requested geo_ids and table_ids")
 
 
 # Example: /1.0/data/download/acs2012_5yr?format=shp&table_ids=B01001,B01003&geo_ids=04000US55,04000US56
@@ -1803,21 +1805,20 @@ def download_specified_data(acs):
     else:
         abort(404, 'The %s release isn\'t supported.' % get_acs_name(acs))
 
-    # look for the best release that has the requested geoids
-    release_to_use = None
-    expand_error = None
+    # look for the releases that have the requested geoids
+    releases_to_use = set()
+    last_expand_error = None
     requested_geo_ids = request.qwargs.geo_ids
     for release in acs_to_try:
         try:
             valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release)
-            release_to_use = release
-            expand_error = None
-            break
+            releases_to_use.add(release)
         except ShowDataException as e:
-            expand_error = e.args[0]
+            last_expand_error = None
+            continue
 
-    if expand_error:
-        abort(400, 'None of the releases had all the requested geo_ids: %s' % expand_error)
+    if not releases_to_use:
+        abort(400, 'None of the releases had all the requested geo_ids: %s' % last_expand_error)
 
     if not valid_geo_ids:
         abort(404, 'None of the geo_ids specified were valid: %s' % ', '.join(valid_geo_ids))
@@ -1842,113 +1843,116 @@ def download_specified_data(acs):
             "name": geo['display_name'],
         }
 
-    db.session.execute("SET search_path=:acs, public;", {'acs': release_to_use})
+    for release_to_use in releases_to_use:
+        db.session.execute("SET search_path=:acs, public;", {'acs': release_to_use})
 
-    # Check to make sure the tables requested are valid
-    result = db.session.execute(
-        """SELECT tab.table_id,
-                    tab.table_title,
-                    tab.universe,
-                    tab.denominator_column_id,
-                    col.column_id,
-                    col.column_title,
-                    col.indent
-            FROM census_column_metadata col
-            LEFT JOIN census_table_metadata tab USING (table_id)
-            WHERE table_id IN :table_ids
-            ORDER BY column_id;""",
-        {'table_ids': tuple(request.qwargs.table_ids)}
-    )
+        # Check to make sure the tables requested are valid
+        result = db.session.execute(
+            """SELECT tab.table_id,
+                        tab.table_title,
+                        tab.universe,
+                        tab.denominator_column_id,
+                        col.column_id,
+                        col.column_title,
+                        col.indent
+                FROM census_column_metadata col
+                LEFT JOIN census_table_metadata tab USING (table_id)
+                WHERE table_id IN :table_ids
+                ORDER BY column_id;""",
+            {'table_ids': tuple(request.qwargs.table_ids)}
+        )
 
-    valid_table_ids = []
-    table_metadata = OrderedDict()
-    for table, columns in groupby(result, lambda x: (x['table_id'], x['table_title'], x['universe'], x['denominator_column_id'])):
-        valid_table_ids.append(table[0])
-        table_metadata[table[0]] = OrderedDict([
-            ("title", table[1]),
-            ("universe", table[2]),
-            ("denominator_column_id", table[3]),
-            ("columns", OrderedDict([(
-                column['column_id'],
-                OrderedDict([
-                    ("name", column['column_title']),
-                    ("indent", column['indent'])
-                ])
-            ) for column in columns]))
-        ])
+        valid_table_ids = []
+        table_metadata = OrderedDict()
+        for table, columns in groupby(result, lambda x: (x['table_id'], x['table_title'], x['universe'], x['denominator_column_id'])):
+            valid_table_ids.append(table[0])
+            table_metadata[table[0]] = OrderedDict([
+                ("title", table[1]),
+                ("universe", table[2]),
+                ("denominator_column_id", table[3]),
+                ("columns", OrderedDict([(
+                    column['column_id'],
+                    OrderedDict([
+                        ("name", column['column_title']),
+                        ("indent", column['indent'])
+                    ])
+                ) for column in columns]))
+            ])
 
-    invalid_table_ids = set(request.qwargs.table_ids) - set(valid_table_ids)
-    if invalid_table_ids:
-        raise ShowDataException("The %s release doesn't include table(s) %s." % (get_acs_name(release_to_use), ','.join(invalid_table_ids)))
+        invalid_table_ids = set(request.qwargs.table_ids) - set(valid_table_ids)
+        if invalid_table_ids:
+            raise ShowDataException("The %s release doesn't include table(s) %s." % (get_acs_name(release_to_use), ','.join(invalid_table_ids)))
 
-    # Now fetch the actual data
-    from_stmt = '%s_moe' % (valid_table_ids[0])
-    if len(valid_table_ids) > 1:
-        from_stmt += ' '
-        from_stmt += ' '.join(['JOIN %s_moe USING (geoid)' % (table_id) for table_id in valid_table_ids[1:]])
+        # Now fetch the actual data
+        from_stmt = '%s_moe' % (valid_table_ids[0])
+        if len(valid_table_ids) > 1:
+            from_stmt += ' '
+            from_stmt += ' '.join(['JOIN %s_moe USING (geoid)' % (table_id) for table_id in valid_table_ids[1:]])
 
-    sql = 'SELECT * FROM %s WHERE geoid IN :geo_ids;' % (from_stmt,)
+        sql = 'SELECT * FROM %s WHERE geoid IN :geo_ids;' % (from_stmt,)
 
-    result = db.session.execute(sql, {'geo_ids': tuple(valid_geo_ids)})
-    data = OrderedDict()
+        result = db.session.execute(sql, {'geo_ids': tuple(valid_geo_ids)})
+        data = OrderedDict()
 
-    if result.rowcount != len(valid_geo_ids):
-        returned_geo_ids = set([row['geoid'] for row in result])
-        raise ShowDataException("The %s release doesn't include GeoID(s) %s." % (get_acs_name(release_to_use), ','.join(set(valid_geo_ids) - returned_geo_ids)))
+        if result.rowcount != len(valid_geo_ids):
+            returned_geo_ids = set([row['geoid'] for row in result])
+            raise ShowDataException("The %s release doesn't include GeoID(s) %s." % (get_acs_name(release_to_use), ','.join(set(valid_geo_ids) - returned_geo_ids)))
 
-    for row in result.fetchall():
-        row = dict(row)
-        geoid = row.pop('geoid')
-        data_for_geoid = OrderedDict()
+        for row in result.fetchall():
+            row = dict(row)
+            geoid = row.pop('geoid')
+            data_for_geoid = OrderedDict()
 
-        cols_iter = iter(sorted(list(row.items()), key=lambda tup: tup[0]))
-        for table_id, data_iter in groupby(cols_iter, lambda x: x[0][:-3].upper()):
-            table_for_geoid = OrderedDict()
-            table_for_geoid['estimate'] = OrderedDict()
-            table_for_geoid['error'] = OrderedDict()
+            cols_iter = iter(sorted(list(row.items()), key=lambda tup: tup[0]))
+            for table_id, data_iter in groupby(cols_iter, lambda x: x[0][:-3].upper()):
+                table_for_geoid = OrderedDict()
+                table_for_geoid['estimate'] = OrderedDict()
+                table_for_geoid['error'] = OrderedDict()
 
-            for (col_name, value) in data_iter:
-                col_name = col_name.upper()
-                (moe_name, moe_value) = next(cols_iter)
+                for (col_name, value) in data_iter:
+                    col_name = col_name.upper()
+                    (moe_name, moe_value) = next(cols_iter)
 
-                table_for_geoid['estimate'][col_name] = value
-                table_for_geoid['error'][col_name] = moe_value
+                    table_for_geoid['estimate'][col_name] = value
+                    table_for_geoid['error'][col_name] = moe_value
 
-            data_for_geoid[table_id] = table_for_geoid
+                data_for_geoid[table_id] = table_for_geoid
 
-        data[geoid] = data_for_geoid
+            data[geoid] = data_for_geoid
 
-    temp_path = tempfile.mkdtemp()
-    file_ident = "%s_%s_%s" % (acs, next(iter(valid_table_ids)), next(iter(valid_geo_ids)))
-    inner_path = os.path.join(temp_path, file_ident)
-    os.mkdir(inner_path)
-    out_filename = os.path.join(inner_path, '%s.%s' % (file_ident, request.qwargs.format))
-    format_info = supported_formats.get(request.qwargs.format)
-    builder_func = format_info['function']
-    builder_func(db.session, data, table_metadata, valid_geo_ids, file_ident, out_filename, request.qwargs.format)
+        temp_path = tempfile.mkdtemp()
+        file_ident = "%s_%s_%s" % (acs, next(iter(valid_table_ids)), next(iter(valid_geo_ids)))
+        inner_path = os.path.join(temp_path, file_ident)
+        os.mkdir(inner_path)
+        out_filename = os.path.join(inner_path, '%s.%s' % (file_ident, request.qwargs.format))
+        format_info = supported_formats.get(request.qwargs.format)
+        builder_func = format_info['function']
+        builder_func(db.session, data, table_metadata, valid_geo_ids, file_ident, out_filename, request.qwargs.format)
 
-    metadata_dict = {
-        'release': {
-            'id': release_to_use,
-            'years': ACS_NAMES[release_to_use]['years'],
-            'name': ACS_NAMES[release_to_use]['name']
-        },
-        'tables': table_metadata
-    }
-    json.dump(metadata_dict, open(os.path.join(inner_path, 'metadata.json'), 'w'), indent=4)
+        metadata_dict = {
+            'release': {
+                'id': release_to_use,
+                'years': ACS_NAMES[release_to_use]['years'],
+                'name': ACS_NAMES[release_to_use]['name']
+            },
+            'tables': table_metadata
+        }
+        json.dump(metadata_dict, open(os.path.join(inner_path, 'metadata.json'), 'w'), indent=4)
 
-    zfile_path = os.path.join(temp_path, file_ident + '.zip')
-    zfile = zipfile.ZipFile(zfile_path, 'w', zipfile.ZIP_DEFLATED)
-    for root, dirs, files in os.walk(inner_path):
-        for f in files:
-            zfile.write(os.path.join(root, f), os.path.join(file_ident, f))
-    zfile.close()
+        zfile_path = os.path.join(temp_path, file_ident + '.zip')
+        zfile = zipfile.ZipFile(zfile_path, 'w', zipfile.ZIP_DEFLATED)
+        for root, dirs, files in os.walk(inner_path):
+            for f in files:
+                zfile.write(os.path.join(root, f), os.path.join(file_ident, f))
+        zfile.close()
 
-    resp = send_file(zfile_path, as_attachment=True, attachment_filename=file_ident + '.zip')
+        resp = send_file(zfile_path, as_attachment=True, attachment_filename=file_ident + '.zip')
 
-    shutil.rmtree(temp_path)
+        shutil.rmtree(temp_path)
 
-    return resp
+        return resp
+
+    return abort(400, "None of the releases had the requested geo_ids and table_ids")
 
 
 # Example: /1.0/data/compare/acs2012_5yr/B01001?sumlevel=050&within=04000US53
