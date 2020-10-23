@@ -16,4 +16,4 @@ RUN CPLUS_INCLUDE_PATH=/usr/include/gdal \
 
 ADD . .
 
-CMD gunicorn --workers 3 --bind 0.0.0.0:$PORT census_extractomatic.wsgi
+CMD gunicorn --workers 3 --bind 0.0.0.0:$PORT --statsd-host telegraf.web:8125 --statsd-prefix censusapi census_extractomatic.wsgi
