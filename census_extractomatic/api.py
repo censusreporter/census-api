@@ -1636,8 +1636,6 @@ def show_specified_data(acs):
     else:
         abort(404, 'The %s release isn\'t supported.' % get_acs_name(acs))
 
-    current_app.logger.warn("Data show: %s", request.url)
-
     # look for the releases that have the requested geoids
     releases_to_use = set()
     expand_errors = []
@@ -1771,6 +1769,7 @@ def show_specified_data(acs):
                 else:
                     # The `release_to_use` release doesn't have data for table `table_id`, geoid `geoid`
                     # so we'll skip it and rely on the next release to cover this case
+                    current_app.logger.warn(f"The {release_to_use} release doesn't have data for table {table_id}, geoid {geoid} so we'll skip it and rely on the next release to cover this case")
                     continue
 
             data[geoid] = data_for_geoid
