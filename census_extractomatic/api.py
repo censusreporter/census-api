@@ -1773,19 +1773,25 @@ def show_specified_data(acs):
 
             data[geoid] = data_for_geoid
 
-        resp_data = json.dumps({
-            'tables': table_metadata,
-            'geography': geo_metadata,
-            'data': data,
-            'release': {
-                'id': release_to_use,
-                'years': ACS_NAMES[release_to_use]['years'],
-                'name': ACS_NAMES[release_to_use]['name']
-            }
-        })
-        resp = make_response(resp_data)
-        resp.headers['Content-Type'] = 'application/json'
-        return resp
+        # if we have data for all geographies, send it back...
+        valid_geos_for_release = set(k for k,v in data.items() if len(v) > 0)
+        if len(valid_geos_for_release) == len(valid_geo_ids):
+            resp_data = json.dumps({
+                'tables': table_metadata,
+                'geography': geo_metadata,
+                'data': data,
+                'release': {
+                    'id': release_to_use,
+                    'years': ACS_NAMES[release_to_use]['years'],
+                    'name': ACS_NAMES[release_to_use]['name']
+                }
+            })
+            resp = make_response(resp_data)
+            resp.headers['Content-Type'] = 'application/json'
+            return resp
+        else:
+            missing_geos = valid_geo_ids.difference(valid_geos_for_release)
+            app.logger.debug(f"[release {release_to_use}] [table {','.join(valid_table_ids)}] missing data for [{','.join(missing_geos)}]")
 
     return abort(400, "None of the releases had the requested geo_ids and table_ids")
 
