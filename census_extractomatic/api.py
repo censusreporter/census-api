@@ -1636,6 +1636,8 @@ def show_specified_data(acs):
     else:
         abort(404, 'The %s release isn\'t supported.' % get_acs_name(acs))
 
+    current_app.logger.warn("Data show: %s", request.url)
+
     # look for the releases that have the requested geoids
     releases_to_use = set()
     expand_errors = []
