@@ -9,9 +9,10 @@ logger = logging.getLogger('exporters')
 
 
 def get_sql_config(session):
-    """Return a tuple of strings: (host, user, password, database)"""
+    """Return a tuple of strings: (host, port, user, password, database)"""
     bind = session.get_bind()
-    return (bind.url.host,
+    return (bind.url.host, 
+            bind.url.port,
             bind.url.username,
             bind.url.password,
             bind.url.database)
@@ -152,8 +153,8 @@ def create_ogr_download(session, data, table_metadata, valid_geo_ids, file_ident
     driver_name = format_info['driver']
     ogr.UseExceptions()
     in_driver = ogr.GetDriverByName("PostgreSQL")
-    host, user, password, database = get_sql_config(session)
-    conn = in_driver.Open("PG: host=%s dbname=%s user=%s password=%s" % (host, database, user, password))
+    host, port, user, password, database = get_sql_config(session)
+    conn = in_driver.Open("PG: host=%s port=%s dbname=%s user=%s password=%s" % (host, port, database, user, password))
 
     if conn is None:
         raise Exception("Could not connect to database to generate download.")
