@@ -1736,7 +1736,8 @@ def show_specified_data(acs):
 
         if result.rowcount != len(valid_geo_ids):
             returned_geo_ids = set([row['geoid'] for row in result])
-            raise ShowDataException("The %s release doesn't include GeoID(s) %s." % (get_acs_name(release_to_use), ','.join(set(valid_geo_ids) - returned_geo_ids)))
+            app.logger.debug("The %s release doesn't include GeoID(s) %s." % (get_acs_name(release_to_use), ','.join(set(valid_geo_ids) - returned_geo_ids)))            
+            continue
 
         for row in result:
             row = dict(row)
