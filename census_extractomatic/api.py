@@ -697,14 +697,12 @@ def show_specified_geo_data(release):
     if invalid_geo_ids:
         abort(404, "GeoID(s) %s are not valid." % (','.join(invalid_geo_ids)))
 
-    resp_data = json.dumps({
+    resp_data = {
         'type': 'FeatureCollection',
         'features': results
-    })
+    }
 
-    resp = make_response(resp_data)
-    resp.headers['Content-Type'] = 'application/json'
-    return resp
+    return jsonify(**resp_data)
 
 
 #
@@ -861,11 +859,7 @@ def table_search():
         )
         data.extend([format_table_search_result(column, 'column') for column in result])
 
-    text = json.dumps(data)
-    resp = make_response(text)
-    resp.headers.set('Content-Type', 'application/json')
-
-    return resp
+    return jsonify(**data)
 
 
 # Example: /1.0/tabulation/01001
@@ -897,11 +891,7 @@ def tabulation_details(tabulation_id):
 
     row.pop('weight', None)
 
-    text = json.dumps(row)
-    resp = make_response(text)
-    resp.headers.set('Content-Type', 'application/json')
-
-    return resp
+    return jsonify(**row)
 
 # Example: /1.0/tabulations/?topics=comma,separated,string
 # Example: /1.0/tabulations/?prefix=digits
@@ -967,11 +957,7 @@ def search_tabulations():
     for tabulation in result:
         data.append(dict(tabulation))
 
-    text = json.dumps(data)
-    resp = make_response(text)
-    resp.headers.set('Content-Type', 'application/json')
-
-    return resp
+    return jsonify(**data)
 
 
 # Example: /1.0/table/B28001?release=acs2013_1yr
@@ -1172,11 +1158,7 @@ def table_geo_comparison_rowcount(table_id):
 
         data[acs] = release
 
-    text = json.dumps(data)
-    resp = make_response(text)
-    resp.headers.set('Content-Type', 'application/json')
-
-    return resp
+    return jsonify(**data)
 
 #
 # COMBINED LOOKUPS
@@ -1721,7 +1703,9 @@ def show_specified_data(acs):
 
         invalid_table_ids = set(request.qwargs.table_ids) - set(valid_table_ids)
         if invalid_table_ids:
-            raise ShowDataException("The %s release doesn't include table(s) %s." % (get_acs_name(release_to_use), ','.join(invalid_table_ids)))
+            resp = jsonify(error="The %s release doesn't include table(s) %s." % (get_acs_name(release_to_use), ','.join(invalid_table_ids)))
+            resp.status_code = 404
+            return resp
 
         # Now fetch the actual data
         from_stmt = '%s_moe' % (valid_table_ids[0])
@@ -1782,7 +1766,7 @@ def show_specified_data(acs):
         # if we have data for all geographies, send it back...
         valid_geos_for_release = set(k for k,v in data.items() if len(v) > 0)
         if len(valid_geos_for_release) == len(valid_geo_ids):
-            resp_data = json.dumps({
+            resp_data = {
                 'tables': table_metadata,
                 'geography': geo_metadata,
                 'data': data,
@@ -1791,10 +1775,8 @@ def show_specified_data(acs):
                     'years': ACS_NAMES[release_to_use]['years'],
                     'name': ACS_NAMES[release_to_use]['name']
                 }
-            })
-            resp = make_response(resp_data)
-            resp.headers['Content-Type'] = 'application/json'
-            return resp
+            }
+            return jsonify(**resp_data)
         else:
             missing_geos = valid_geo_ids.difference(valid_geos_for_release)
             app.logger.debug(f"[release {release_to_use}] [table {','.join(valid_table_ids)}] missing data for [{','.join(missing_geos)}]")
@@ -1895,7 +1877,9 @@ def download_specified_data(acs):
 
         invalid_table_ids = set(request.qwargs.table_ids) - set(valid_table_ids)
         if invalid_table_ids:
-            raise ShowDataException("The %s release doesn't include table(s) %s." % (get_acs_name(release_to_use), ','.join(invalid_table_ids)))
+            resp = jsonify(error="The %s release doesn't include table(s) %s." % (get_acs_name(release_to_use), ','.join(invalid_table_ids)))
+            resp.status_code = 404
+            return resp
 
         # Now fetch the actual data
         from_stmt = '%s_moe' % (valid_table_ids[0])
