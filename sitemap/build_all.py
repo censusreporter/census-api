@@ -8,12 +8,16 @@
 """
 from table import write_table_sitemap
 from profile import write_profile_sitemaps
+import os
+
 
 DEFAULT_OUTPUT_DIR = '../../censusreporter/censusreporter/apps/census/static/sitemap/'
 # this connect string uses a non-standard port, as in the case when something is being
 # SSH tunneled from production. Fiddle with this as appropriate.
-DEFAULT_CONNECT_STRING = 'postgresql://census:censuspassword@localhost:5433/census'
+DEFAULT_CONNECT_STRING = os.environ.get('DATABASE_URL')
 def main():
+    if DEFAULT_CONNECT_STRING is None:
+        raise Exception("No database connect string. Set it using the DATABASE_URL env var.")
     write_table_sitemap(DEFAULT_OUTPUT_DIR,DEFAULT_CONNECT_STRING)
     write_profile_sitemaps(DEFAULT_OUTPUT_DIR,DEFAULT_CONNECT_STRING)
 if __name__ == '__main__':

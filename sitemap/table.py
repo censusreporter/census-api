@@ -1,5 +1,4 @@
 from jinja2 import Environment, FileSystemLoader
-from sets import Set
 import psycopg2
 import os.path
 
@@ -16,7 +15,7 @@ def write_table_sitemap(output_dir,db_connect_string='postgresql://census:census
 	fname = os.path.join(output_dir,'sitemap_tables.xml')
 	with open(fname, 'w') as f:
 		f.write(build_sitemap(table_urls))
-	print 'Wrote table sitemap to file %s' % (fname)
+	print('Wrote table sitemap to file %s' % (fname))
 
 
 def build_sitemap(page_data):
@@ -61,7 +60,7 @@ def query_table_list(db_connect_string):
 			# i.e., [(['a'], ), (['b', 'c'], ), ( [ ... ], ), ...]
 			# so add to a set (which inherently has no duplicates)
 
-			tables = Set()
+			tables = set()
 			for result in results1 + results2:
 				for table in result[0]:
 					tables.add(table)

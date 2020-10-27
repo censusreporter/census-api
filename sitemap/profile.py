@@ -3,7 +3,7 @@ import psycopg2
 import re
 import os.path
 
-EXCLUDED_SUMMARY_LEVELS = ['250'] # we know that these don't work correctly right now.
+EXCLUDED_SUMMARY_LEVELS = ['190'] # if they don't work, put 'em here
 
 def write_profile_sitemaps(output_dir,db_connect_string='postgresql://census:censuspassword@localhost:5432/census'):
     ''' Builds sitemap XML files for all summary levels. Each XML file contains pages for one
@@ -18,7 +18,7 @@ def write_profile_sitemaps(output_dir,db_connect_string='postgresql://census:cen
     with psycopg2.connect(db_connect_string) as conn:
         for summary_level in query_all_levels(conn):
             if summary_level not in EXCLUDED_SUMMARY_LEVELS:
-                print "querying level {}".format(summary_level)
+                print("querying level {}".format(summary_level))
                 results = query_one_level(summary_level, conn)
                 urls = []
 
@@ -35,19 +35,19 @@ def write_profile_sitemaps(output_dir,db_connect_string='postgresql://census:cen
 
                     f.write(build_sitemap(urls))
 
-                    print 'Wrote sitemap to file %s' % (filename)
+                    print('Wrote sitemap to file %s' % (filename))
                     sitemaps_created.append(filename)
                     f.close()
 
                 # Otherwise, split up the URLs into groups of 50,000
                 else:
-                    num_files = num_urls / 50000 + 1
+                    num_files = (num_urls // 50000) + 1
 
                     for i in range(num_files):
                         filename = 'sitemap_' + summary_level + '_' + str(i + 1) + '.xml'
                         f = open(os.path.join(output_dir,filename), 'w')
                         f.write(build_sitemap(urls[i * 50000 : (i + 1) * 50000]))
-                        print 'Wrote sitemap to file %s' % (filename)
+                        print('Wrote sitemap to file %s' % (filename))
                         sitemaps_created.append(filename)
                         f.close()
 
@@ -60,7 +60,7 @@ def write_master_sitemap(output_dir,files):
 
     with open(os.path.join(output_dir,'sitemap.xml'),'w') as f:
         f.write(build_sitemap(urls))
-        print 'wrote index sitemap.xml file'
+        print('wrote index sitemap.xml file')
 
 def build_sitemap(page_data):
     ''' Builds sitemap from template in sitemap.xml using data provided
@@ -86,7 +86,7 @@ def query_all_levels(db_conn):
     '''
 
     with db_conn.cursor() as cur:
-        q = "SELECT DISTINCT sumlevel FROM tiger2018.census_name_lookup order by sumlevel;"
+        q = "SELECT DISTINCT sumlevel FROM tiger2019.census_name_lookup order by sumlevel;"
         cur.execute(q)
         results = cur.fetchall()
         # Format of results is [('000',), ('001',), ...]
@@ -107,7 +107,7 @@ def query_one_level(level, db_conn):
     '''
 
     with db_conn.cursor() as cur:
-        q = "SELECT display_name, full_geoid from tiger2018.census_name_lookup where sumlevel = '%s'" % (level)
+        q = "SELECT display_name, full_geoid from tiger2019.census_name_lookup where sumlevel = '%s'" % (level)
         cur.execute(q)
         results = cur.fetchall()
 
