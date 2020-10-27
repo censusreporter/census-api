@@ -1637,13 +1637,13 @@ def show_specified_data(acs):
         abort(404, 'The %s release isn\'t supported.' % get_acs_name(acs))
 
     # look for the releases that have the requested geoids
-    releases_to_use = set()
+    releases_to_use = []
     expand_errors = []
     requested_geo_ids = request.qwargs.geo_ids
     for release in acs_to_try:
         try:
             valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release)
-            releases_to_use.add(release)
+            releases_to_use.append(release)
         except ShowDataException as e:
             expand_errors.append(e)
             continue
@@ -1736,7 +1736,11 @@ def show_specified_data(acs):
 
         if result.rowcount != len(valid_geo_ids):
             returned_geo_ids = set([row['geoid'] for row in result])
-            app.logger.debug("The %s release doesn't include GeoID(s) %s." % (get_acs_name(release_to_use), ','.join(set(valid_geo_ids) - returned_geo_ids)))            
+            app.logger.info(
+                "show_specified_data: The %s release doesn't include GeoID(s) %s. for table(s) %s" 
+                % (get_acs_name(release_to_use), 
+                ','.join(set(valid_geo_ids) - returned_geo_ids),
+                ','.join(valid_table_ids)))            
             continue
 
         for row in result:
@@ -1816,13 +1820,13 @@ def download_specified_data(acs):
         abort(404, 'The %s release isn\'t supported.' % get_acs_name(acs))
 
     # look for the releases that have the requested geoids
-    releases_to_use = set()
+    releases_to_use = []
     expand_errors = []
     requested_geo_ids = request.qwargs.geo_ids
     for release in acs_to_try:
         try:
             valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release)
-            releases_to_use.add(release)
+            releases_to_use.append(release)
         except ShowDataException as e:
             expand_errors.append(e)
             continue
