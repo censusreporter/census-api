@@ -9,6 +9,7 @@ class Config(object):
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     BYPASS_CACHE = False
     CACHE_TYPE = os.environ.get('CACHE_TYPE', 'null')
+    CACHE_DEFAULT_TIMEOUT = int(os.environ.get('CACHE_DEFAULT_TIMEOUT')) if os.environ.get('CACHE_DEFAULT_TIMEOUT') else None
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
 
 
