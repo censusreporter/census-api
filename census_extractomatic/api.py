@@ -1764,7 +1764,8 @@ def show_specified_data(acs):
             data[geoid] = data_for_geoid
 
         # if we have data for all geographies, send it back...
-        valid_geos_for_release = set(k for k,v in data.items() if len(v) > 0)
+        valid_geos_for_release = set(geoid for geoid,geo_data in data.items()
+                                     if len(geo_data) == len(valid_table_ids))
         if len(valid_geos_for_release) == len(valid_geo_ids):
             resp_data = {
                 'tables': table_metadata,
