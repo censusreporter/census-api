@@ -859,8 +859,10 @@ def table_search():
         )
         data.extend([format_table_search_result(column, 'column') for column in result])
 
-    return jsonify(**data)
-
+    text = json.dumps(data)
+    resp = make_response(text)
+    resp.headers.set('Content-Type', 'application/json')
+    return resp
 
 # Example: /1.0/tabulation/01001
 @app.route("/1.0/tabulation/<tabulation_id>")
@@ -957,9 +959,12 @@ def search_tabulations():
     for tabulation in result:
         data.append(dict(tabulation))
 
-    return jsonify(**data)
+    text = json.dumps(data)
+    resp = make_response(text)
+    resp.headers.set('Content-Type', 'application/json')
 
-
+    return resp
+    
 # Example: /1.0/table/B28001?release=acs2013_1yr
 @app.route("/1.0/table/<table_id>")
 @qwarg_validate({
