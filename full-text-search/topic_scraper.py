@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from HTMLParser import HTMLParser
+from html.parser import HTMLParser
 import psycopg2
 import re
-import urllib2
+import requests
 
 
 class HTMLStripper(HTMLParser):
@@ -266,12 +266,10 @@ def get_list_of_topics():
     """
 
     url = "https://censusreporter.org/topics"
-    handle = urllib2.urlopen(url)
-    html = handle.read()
-    handle.close()
+    handle = requests.get(url)
 
     parser = TopicsParser()
-    parser.feed(html)
+    parser.feed(handle.content)
 
     return parser.topics
 
@@ -279,12 +277,10 @@ def get_list_of_topics():
 def scrape_topic_page(name, url):
     """ Scrapes a single topic page to get description and list of tables. """
 
-    handle = urllib2.urlopen(url)
-    html = handle.read()
-    handle.close()
+    handle = requests.get(url)
 
     parser = TopicPageParser(html)
-    parser.feed(html)
+    parser.feed(handle.content)
 
     text = ' '.join(parser.text)
 
@@ -295,12 +291,10 @@ def scrape_glossary_page():
     """ Scrapes and returns terms and text found on the glossary page. """
 
     url = "https://censusreporter.org/glossary"
-    handle = urllib2.urlopen(url)
-    html = handle.read()
-    handle.close()
+    handle = requests.get(url)
 
     parser = GlossaryParser()
-    parser.feed(html)
+    parser.feed(handle.content)
 
     return {'text': ' '.join(parser.text), 'terms': ' '.join(parser.terms) }
 

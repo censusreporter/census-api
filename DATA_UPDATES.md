@@ -185,7 +185,7 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
   - Scrape the topic pages:
         - `virtualenv --no-site-packages env`
         - `source env/bin/activate`
-        - `pip install htmlparser psycopg2`
+        - `pip install requests psycopg2-binary`
         - `python /home/ubuntu/census-api/full-text-search/topic_scraper.py`
 
 - Regenerate the sitemap files
