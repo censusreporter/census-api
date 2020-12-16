@@ -267,9 +267,10 @@ def get_list_of_topics():
 
     url = "https://censusreporter.org/topics"
     handle = requests.get(url)
+    html = handle.text
 
     parser = TopicsParser()
-    parser.feed(handle.text)
+    parser.feed(html)
 
     return parser.topics
 
@@ -278,9 +279,10 @@ def scrape_topic_page(name, url):
     """ Scrapes a single topic page to get description and list of tables. """
 
     handle = requests.get(url)
+    html = handle.text
 
     parser = TopicPageParser(html)
-    parser.feed(handle.text)
+    parser.feed(html)
 
     text = ' '.join(parser.text)
 
@@ -292,9 +294,10 @@ def scrape_glossary_page():
 
     url = "https://censusreporter.org/glossary"
     handle = requests.get(url)
+    html = handle.text
 
     parser = GlossaryParser()
-    parser.feed(handle.text)
+    parser.feed(html)
 
     return {'text': ' '.join(parser.text), 'terms': ' '.join(parser.terms) }
 
