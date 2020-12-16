@@ -10,6 +10,7 @@ class HTMLStripper(HTMLParser):
     """ Stripper for HTML tags; simply stores data in self.data. """
 
     def __init__(self):
+        super().__init__()
         self.reset()
         self.data = []
 
@@ -45,7 +46,7 @@ class TopicsParser(HTMLParser):
     """
 
     def __init__(self):
-        super().__init__(self)
+        super().__init__()
         self.in_dt_tag = False
         self.topic_buffer = {'name': '', 'url': ''}
         self.base_url = "https://censusreporter.org"
@@ -106,7 +107,7 @@ class TopicPageParser(HTMLParser):
     """
 
     def __init__(self, html):
-        super().__init__(self)
+        super().__init__()
         self.in_body = 0
         self.text = []
         self.tables = self.find_all_tables(html)
@@ -213,7 +214,7 @@ class GlossaryParser(HTMLParser):
     """
 
     def __init__(self):
-        super().__init__(self)
+        super().__init__()
         self.in_body = False
         self.in_term_name = False
         self.terms = []
@@ -306,7 +307,7 @@ def remove_old_topics():
     """" Removes old topics entries from search_metadata. """
 
     # Connect to database
-    connection = psycopg2.connect("dbname=census user=census")
+    connection = psycopg2.connect("")
     cur = connection.cursor()
 
     # Remove old entries
@@ -334,7 +335,7 @@ def add_topics_to_table(topics_data):
     """
 
     # Connect to database
-    connection = psycopg2.connect("dbname=census user=census")
+    connection = psycopg2.connect("")
     cur = connection.cursor()
 
     for topic in topics_data:
@@ -374,7 +375,7 @@ def add_glossary_to_table(glossary):
     """
 
     # Connect to database
-    connection = psycopg2.connect("dbname=census user=census")
+    connection = psycopg2.connect("")
     cur = connection.cursor()
 
     # Format text properly, i.e., &-delimited and without multiple spaces
