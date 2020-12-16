@@ -51,7 +51,7 @@ sentry = Sentry(app)
 # Allowed ACS's in "best" order (newest and smallest range preferred)
 allowed_acs = [
     'acs2019_1yr',
-    'acs2018_5yr',
+    'acs2019_5yr',
 ]
 # When table searches happen without a specified release, use this
 # release to do the table search.
@@ -70,7 +70,7 @@ allowed_searches = [
 ]
 
 ACS_NAMES = {
-    'acs2018_5yr': {'name': 'ACS 2018 5-year', 'years': '2014-2018'},
+    'acs2019_5yr': {'name': 'ACS 2019 5-year', 'years': '2015-2019'},
     'acs2019_1yr': {'name': 'ACS 2019 1-year', 'years': '2019'},
 }
 
@@ -964,7 +964,7 @@ def search_tabulations():
     resp.headers.set('Content-Type', 'application/json')
 
     return resp
-    
+
 # Example: /1.0/table/B28001?release=acs2013_1yr
 @app.route("/1.0/table/<table_id>")
 @qwarg_validate({
@@ -1726,10 +1726,10 @@ def show_specified_data(acs):
         if result.rowcount != len(valid_geo_ids):
             returned_geo_ids = set([row['geoid'] for row in result])
             app.logger.info(
-                "show_specified_data: The %s release doesn't include GeoID(s) %s. for table(s) %s" 
-                % (get_acs_name(release_to_use), 
+                "show_specified_data: The %s release doesn't include GeoID(s) %s. for table(s) %s"
+                % (get_acs_name(release_to_use),
                 ','.join(set(valid_geo_ids) - returned_geo_ids),
-                ','.join(valid_table_ids)))            
+                ','.join(valid_table_ids)))
             continue
 
         for row in result:
