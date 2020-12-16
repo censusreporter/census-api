@@ -269,7 +269,7 @@ def get_list_of_topics():
     handle = requests.get(url)
 
     parser = TopicsParser()
-    parser.feed(handle.content)
+    parser.feed(handle.text)
 
     return parser.topics
 
@@ -280,7 +280,7 @@ def scrape_topic_page(name, url):
     handle = requests.get(url)
 
     parser = TopicPageParser(html)
-    parser.feed(handle.content)
+    parser.feed(handle.text)
 
     text = ' '.join(parser.text)
 
@@ -294,7 +294,7 @@ def scrape_glossary_page():
     handle = requests.get(url)
 
     parser = GlossaryParser()
-    parser.feed(handle.content)
+    parser.feed(handle.text)
 
     return {'text': ' '.join(parser.text), 'terms': ' '.join(parser.terms) }
 
