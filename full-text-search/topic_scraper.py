@@ -155,7 +155,7 @@ class TopicPageParser(HTMLParser):
 
         # Strip all the HTML tags
         stripper = HTMLStripper()
-        stripper.feed(text.decode('utf-8'))
+        stripper.feed(text)
         text = stripper.get_data()
 
         # Find table codes
