@@ -62,7 +62,7 @@ def check_tables_exist(to_check, all_tables):
         ª - no core table, only iterations (we don't do any checks for this)
     """
 
-    results = { "main_fine": [], "missing": [], "no_collapsed": [], 
+    results = { "main_fine": [], "missing": [], "no_collapsed": [],
                 "no_iterations": [], "no_pr": [] }
 
     for table, annotations in to_check.iteritems():
@@ -100,12 +100,12 @@ def check_tables_exist(to_check, all_tables):
 
 if __name__ == '__main__':
     topics = topic_scraper.get_list_of_topics()
-    print "Obtained list of topics"
-    
+    print("Obtained list of topics")
+
     all_tables = get_all_tables()
-    print "Got list of all tables"
+    print("Got list of all tables")
 
     for topic in topics:
         topic['text'], topic['tables'], topic['table_codes'] = topic_scraper.scrape_topic_page(**topic)
-        print "Finished scraping topic page '{0}'".format(topic['name'])
-        print check_tables_exist(topic['tables'], all_tables)
+        print("Finished scraping topic page '{0}'".format(topic['name']))
+        print(check_tables_exist(topic['tables'], all_tables))

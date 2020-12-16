@@ -95,7 +95,7 @@ class TopicPageParser(HTMLParser):
                  in the main body of the page.
         text: List to store all the relevant text snippets on the page
         tables: Dictionary of table code : annotations pairs, where the table
-                code represents a table on the page and the annotations are 
+                code represents a table on the page and the annotations are
                 the annotations next to it
         table_codes: List of all table codes.
 
@@ -140,13 +140,13 @@ class TopicPageParser(HTMLParser):
 
 
     def find_all_tables(self, text):
-        """ Find all table codes in text using regex 
+        """ Find all table codes in text using regex
 
         Table codes are formatted as [B/C]##### with an optional race iteration
-        (character A - H) or a Puerto Rico tag (string 'PR' at the end). 
+        (character A - H) or a Puerto Rico tag (string 'PR' at the end).
 
         Occasionally, there are annotations on the topic pages following the
-        table code. These are one of the following characters: 
+        table code. These are one of the following characters:
             ‡ - collapsed version exists; 'collapsed'
             † - has racial iterations; 'iterations'
             § - has Puerto Rico version; 'puerto_rico'
@@ -185,7 +185,7 @@ class TopicPageParser(HTMLParser):
                     actual_annotations.append(char)
 
             # Update tables_on_page with the new annotations, no duplicates
-            tables_on_page[code] = list(set(tables_on_page[code] 
+            tables_on_page[code] = list(set(tables_on_page[code]
                                             + actual_annotations))
 
         return tables_on_page
@@ -316,7 +316,7 @@ def remove_old_topics():
     q = "DELETE FROM search_metadata WHERE type = 'topic';"
 
     cur.execute(q)
-    print cur.statusmessage
+    print(cur.statusmessage)
 
     connection.commit()
     cur.close()
@@ -329,9 +329,9 @@ def add_topics_to_table(topics_data):
     """ Adds topics data into the search_metadata table.
 
     Requires that the format be a list of dictionaries, i.e.,
-        [{name: 'topic1', url: 'url1', table_codes: [tables_in_topic1], 
+        [{name: 'topic1', url: 'url1', table_codes: [tables_in_topic1],
           text: '...', tables: {not relevant}},
-         {name: 'topic2', url: 'url2', table_codes: [tables_in_topic2], 
+         {name: 'topic2', url: 'url2', table_codes: [tables_in_topic2],
           text: '...', tables: {not relevant}},
          ... ]
     """
@@ -361,7 +361,7 @@ def add_topics_to_table(topics_data):
                topic['name'], ' '.join(topic['table_codes']), topic['url'], topic['text'])
 
         cur.execute(q)
-        print cur.statusmessage
+        print(cur.statusmessage)
 
     connection.commit()
     cur.close()
@@ -400,7 +400,7 @@ def add_glossary_to_table(glossary):
            glossary['terms'], glossary['text'])
 
     cur.execute(q)
-    print cur.statusmessage
+    print(cur.statusmessage)
 
     connection.commit()
     cur.close()
@@ -411,19 +411,19 @@ def add_glossary_to_table(glossary):
 
 if __name__ == "__main__":
     topics = get_list_of_topics()
-    print "Obtained list of topics"
+    print("Obtained list of topics")
 
     for topic in topics:
         # Update topics dictionary with the text and tables that are
         # scraped from the topic page.
         topic['text'], topic['tables'], topic['table_codes'] = scrape_topic_page(**topic)
-        print "Finished scraping topic page '{0}'".format(topic['name'])
+        print("Finished scraping topic page '{0}'".format(topic['name']))
 
     glossary = scrape_glossary_page()
-    print "Finished sraping glossary page"
+    print("Finished sraping glossary page")
 
     remove_old_topics()
-    print "Removed old topics entries from search_metadata."
+    print("Removed old topics entries from search_metadata.")
     add_topics_to_table(topics)
     add_glossary_to_table(glossary)
-    print "Added new topics entries to search_metadata."
+    print("Added new topics entries to search_metadata.")
