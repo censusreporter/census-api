@@ -45,7 +45,7 @@ class TopicsParser(HTMLParser):
     """
 
     def __init__(self):
-        HTMLParser.__init__(self)
+        super().__init__(self)
         self.in_dt_tag = False
         self.topic_buffer = {'name': '', 'url': ''}
         self.base_url = "https://censusreporter.org"
@@ -106,7 +106,7 @@ class TopicPageParser(HTMLParser):
     """
 
     def __init__(self, html):
-        HTMLParser.__init__(self)
+        super().__init__(self)
         self.in_body = 0
         self.text = []
         self.tables = self.find_all_tables(html)
@@ -213,7 +213,7 @@ class GlossaryParser(HTMLParser):
     """
 
     def __init__(self):
-        HTMLParser.__init__(self)
+        super().__init__(self)
         self.in_body = False
         self.in_term_name = False
         self.terms = []
