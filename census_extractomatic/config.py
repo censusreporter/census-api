@@ -3,7 +3,7 @@ import os
 
 class Config(object):
     SENTRY_DSN = os.environ.get('SENTRY_DSN')
-    MAX_GEOIDS_TO_SHOW = 3500
+    MAX_GEOIDS_TO_SHOW = 8100
     MAX_GEOIDS_TO_DOWNLOAD = 8100
     CENSUS_REPORTER_URL_ROOT = 'https://censusreporter.org'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
