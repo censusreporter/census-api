@@ -3,3 +3,5 @@
 .envrc
 .python-version
 .DS_Store
+dump.rdb
+

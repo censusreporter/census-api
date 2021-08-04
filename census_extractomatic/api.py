@@ -27,6 +27,8 @@ import re
 import shutil
 import tempfile
 import zipfile
+import hashlib
+from datetime import datetime
 from .validation import (
     qwarg_validate,
     Bool,
@@ -38,7 +40,14 @@ from .validation import (
     Regex,
     StringList,
 )
-
+from .user_geo import (
+    fetch_user_geodata,
+    save_user_geojson,
+    fetch_user_geog_as_geojson,
+    fetch_metadata,
+    aggregate_decennial,
+    create_csv_download
+)
 from census_extractomatic.exporters import supported_formats
 
 app = Flask(__name__)
@@ -2151,6 +2160,95 @@ def robots_txt():
 @app.route('/')
 def index():
     return redirect('https://github.com/censusreporter/census-api/blob/master/API.md')
+
+# Begin User Geography aggregation routes
+@app.route("/1.0/user_geo/import",methods=['POST'])
+@cross_origin(origin='*')
+def import_geography():
+    start = datetime.now()
+    result = {
+        'ok': False,
+        'message': 'Not processed yet',
+        'dataset_id': None,
+        'hash_digest': None
+    }
+    if request.is_json:
+        # TODO: validate that it's GeoJSON; validate size and such
+        try:
+            request_data = request.json
+            geojson_str = json.dumps(request_data['geojson'])
+            hash_digest = hashlib.md5(geojson_str.encode('utf-8')).hexdigest()
+
+            existing = fetch_user_geodata(db, hash_digest)
+            if existing:
+                result['hash_digest'] = hash_digest
+                result['dataset_id'] = existing[0]['user_geodata_id']
+                result['message'] = 'Dataset previously imported'
+                result['ok'] = True
+                return jsonify(result)
+
+            dataset_id = save_user_geojson(db, 
+                    geojson_str, 
+                    hash_digest,
+                    request_data.get('dataset_name'),
+                    request_data.get('name_field'),
+                    request_data.get('id_field'),
+                    request_data.get('source_url')
+                    )
+            if dataset_id is not None:
+                result['ok'] = True
+                result['message'] = 'Dataset loaded'
+
+            result['dataset_id'] = dataset_id
+            result['hash_digest'] = hash_digest
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            result['message'] = f"Exception: {e}"
+    else:
+        result['message'] = 'This endpoint only accepts JSON data.'
+    
+    result['elapsed_time'] = str(datetime.now()-start)
+    return jsonify(result)
+
+@app.route('/1.0/user_geo/<string:hash_digest>')
+@cross_origin(origin='*')
+def fetch_user_geo(hash_digest):
+    result = fetch_user_geodata(db, hash_digest)
+    if result is None:
+        abort(404)
+    return jsonify(result)
+
+@app.route('/1.0/user_geo/<string:hash_digest>.geojson')
+@cross_origin(origin='*')
+def fetch_user_geojson(hash_digest):
+    result = fetch_user_geog_as_geojson(db, hash_digest)
+    if result is None:
+        abort(404)
+    return jsonify(result)
+
+@app.route('/1.0/aggregate/<string:hash_digest>/<string:release>/<string:table_code>.<string:format>',methods=['GET'])
+@cross_origin(origin='*')
+def aggregate(hash_digest, release, table_code, format):
+    release_metadata = fetch_metadata(release, table_code)
+    if release_metadata is None:
+        abort(404)
+
+    if hash_digest.lower() == 'metadata':
+        if format == 'json':
+            return jsonify(release_metadata)
+        abort(404)
+
+    if not re.match('[A-Fa-f0-9]{32}', hash_digest):
+        abort(404) # todo, aggregate actual data. maybe also look for cached?
+
+    aggregated = aggregate_decennial(db, hash_digest, release, table_code)
+    # what if aggregate_decennial returned a pandas dataframe? or should that be hidden
+    # todo: shepherd into various formats
+    if format == 'csv':
+        return create_csv_download(db, hash_digest, aggregated)
+    return jsonify(aggregated)
 
 
 if __name__ == "__main__":
