@@ -4,13 +4,13 @@ from flask import (
     abort,
     current_app,
     g,
-    json,
     jsonify,
     make_response,
     redirect,
     request,
     send_file,
 )
+import simplejson as json
 from collections import OrderedDict
 from datetime import timedelta
 from flask_caching import Cache
@@ -42,13 +42,15 @@ from .validation import (
 )
 from .user_geo import (
     fetch_user_geodata,
+    join_user_geo_to_blocks_task,
     save_user_geojson,
     fetch_user_geog_as_geojson,
     fetch_metadata,
-    aggregate_decennial,
     create_csv_download
 )
 from census_extractomatic.exporters import supported_formats
+
+from timeit import default_timer as timer
 
 app = Flask(__name__)
 app.config.from_object(os.environ.get('EXTRACTOMATIC_CONFIG_MODULE', 'census_extractomatic.config.Development'))
@@ -2203,8 +2205,6 @@ def import_geography():
             result['hash_digest'] = hash_digest
 
         except Exception as e:
-            import traceback
-            traceback.print_exc()
             result['message'] = f"Exception: {e}"
     else:
         result['message'] = 'This endpoint only accepts JSON data.'
@@ -2218,6 +2218,9 @@ def fetch_user_geo(hash_digest):
     result = fetch_user_geodata(db, hash_digest)
     if result is None:
         abort(404)
+    if result['status'] == 'NEW':
+        join_user_geo_to_blocks_task.delay(result['user_geodata_id'])
+        result['message'] = "Found status NEW so requested processing."
     return jsonify(result)
 
 @app.route('/1.0/user_geo/<string:hash_digest>.geojson')
@@ -2228,27 +2231,36 @@ def fetch_user_geojson(hash_digest):
         abort(404)
     return jsonify(result)
 
+# TODO: change this from format as extension to format as query param to eliminate confusion btw
+#       URL ext and download ext
 @app.route('/1.0/aggregate/<string:hash_digest>/<string:release>/<string:table_code>.<string:format>',methods=['GET'])
 @cross_origin(origin='*')
 def aggregate(hash_digest, release, table_code, format):
     release_metadata = fetch_metadata(release, table_code)
     if release_metadata is None:
+        print(f"No release_metadata for release {release} table {table_code}")
         abort(404)
 
     if hash_digest.lower() == 'metadata':
         if format == 'json':
             return jsonify(release_metadata)
+        print(f"invalid format {format} for metadata")
         abort(404)
 
     if not re.match('[A-Fa-f0-9]{32}', hash_digest):
-        abort(404) # todo, aggregate actual data. maybe also look for cached?
-
-    aggregated = aggregate_decennial(db, hash_digest, release, table_code)
-    # what if aggregate_decennial returned a pandas dataframe? or should that be hidden
-    # todo: shepherd into various formats
+        print(f"not a valid hash_digest {hash_digest}")
+        abort(404) 
+        
+    # todo maybe look for cached?
     if format == 'csv':
-        return create_csv_download(db, hash_digest, aggregated)
-    return jsonify(aggregated)
+        start = timer()
+        zf = create_csv_download(db, hash_digest, release, table_code)
+        end = timer()
+        print(f"make zip {hash_digest} elapsed time {timedelta(seconds=end-start)}")
+        print(f"zf: {zf.name}")
+        return send_file(zf.name, 'application/zip', attachment_filename=f"{release}_{table_code}.zip")
+    
+    abort(404) # we have more paths to fill in yet...
 
 
 if __name__ == "__main__":

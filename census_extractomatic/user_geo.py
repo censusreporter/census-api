@@ -1,10 +1,15 @@
-"""Centralize non-Flask code for 2020 User Geography data aggregation here."""
+"""Centralize non-Flask code for 2020 User Geography data aggregation here.
+    This file serves both as a library for the Flask app as well as
+    a bootstrap for Celery tasks, which could be run with something like
+    celery -A census_extractomatic.user_geo:celery_app worker
+"""
 from sqlalchemy.sql import text
 import json
 from collections import OrderedDict
 from copy import deepcopy
 
 from tempfile import NamedTemporaryFile
+import zipfile
 
 import pandas as pd
 
@@ -18,11 +23,11 @@ SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
 CELERY_BROKER = os.environ['REDIS_URL']
 
 celery_app = Celery(__name__, broker=CELERY_BROKER)
-db = create_engine(SQLALCHEMY_DATABASE_URI)
+celery_db = create_engine(SQLALCHEMY_DATABASE_URI)
 
 @celery_app.task
 def join_user_geo_to_blocks_task(user_geodata_id):
-    join_user_to_census(db, user_geodata_id)
+    join_user_to_census(celery_db, user_geodata_id)
 
 USER_GEODATA_INSERT_SQL = text("""
 INSERT INTO aggregation.user_geodata (name, hash_digest, source_url, fields, bbox)
@@ -86,16 +91,8 @@ SELECT ugg.user_geodata_geometry_id, b.geoid20
                     4326))
 """)
 
-USER_GEOMETRY_SELECT_ALL_BY_HASH_DIGEST = text('''
-SELECT ugg.user_geodata_geometry_id, ugg.name, ugg.original_id, ugg.properties
-FROM aggregation.user_geodata ug,
-    aggregation.user_geodata_geometry ugg
-WHERE ug.hash_digest=:hash_digest
-  AND ug.user_geodata_id = ugg.user_geodata_id
-''')
-
 USER_GEOMETRY_SELECT_WITH_GEOM_BY_HASH_DIGEST = text('''
-SELECT ugg.user_geodata_geometry_id, ugg.name, ugg.original_id, ST_asGeoJSON(ugg.geom)
+SELECT ugg.user_geodata_geometry_id, ugg.name, ugg.original_id, ST_asGeoJSON(ST_ForcePolygonCCW(ugg.geom))
 FROM aggregation.user_geodata ug,
     aggregation.user_geodata_geometry ugg
 WHERE ug.hash_digest=:hash_digest
@@ -106,6 +103,7 @@ SELECT_BY_USER_GEOGRAPHY_SQL_TEMPLATE = """
 SELECT ugg.user_geodata_geometry_id, 
        ugg.name, 
        ugg.original_id, 
+       ST_asGeoJSON(ST_ForcePolygonCCW(ugg.geom)) geom,
        d.*
 FROM aggregation.user_geodata ug,
      aggregation.user_geodata_geometry ugg,
@@ -253,12 +251,17 @@ def fetch_user_geog_as_geojson(db, hash_digest):
     if cur.rowcount == 0:
         return None
     for cr_geoid, name, original_id, geojson_str in cur:
-        base = json.loads(geojson_str)
+        base = {
+            'type': 'Feature'
+        }
+        base['geometry'] = json.loads(geojson_str)
         base['properties'] = {
             'cr_geoid': cr_geoid
         }
         if name is not None: base['properties']['name'] = name
-        if original_id is not None: base['properties']['original_id'] = original_id
+        if original_id is not None: 
+            base['properties']['original_id'] = original_id
+            base['id'] = original_id
         geojson['features'].append(base)
     return geojson
 
@@ -279,65 +282,86 @@ def fetch_metadata(release=None, table_code=None):
 
 
 def evaluateUserGeographySQLTemplate(schema, table_code):
+    """Schemas and table names can't be handled as bindparams with SQLAlchemy, so
+       this allows us to use a 'select *' syntax for multiple tables. 
+    """
     return SELECT_BY_USER_GEOGRAPHY_SQL_TEMPLATE.format(schema=schema, table_code=table_code)
 
 def aggregate_decennial(db, hash_digest, release, table_code):
+    """For the given user geography, identified by hash_digest, aggregate the given table
+    for the given decennial census release, and return a Pandas dataframe with the results.
+    In addition to the data columns for the given table, the dataframe may include columns
+    'name' and/or 'original_id', if the user geography identified sources for those in their
+    upload.
+    """
     # check that it's ready!
     # seems super slow for P1 compared to H1... is it our summing process?
     if fetch_metadata(release, table_code):
         sql = evaluateUserGeographySQLTemplate(release, table_code)
-        d = {}
         query = text(sql).bindparams(hash_digest=hash_digest)
-        df = pd.read_sql(query, db)
-        df = df.drop('geoid',axis=1) # disappears in groupby
+        df = pd.read_sql(query, db.engine)
+        df = df.drop('geoid',axis=1) # we don't care about the original blocks after we groupby
         agg_funcs = dict((c,'sum') for c in df.columns[1:])
-        agg_funcs['name'] = 'first' # all the same anyway
-        agg_funcs['original_id'] = 'first' # all the same anyway
+        agg_funcs['name'] = 'first'        # these string values are 
+        agg_funcs['original_id'] = 'first' # the same for each row aggregated
+        agg_funcs['geom'] = 'first'        # by 'user_geodata_geometry_id'
         aggd = df.groupby('user_geodata_geometry_id').agg(agg_funcs)
         for c in ['name', 'original_id']:
             if aggd[c].isnull().all():
                 aggd = aggd.drop(c,axis=1)
+        aggd = aggd.reset_index()
         return aggd
 
     raise ValueError('Invalid release or table code')
 
-def fetch_user_geometries_metadata(db, hash_digest, tidy=True):
-    cur = db.engine.execute(USER_GEOMETRY_SELECT_ALL_BY_HASH_DIGEST,hash_digest=hash_digest)
-    cols = list(cur._metadata.keys)[1:]
-    metadata = {}
-    no_names = True
-    no_ids = True
-    for row in cur:
-        row_dict = dict(zip(cols,row[1:]))
-        no_names = no_names and (row_dict['name'] is None )
-        no_ids = no_ids and (row_dict['original_id'] is None)
-        metadata[row[0]] = row_dict
-    if tidy: 
-        if no_names and no_ids:
-            return dict((k,v['properties']) for k,v in metadata.items())
-        elif no_names and not no_ids:
-            return dict((k,{'original_id': v['original_id']}) for k,v in metadata.items())
-        elif no_ids and not no_names:
-            return dict((k,{'name': v['name']}) for k,v in metadata.items())
-        else:
-            return dict((k,{'name': v['name'], 'original_id': v['original_id']}) for k,v in metadata.items())
-    return metadata
+def dataframe_to_feature_collection(df: pd.DataFrame, geom_col):
+    """Given a Pandas dataframe with one column stringified GeoJSON, return a 
+    dict representing a GeoJSON FeatureCollection, where `geom_col` is parsed and 
+    used for the 'geometry' and the rest of the row is converted to a 'properties' dict."""
+    geojson = {
+        "type": "FeatureCollection",
+        "features": []
+    }
 
+    for _, row in df.iterrows():
+        row = row.to_dict()
+        geom = row.pop(geom_col)
+        f = {
+            'type': 'Feature',
+            'geometry': json.loads(geom),
+            'properties': row
+        }
+        if 'original_id' in row:
+            f['id'] = row['original_id']
+        geojson['features'].append(f)
 
-def create_csv_download(db, hash_digest, aggregated):
-    metadata = fetch_user_geometries_metadata(db, hash_digest)
-    metadata_keys = list(list(metadata.values())[0].keys())
-    data_keys = aggregated['columns']
-    header = metadata_keys + data_keys
-    results = [header] # later we'll make a real CSV
-    for geom_id in metadata:
-        row = []
-        for mdk in metadata_keys:
-            row.append(metadata[geom_id][mdk])
-        row.extend(aggregated['data'][geom_id])
-        results.append(row)
-    return results
+    return geojson
 
+def create_csv_download(db, hash_digest, release, table_code):
+    aggregated = aggregate_decennial(db, hash_digest, release, table_code)
+    metadata = fetch_metadata(release, table_code)
+    if 'original_id' in aggregated: # original id is second if its there so insert it first
+        metadata['columns']['original_id'] = 'Geographic Identifier'
+        metadata['columns'].move_to_end('original_id', last=False) 
+    if 'name' in aggregated: # name is first if its there
+        metadata['columns']['name'] = 'Geography Name'
+        metadata['columns'].move_to_end('name', last=False)
+    # only need it if there's no name or ID. will we even tolerate that?
+    if 'name' in aggregated or 'original_id' in aggregated:
+        aggregated = aggregated.drop('user_geodata_geometry_id', axis=1)
+    else:
+        aggregated = aggregated.rename(columns={'user_geodata_geometry_id': 'cr_geoid'})
+        metadata['columns']['cr_geoid'] = 'Census Reporter Geography ID'
+        metadata['columns'].move_to_end('cr_geoid', last=False)
+
+    with NamedTemporaryFile('wb',suffix='.zip',delete=False) as tmp:
+        with zipfile.ZipFile(tmp, 'w', zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr(f'{release}_{table_code}.csv', aggregated.drop('geom', axis=1).to_csv(index=False))
+            zf.writestr(f'{release}_{table_code}.geojson', json.dumps(dataframe_to_feature_collection(aggregated, 'geom')))
+            zf.writestr(f'metadata.json', json.dumps(metadata))
+            zf.close()
+    print(f"returning")
+    return tmp
 
 
 METADATA = {
@@ -647,7 +671,7 @@ METADATA = {
                 ('P0040073', 'P4-73: White; Black or African American; American Indian and Alaska Native; Asian; Native Hawaiian and Other Pacific Islander; Some other race'))),
         },
         'h1': {
-            'title': 'Hispanic or Latino, and not Hispanic or Latino by Race for the Population 18 Years and Over',
+            'title': 'Occupancy Status',
             'columns': OrderedDict((
                 ('H0010001', 'H1-1: Total'),
                 ('H0010002', 'H1-2: Occupied'),
