@@ -41,12 +41,15 @@ from .validation import (
     StringList,
 )
 from .user_geo import (
+    COMPARISON_RELEASE_CODE,
+    build_filename,
     fetch_user_geodata,
     join_user_geo_to_blocks_task,
+    list_user_geographies,
     save_user_geojson,
     fetch_user_geog_as_geojson,
     fetch_metadata,
-    create_csv_download
+    create_aggregate_download
 )
 from census_extractomatic.exporters import supported_formats
 
@@ -2171,6 +2174,7 @@ def import_geography():
     result = {
         'ok': False,
         'message': 'Not processed yet',
+        'existing': False,
         'dataset_id': None,
         'hash_digest': None
     }
@@ -2184,8 +2188,9 @@ def import_geography():
             existing = fetch_user_geodata(db, hash_digest)
             if existing:
                 result['hash_digest'] = hash_digest
-                result['dataset_id'] = existing[0]['user_geodata_id']
+                result['dataset_id'] = existing['user_geodata_id']
                 result['message'] = 'Dataset previously imported'
+                result['existing'] = True
                 result['ok'] = True
                 return jsonify(result)
 
@@ -2212,14 +2217,38 @@ def import_geography():
     result['elapsed_time'] = str(datetime.now()-start)
     return jsonify(result)
 
+
+# Begin User Geography aggregation routes
+@app.route("/1.0/user_geo/list")
+@cross_origin(origin='*')
+def fetch_user_geographies():
+
+    result = {
+        'ok': False,
+        'message': 'Not processed yet',
+        'geos': []
+    }
+
+    try:
+        geos = list_user_geographies(db)
+        result['ok'] = True
+        result['message'] = f'Found {len(geos)} public geographies.'
+        result['geos'] = geos
+    except Exception as e:
+        result['message'] = f'Error {e}'
+
+    return jsonify(result)
+
 @app.route('/1.0/user_geo/<string:hash_digest>')
 @cross_origin(origin='*')
 def fetch_user_geo(hash_digest):
     result = fetch_user_geodata(db, hash_digest)
+    result['geojson'] = fetch_user_geog_as_geojson(db, hash_digest)
     if result is None:
         abort(404)
     if result['status'] == 'NEW':
         join_user_geo_to_blocks_task.delay(result['user_geodata_id'])
+        result['status'] = 'PROCESSING'
         result['message'] = "Found status NEW so requested processing."
     return jsonify(result)
 
@@ -2231,36 +2260,31 @@ def fetch_user_geojson(hash_digest):
         abort(404)
     return jsonify(result)
 
-# TODO: change this from format as extension to format as query param to eliminate confusion btw
-#       URL ext and download ext
-@app.route('/1.0/aggregate/<string:hash_digest>/<string:release>/<string:table_code>.<string:format>',methods=['GET'])
+@app.route('/1.0/aggregate/<string:hash_digest>/<string:release>/<string:table_code>',methods=['GET'])
 @cross_origin(origin='*')
-def aggregate(hash_digest, release, table_code, format):
-    release_metadata = fetch_metadata(release, table_code)
-    if release_metadata is None:
-        print(f"No release_metadata for release {release} table {table_code}")
+def aggregate(hash_digest, release, table_code):
+
+    if table_code.lower() not in ['p1', 'p2', 'p3', 'p4', 'p5', 'h1']:
         abort(404)
 
-    if hash_digest.lower() == 'metadata':
-        if format == 'json':
-            return jsonify(release_metadata)
-        print(f"invalid format {format} for metadata")
+    if release.lower() not in ['dec2010_pl94', 'dec2020_pl94', COMPARISON_RELEASE_CODE]:
+        abort(404)
+
+    # the one we can't compare
+    if table_code.lower() == 'p5' and release.lower() == COMPARISON_RELEASE_CODE:
         abort(404)
 
     if not re.match('[A-Fa-f0-9]{32}', hash_digest):
         print(f"not a valid hash_digest {hash_digest}")
         abort(404) 
         
-    # todo maybe look for cached?
-    if format == 'csv':
-        start = timer()
-        zf = create_csv_download(db, hash_digest, release, table_code)
-        end = timer()
-        print(f"make zip {hash_digest} elapsed time {timedelta(seconds=end-start)}")
-        print(f"zf: {zf.name}")
-        return send_file(zf.name, 'application/zip', attachment_filename=f"{release}_{table_code}.zip")
-    
-    abort(404) # we have more paths to fill in yet...
+    print('starting timer')
+    start = timer()
+    zf = create_aggregate_download(db, hash_digest, release, table_code)
+    end = timer()
+    zipfile_name = build_filename(hash_digest, release, table_code, 'zip')
+    print(f"create {zipfile_name} elapsed time {timedelta(seconds=end-start)}")
+    return send_file(zf.name, 'application/zip', attachment_filename=zipfile_name)
 
 
 if __name__ == "__main__":
