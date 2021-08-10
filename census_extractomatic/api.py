@@ -2212,7 +2212,8 @@ def import_geography():
                     request_data.get('dataset_name'),
                     request_data.get('name_field'),
                     request_data.get('id_field'),
-                    request_data.get('source_url')
+                    request_data.get('source_url'),
+                    request_data.get('share_checked',False)
                     )
             if dataset_id is not None:
                 result['ok'] = True

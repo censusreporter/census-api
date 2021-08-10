@@ -33,8 +33,8 @@ def join_user_geo_to_blocks_task(user_geodata_id):
 COMPARISON_RELEASE_CODE = 'dec_pl94_compare_2020_2010'
 
 USER_GEODATA_INSERT_SQL = text("""
-INSERT INTO aggregation.user_geodata (name, hash_digest, source_url, fields, bbox)
-VALUES (:name, :hash_digest, :source_url, :fields, ST_MakeEnvelope(:xmin, :ymin, :xmax, :ymax, 4326))
+INSERT INTO aggregation.user_geodata (name, hash_digest, source_url, public, fields, bbox)
+VALUES (:name, :hash_digest, :source_url, :public, :fields, ST_MakeEnvelope(:xmin, :ymin, :xmax, :ymax, 4326))
 RETURNING *
 """)
 
@@ -57,7 +57,8 @@ SELECT user_geodata_id,
        bbox, 
        fields, 
        source_url,
-       status
+       status,
+       public
 FROM aggregation.user_geodata 
 WHERE hash_digest=:hash_digest
 ''')
@@ -137,48 +138,14 @@ def _fieldsFromOGRLayer(layer):
     return fields
 
 
-def store_geojson(db, geojson_filename, hash_digest, name="Untitled", name_field=None, id_field=None, source_url=None):
-    ogr_file = ogr.Open(geojson_filename)
-    # assume geojson always has one layer, right?
-    l = ogr_file.GetLayer(0)
-    epsg = l.GetSpatialRef().GetAuthorityCode(None)
-    (xmin, xmax, ymin, ymax) = l.GetExtent()
-    dataset_id = None
-    
-    fields = _fieldsFromOGRLayer(l)
-    with db.engine.begin() as con:
-        cur = con.execute(USER_GEODATA_INSERT_SQL,
-                          name=name, 
-                          hash_digest=hash_digest,
-                          source_url=source_url,
-                          fields=json.dumps(fields),
-                          xmin=xmin,
-                          ymin=ymin,
-                          xmax=xmax,
-                          ymax=ymax)
-        dataset_id = cur.fetchall()[0][0]
-        for i in range(0,l.GetFeatureCount()):
-            f = l.GetFeature(i)
-            mp = ogr.ForceToMultiPolygon(f.GetGeometryRef())
-            properties = dict((fld, f.GetField(i)) for i,fld in enumerate(fields))
-            con.execute(USER_GEODATA_GEOMETRY_INSERT_SQL, 
-                    user_geodata_id=dataset_id,
-                    geom_wkt=mp.ExportToWkt(),
-                    epsg=epsg,
-                    name=properties.get(name_field),
-                    original_id=properties.get(id_field),
-                    properties=json.dumps(properties))
-
-    return dataset_id
-
-
 def save_user_geojson(db, 
                       geojson_str, 
                       hash_digest,
                       dataset_name,
                       name_field,
                       id_field,
-                      source_url):
+                      source_url,
+                      share_checked):
     tmp = NamedTemporaryFile('w',suffix='.json',delete=False)
     tmp.write(geojson_str)
     tmp.close()
@@ -198,6 +165,7 @@ def save_user_geojson(db,
                           name=dataset_name, 
                           hash_digest=hash_digest,
                           source_url=source_url,
+                          public=share_checked,
                           fields=json.dumps(fields),
                           xmin=xmin,
                           ymin=ymin,
