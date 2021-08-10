@@ -11,6 +11,7 @@ from flask import (
     send_file,
 )
 import simplejson as json # for easiest serialization of decimal.Decimal
+from decimal import Decimal
 from collections import OrderedDict
 from datetime import timedelta
 from flask_caching import Cache
@@ -57,6 +58,17 @@ from timeit import default_timer as timer
 
 app = Flask(__name__)
 app.config.from_object(os.environ.get('EXTRACTOMATIC_CONFIG_MODULE', 'census_extractomatic.config.Development'))
+
+# decimal.Decimal is supposed to be automatically handled when simplejson is installed
+# but that is not proving the case (chk /1.0/geo/show/tiger2019?geo_ids=16000US1714000 to verify)
+from flask.json import JSONEncoder
+class CustomJSONEncoder(JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return str(obj)
+        return JSONEncoder.default(self, obj)
+app.json_encoder = CustomJSONEncoder
+
 db = SQLAlchemy(app)
 cache = Cache(app)
 cors = CORS(app)
