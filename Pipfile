@@ -22,7 +22,7 @@ gunicorn = "*"
 simplejson = "*"
 celery = "*"
 pandas = "*"
-gdal = "==3.0.4"
+gdal = "==2.4.0"
 
 [requires]
 python_version = "3.8"
