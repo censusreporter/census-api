@@ -47,3 +47,18 @@ Then from the root of your local copy of the repository, run
     >> flask run
 
 This starts Flask running locally, on port 5000. If everything is configured correctly, you should be able to load a URL like `http://localhost:5000/1.0/latest/16000US1714000/profile` and see JSON data. If not, [file an issue in this repository](https://github.com/censusreporter/census-api/issues) and we'll try to help you and improve this document.
+
+
+Celery
+======
+In August, 2021, we added a feature to support user-uploaded geographies and data aggregation to those geographies. Because this process is time-intensive, we introduced Celery to support making that process asynchronous.  
+
+If you aren't working on that feature, you can probably ignore the rest; however, if you are, you must have Celery running before maps are uploaded, or they not be completely processed, and there will be no sign of that until you go trying to debug a problem.
+
+To run Celery locally, you must also have Redis running, as Celery uses Redis. Details about installing and running Redis are outside the scope of this documentation. Make sure you add a local environment variable, `REDIS_URL` with the appropriate value; if you're sticking with all defaults, `redis://` should serve.
+
+
+To run Celery, in the active python environment for this project, run
+`celery -A census_extractomatic.user_geo:celery_app worker`
+
+When Redis and Celery are both running, you should find that you can upload maps and see their status (`aggregation.user_geodata.status` in Postgres) move from `NEW` to `READY` without your intervention.

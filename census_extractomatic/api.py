@@ -10,7 +10,7 @@ from flask import (
     request,
     send_file,
 )
-import simplejson as json
+import simplejson as json # for easiest serialization of decimal.Decimal
 from collections import OrderedDict
 from datetime import timedelta
 from flask_caching import Cache
