@@ -5,6 +5,7 @@ RUN apt-get -qq update && \
         gdal-bin \
         libgdal-dev \
         python-dev \
+        supervisor \
         pipenv && \
     rm -rf /var/lib/apt/lists/*
 
