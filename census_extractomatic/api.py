@@ -29,6 +29,7 @@ import shutil
 import tempfile
 import zipfile
 import hashlib
+import logging
 from datetime import datetime
 from .validation import (
     qwarg_validate,
@@ -49,7 +50,6 @@ from .user_geo import (
     list_user_geographies,
     save_user_geojson,
     fetch_user_geog_as_geojson,
-    fetch_metadata,
     create_aggregate_download
 )
 from census_extractomatic.exporters import supported_formats
@@ -58,6 +58,9 @@ from timeit import default_timer as timer
 
 app = Flask(__name__)
 app.config.from_object(os.environ.get('EXTRACTOMATIC_CONFIG_MODULE', 'census_extractomatic.config.Development'))
+
+gunicorn_error_logger = logging.getLogger('gunicorn.error')
+app.logger.handlers.extend(gunicorn_error_logger.handlers)
 
 # decimal.Decimal is supposed to be automatically handled when simplejson is installed
 # but that is not proving the case (chk /1.0/geo/show/tiger2019?geo_ids=16000US1714000 to verify)
@@ -68,6 +71,7 @@ class CustomJSONEncoder(JSONEncoder):
             return str(obj)
         return JSONEncoder.default(self, obj)
 app.json_encoder = CustomJSONEncoder
+
 
 db = SQLAlchemy(app)
 cache = Cache(app)
