@@ -267,7 +267,7 @@ def fetch_metadata(release=None, table_code=None):
             for col,label in md['columns'].items():
                 c_10.append((f"{col}_2010", f"{label} (2010)"))
                 c_20.append((f"{col}_2020", f"{label} (2020)"))
-                c_change.append((f"{col}_change", f"{label} (% change)"))
+                c_change.append((f"{col}_pct_chg", f"{label} (% change)"))
                 base['columns'] = OrderedDict(c_20 + c_10 + c_change)
             return base
 
