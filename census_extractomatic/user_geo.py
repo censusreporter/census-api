@@ -3,6 +3,7 @@
     a bootstrap for Celery tasks, which could be run with something like
     celery -A census_extractomatic.user_geo:celery_app worker
 """
+from datetime import timedelta
 from sqlalchemy.sql import text
 import json
 from collections import OrderedDict
@@ -18,6 +19,8 @@ import ogr
 from celery import Celery
 import os
 from sqlalchemy import create_engine
+
+from timeit import default_timer as timer
 
 SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
 CELERY_BROKER = os.environ['REDIS_URL']
@@ -291,7 +294,11 @@ def aggregate_decennial(db, hash_digest, release, table_code):
     if fetch_metadata(release=release, table_code=table_code):
         sql = evaluateUserGeographySQLTemplate(release, table_code)
         query = text(sql).bindparams(hash_digest=hash_digest)
+        print(f'aggregate_decennial: starting timer {hash_digest} {release} {table_code}')
+        start = timer()
         df = pd.read_sql(query, db.engine)
+        end = timer()
+        print(f"pd.read_sql {hash_digest} {release} {table_code} elapsed time {timedelta(seconds=end-start)}")
         df = df.drop('geoid',axis=1) # we don't care about the original blocks after we groupby
         agg_funcs = dict((c,'sum') for c in df.columns[1:])
         agg_funcs['name'] = 'first'        # these string values are 
@@ -302,6 +309,8 @@ def aggregate_decennial(db, hash_digest, release, table_code):
             if aggd[c].isnull().all():
                 aggd = aggd.drop(c,axis=1)
         aggd = aggd.reset_index()
+        end = timer()
+        print(f"all processing {hash_digest} {release} {table_code} total elapsed time {timedelta(seconds=end-start)}")
         return aggd
 
     raise ValueError('Invalid release or table code')

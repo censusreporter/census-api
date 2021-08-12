@@ -30,6 +30,7 @@ import tempfile
 import zipfile
 import hashlib
 import logging
+import requests
 from datetime import datetime
 from .validation import (
     qwarg_validate,
@@ -2277,6 +2278,10 @@ def fetch_user_geojson(hash_digest):
         abort(404)
     return jsonify(result)
 
+def file_exists(url):
+    resp = requests.head(url)
+    return resp.ok
+
 @app.route('/1.0/aggregate/<string:hash_digest>/<string:release>/<string:table_code>',methods=['GET'])
 @cross_origin(origin='*')
 def aggregate(hash_digest, release, table_code):
@@ -2295,11 +2300,15 @@ def aggregate(hash_digest, release, table_code):
         print(f"not a valid hash_digest {hash_digest}")
         abort(404) 
         
-    print('starting timer')
+    zipfile_name = build_filename(hash_digest, release, table_code, 'zip')
+    precomputed_url = f"http://files.censusreporter.org/aggregation/{zipfile_name}"
+    if file_exists(precomputed_url):
+        return redirect(precomputed_url)
+
+    print(f'starting timer {zipfile_name}')
     start = timer()
     zf = create_aggregate_download(db, hash_digest, release, table_code)
     end = timer()
-    zipfile_name = build_filename(hash_digest, release, table_code, 'zip')
     print(f"create {zipfile_name} elapsed time {timedelta(seconds=end-start)}")
     return send_file(zf.name, 'application/zip', attachment_filename=zipfile_name)
 

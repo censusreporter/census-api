@@ -28,7 +28,10 @@ pandas = "*"
 # mean unfortunate monkeying around with this.
 # For now needs to be 2.4.0 for Dokku
 gdal = "==2.4.0"
-flask-sqlalchemy = "===2.5.1"
+# but 3.0.4 for Joe
+#gdal = "==3.0.4"
+flask-sqlalchemy = "==2.5.1"
+requests = "==2.26.0"
 
 [requires]
 python_version = "3.8"
