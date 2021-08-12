@@ -117,7 +117,6 @@ WHERE ug.hash_digest = :hash_digest
       AND ug.user_geodata_id = ugg.user_geodata_id
       AND ugg.user_geodata_geometry_id = ugb.user_geodata_geometry_id
       AND ugb.geoid = d.geoid
-ORDER BY ugg.user_geodata_geometry_id
 """
 
 def fetch_user_geodata(db, hash_digest):
