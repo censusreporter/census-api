@@ -13,8 +13,10 @@ openpyxl = "*"
 psycopg2-binary = "*"
 raven = {extras = ["flask"], version = "*"}
 Flask = "*"
-Flask-SQLAlchemy = "*"
-SQLAlchemy = "*"
+# SQLAlchemy 1.4.x introduced a regression with flask-sqlalchemy
+# https://github.com/pallets/flask-sqlalchemy/issues/971
+# Keep pinned at 1.3.21 
+SQLAlchemy = "==1.3.21"
 flask-cors = "*"
 flask-caching = "*"
 redis = "*"
@@ -22,7 +24,11 @@ gunicorn = "*"
 simplejson = "*"
 celery = "*"
 pandas = "*"
+# Different GDAL (C) versions on Dokku and local dev 
+# mean unfortunate monkeying around with this.
+# For now needs to be 2.4.0 for Dokku
 gdal = "==2.4.0"
+flask-sqlalchemy = "===2.5.1"
 
 [requires]
 python_version = "3.8"
