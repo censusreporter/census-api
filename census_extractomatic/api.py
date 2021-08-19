@@ -2261,13 +2261,13 @@ def fetch_user_geographies():
 @cross_origin(origin='*')
 def fetch_user_geo(hash_digest):
     result = fetch_user_geodata(db, hash_digest)
-    result['geojson'] = fetch_user_geog_as_geojson(db, hash_digest)
     if result is None:
         abort(404)
     if result['status'] == 'NEW':
         join_user_geo_to_blocks_task.delay(result['user_geodata_id'])
         result['status'] = 'PROCESSING'
         result['message'] = "Found status NEW so requested processing."
+    result['geojson'] = fetch_user_geog_as_geojson(db, hash_digest)
     return jsonify(result)
 
 @app.route('/1.0/user_geo/<string:hash_digest>.geojson')
@@ -2299,7 +2299,9 @@ def aggregate(hash_digest, release, table_code):
     if not re.match('[A-Fa-f0-9]{32}', hash_digest):
         print(f"not a valid hash_digest {hash_digest}")
         abort(404) 
-        
+
+    # this is entangled with the S3 upload in user_geo, so if the name or S3 prefix change,
+    # check that too, or refactor for single point of control        
     zipfile_name = build_filename(hash_digest, release, table_code, 'zip')
     precomputed_url = f"http://files.censusreporter.org/aggregation/{zipfile_name}"
     if file_exists(precomputed_url):

@@ -20,6 +20,12 @@ from celery import Celery
 import os
 from sqlalchemy import create_engine
 
+import boto3
+from botocore.exceptions import ClientError
+import logging
+
+logger = logging.getLogger('gunicorn.error')
+
 from timeit import default_timer as timer
 
 SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
@@ -31,7 +37,6 @@ celery_db = create_engine(SQLALCHEMY_DATABASE_URI)
 @celery_app.task
 def join_user_geo_to_blocks_task(user_geodata_id):
     join_user_to_census(celery_db, user_geodata_id)
-
 
 COMPARISON_RELEASE_CODE = 'dec_pl94_compare_2020_2010'
 
@@ -106,6 +111,11 @@ WHERE ug.hash_digest=:hash_digest
   AND ug.user_geodata_id = ugg.user_geodata_id
 ''')
 
+BLOCK_VINTAGE_TABLES = {
+    'dec2010_pl94': 'user_geodata_blocks_2010', 
+    'dec2020_pl94': 'user_geodata_blocks_2020'
+}
+
 SELECT_BY_USER_GEOGRAPHY_SQL_TEMPLATE = """
 SELECT ugg.user_geodata_geometry_id, 
        ugg.name, 
@@ -114,7 +124,7 @@ SELECT ugg.user_geodata_geometry_id,
        d.*
 FROM aggregation.user_geodata ug,
      aggregation.user_geodata_geometry ugg,
-     aggregation.user_geodata_blocks_2010 ugb,
+     aggregation.{blocks_vintage_table} ugb,
      {schema}.{table_code} d
 WHERE ug.hash_digest = :hash_digest
       AND ug.user_geodata_id = ugg.user_geodata_id
@@ -280,7 +290,11 @@ def evaluateUserGeographySQLTemplate(schema, table_code):
     """Schemas and table names can't be handled as bindparams with SQLAlchemy, so
        this allows us to use a 'select *' syntax for multiple tables. 
     """
-    return SELECT_BY_USER_GEOGRAPHY_SQL_TEMPLATE.format(schema=schema, table_code=table_code)
+    try:
+        blocks_vintage_table = BLOCK_VINTAGE_TABLES[schema]
+    except KeyError:
+        raise ValueError(f"No blocks vintage identified for given schema {schema}")
+    return SELECT_BY_USER_GEOGRAPHY_SQL_TEMPLATE.format(schema=schema, table_code=table_code, blocks_vintage_table=blocks_vintage_table)
 
 def aggregate_decennial(db, hash_digest, release, table_code):
     """For the given user geography, identified by hash_digest, aggregate the given table
@@ -360,13 +374,14 @@ def create_aggregate_download(db, hash_digest, release, table_code):
     else:
         aggregated = aggregate_decennial(db, hash_digest, release, table_code)
     metadata = fetch_metadata(release=release, table_code=table_code)
-    # TODO: this gets more complicated when everything is packed in.
+
     if 'original_id' in aggregated: # original id is second if its there so insert it first
         metadata['columns']['original_id'] = 'Geographic Identifier'
         metadata['columns'].move_to_end('original_id', last=False) 
     if 'name' in aggregated: # name is first if its there
         metadata['columns']['name'] = 'Geography Name'
         metadata['columns'].move_to_end('name', last=False)
+
     # only need it if there's no name or ID. will we even tolerate that?
     if 'name' in aggregated or 'original_id' in aggregated:
         aggregated = aggregated.drop('user_geodata_geometry_id', axis=1)
@@ -381,8 +396,28 @@ def create_aggregate_download(db, hash_digest, release, table_code):
             zf.writestr(build_filename(hash_digest, release, table_code, 'geojson'), json.dumps(dataframe_to_feature_collection(aggregated, 'geom')))
             zf.writestr(f'metadata.json', json.dumps(metadata))
             zf.close()
-    print(f"returning")
+
+    remote_filename = build_filename(hash_digest, release, table_code, 'zip')
+    move_file_to_s3(tmp.name,remote_filename)
     return tmp
+
+def move_file_to_s3(local_filename, destination_filename):
+    """Considered making this a celery task, but don't think the file created on `web` is available on `worker`
+       so lets wait to see if we even need the async.
+    """
+    s3_client = boto3.client('s3')
+    try:
+        response = s3_client.upload_file(local_filename, 
+            "files.censusreporter.org", 
+            f"aggregation/{destination_filename}",
+            ExtraArgs={'ACL': 'public-read'})
+
+    except ClientError as e:
+        logger.error(e)
+        return False
+    return True
+
+
 
 def build_filename(hash_digest, release, table_code, extension):
     return f'{release}_{hash_digest}_{table_code}.{extension}'
