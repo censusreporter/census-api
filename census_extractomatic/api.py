@@ -1792,9 +1792,7 @@ def show_specified_data(acs):
                 if this_geo_has_data:
                     data_for_geoid[table_id] = table_for_geoid
                 else:
-                    # The `release_to_use` release doesn't have data for table `table_id`, geoid `geoid`
-                    # so we'll skip it and rely on the next release to cover this case
-                    current_app.logger.warn(f"The {release_to_use} release doesn't have data for table {table_id}, geoid {geoid} so we'll skip it and rely on the next release to cover this case")
+                    current_app.logger.debug(f"The {release_to_use} release doesn't have data for table {table_id}, geoid {geoid} so we'll skip it and rely on the next release to cover this case")
                     continue
 
             data[geoid] = data_for_geoid
