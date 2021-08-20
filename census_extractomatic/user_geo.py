@@ -13,6 +13,7 @@ from tempfile import NamedTemporaryFile
 import zipfile
 
 import pandas as pd
+import numpy as np
 
 import ogr
 
@@ -303,16 +304,15 @@ def aggregate_decennial(db, hash_digest, release, table_code):
     'name' and/or 'original_id', if the user geography identified sources for those in their
     upload.
     """
-    # check that it's ready!
-    # seems super slow for P1 compared to H1... is it our summing process?
+
     if fetch_metadata(release=release, table_code=table_code):
         sql = evaluateUserGeographySQLTemplate(release, table_code)
         query = text(sql).bindparams(hash_digest=hash_digest)
-        print(f'aggregate_decennial: starting timer {hash_digest} {release} {table_code}')
+        logger.info(f'aggregate_decennial: starting timer {hash_digest} {release} {table_code}')
         start = timer()
         df = pd.read_sql(query, db.engine)
         end = timer()
-        print(f"pd.read_sql {hash_digest} {release} {table_code} elapsed time {timedelta(seconds=end-start)}")
+        logger.info(f"pd.read_sql {hash_digest} {release} {table_code} elapsed time {timedelta(seconds=end-start)}")
         df = df.drop('geoid',axis=1) # we don't care about the original blocks after we groupby
         agg_funcs = dict((c,'sum') for c in df.columns[1:])
         agg_funcs['name'] = 'first'        # these string values are 
@@ -324,7 +324,7 @@ def aggregate_decennial(db, hash_digest, release, table_code):
                 aggd = aggd.drop(c,axis=1)
         aggd = aggd.reset_index()
         end = timer()
-        print(f"all processing {hash_digest} {release} {table_code} total elapsed time {timedelta(seconds=end-start)}")
+        logger.info(f"all processing {hash_digest} {release} {table_code} total elapsed time {timedelta(seconds=end-start)}")
         return aggd
 
     raise ValueError('Invalid release or table code')
@@ -389,6 +389,10 @@ def create_aggregate_download(db, hash_digest, release, table_code):
         aggregated = aggregated.rename(columns={'user_geodata_geometry_id': 'cr_geoid'})
         metadata['columns']['cr_geoid'] = 'Census Reporter Geography ID'
         metadata['columns'].move_to_end('cr_geoid', last=False)
+
+    # NaN and inf bork JSON and inf looks bad in CSV too. 
+    # Any columns could have NaN, not just pct_chg -- e.g. Atlanta has n'hoods which get no 2010 blocks
+    aggregated = aggregated.replace([np.inf, -np.inf, np.nan],'')
 
     with NamedTemporaryFile('wb',suffix='.zip',delete=False) as tmp:
         with zipfile.ZipFile(tmp, 'w', zipfile.ZIP_DEFLATED) as zf:
