@@ -202,7 +202,7 @@ def save_user_geojson(db,
     return dataset_id
 
 def list_user_geographies(db):
-    cur = db.engine.execute('select *, st_asGeoJSON(bbox) bbox_json from aggregation.user_geodata order by name')
+    cur = db.engine.execute('select *, st_asGeoJSON(bbox) bbox_json from aggregation.user_geodata where public = true order by name')
     results = []
     for row in cur:
         d = dict(row)
