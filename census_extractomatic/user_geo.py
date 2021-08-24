@@ -112,6 +112,48 @@ WHERE ug.hash_digest=:hash_digest
   AND ug.user_geodata_id = ugg.user_geodata_id
 ''')
 
+USER_GEOMETRY_SELECT_2020_BLOCKS_WITH_GEOM_BY_HASH_DIGEST = text('''
+SELECT ug.name upload_name,
+        ugb.geoid,
+        ugg.user_geodata_geometry_id cr_geoid, 
+        ugg.name, 
+        ugg.original_id, 
+		g.pop100,
+		g.hu100,        
+        ST_asGeoJSON(ST_ForcePolygonCCW(b.geom)) geom
+FROM aggregation.user_geodata ug,
+    aggregation.user_geodata_geometry ugg,
+    aggregation.user_geodata_blocks_2020 ugb,
+    dec2020_pl94.geoheader g,
+    blocks.tabblock20 b
+WHERE ug.hash_digest=:hash_digest
+  AND ug.user_geodata_id = ugg.user_geodata_id
+  AND ugg.user_geodata_geometry_id = ugb.user_geodata_geometry_id
+  AND ugb.geoid = b.geoid20
+  AND b.geoid20 = g.geoid
+''')
+
+USER_GEOMETRY_SELECT_2010_BLOCKS_WITH_GEOM_BY_HASH_DIGEST = text('''
+SELECT ug.name upload_name,
+        ugb.geoid,
+        ugg.user_geodata_geometry_id cr_geoid, 
+        ugg.name, 
+        ugg.original_id, 
+		g.pop100,
+		g.hu100,        
+        ST_asGeoJSON(ST_ForcePolygonCCW(b.geom)) geom
+FROM aggregation.user_geodata ug,
+    aggregation.user_geodata_geometry ugg,
+    aggregation.user_geodata_blocks_2010 ugb,
+    dec2010_pl94.geoheader g,
+    blocks.tabblock10 b
+WHERE ug.hash_digest=:hash_digest
+  AND ug.user_geodata_id = ugg.user_geodata_id
+  AND ugg.user_geodata_geometry_id = ugb.user_geodata_geometry_id
+  AND ugb.geoid = b.geoid10
+  AND b.geoid10 = g.geoid
+''')
+
 BLOCK_VINTAGE_TABLES = {
     'dec2010_pl94': 'user_geodata_blocks_2010', 
     'dec2020_pl94': 'user_geodata_blocks_2020'
@@ -240,14 +282,17 @@ def join_user_to_census(db, user_geodata_id):
         con.execute(AGGREGATE_BLOCKS_2020_SQL,geodata_id=user_geodata_id)
         db.engine.execute(text("UPDATE aggregation.user_geodata SET status = 'READY' where user_geodata_id = :geodata_id"),geodata_id=user_geodata_id)
 
-def fetch_user_geog_as_geojson(db, hash_digest):
-    geojson = {
+def _blankFeatureCollection():
+    return {
         "type": "FeatureCollection",
         "features": []
     }
+
+def fetch_user_geog_as_geojson(db, hash_digest):
+    geojson = _blankFeatureCollection()
     cur = db.engine.execute(USER_GEOMETRY_SELECT_WITH_GEOM_BY_HASH_DIGEST,hash_digest=hash_digest)
     if cur.rowcount == 0:
-        return None
+        raise ValueError(f"Invalid geography ID {hash_digest}")
     for cr_geoid, name, original_id, geojson_str in cur:
         base = {
             'type': 'Feature'
@@ -262,6 +307,12 @@ def fetch_user_geog_as_geojson(db, hash_digest):
             base['id'] = original_id
         geojson['features'].append(base)
     return geojson
+
+USER_BLOCKS_BY_HASH_DIGEST_SQL = {
+    '2020': USER_GEOMETRY_SELECT_2020_BLOCKS_WITH_GEOM_BY_HASH_DIGEST,
+    '2010': USER_GEOMETRY_SELECT_2010_BLOCKS_WITH_GEOM_BY_HASH_DIGEST
+}
+
 
 def fetch_metadata(release=None, table_code=None):
     # for now we'll just do it from literal objects here but deepcopy them so we don't get messed up
@@ -368,6 +419,35 @@ def dataframe_to_feature_collection(df: pd.DataFrame, geom_col):
 
     return geojson
 
+def create_block_xref_download(db, hash_digest, year):
+    try:
+        sql = USER_BLOCKS_BY_HASH_DIGEST_SQL[str(year)]
+    except KeyError:
+        raise ValueError(f"Invalid year {year}")
+    df = pd.read_sql(sql.bindparams(hash_digest=hash_digest),db.engine)
+    user_geo_name = str(df['upload_name'].unique().squeeze())
+    df = df.drop('upload_name', axis=1)
+    metadata = {
+        'title': f"Census Reporter {year} Block Assignments for {user_geo_name}",
+        'columns': OrderedDict((
+            ('geoid', f'15-character unique block identifier'),
+            ('cr_geoid', '''An arbitrary unique identifier for a specific geography (e.g. neighborhood) included in a user uploaded map'''),
+            ('name', 'A name for a specific geography included in a user uploaded map, if available'),
+            ('original_id', 'A unique identifier for a specific geography included in a user uploaded map, from the original source, if available'),
+            ('pop100', f'The total population for the given block (Decennial Census {year})'),
+            ('hu100', f'The total housing units (occupied or vacant) for the given block (Decennial Census {year})'),
+        ))
+    }
+    release = f'tiger{year}'
+    table_code = 'block_assignments'
+
+    tmp = write_compound_zipfile(hash_digest, release, table_code, df, metadata)
+    remote_filename = build_filename(hash_digest, year, 'block_assignments', 'zip')
+    move_file_to_s3(tmp.name,hash_digest,remote_filename)
+    return tmp
+
+
+
 def create_aggregate_download(db, hash_digest, release, table_code):
     if release == COMPARISON_RELEASE_CODE:
         aggregated = aggregate_decennial_comparison(db, hash_digest, table_code)
@@ -394,18 +474,27 @@ def create_aggregate_download(db, hash_digest, release, table_code):
     # Any columns could have NaN, not just pct_chg -- e.g. Atlanta has n'hoods which get no 2010 blocks
     aggregated = aggregated.replace([np.inf, -np.inf, np.nan],'')
 
-    with NamedTemporaryFile('wb',suffix='.zip',delete=False) as tmp:
-        with zipfile.ZipFile(tmp, 'w', zipfile.ZIP_DEFLATED) as zf:
-            zf.writestr(build_filename(hash_digest, release, table_code, 'csv'), aggregated.drop('geom', axis=1).to_csv(index=False))
-            zf.writestr(build_filename(hash_digest, release, table_code, 'geojson'), json.dumps(dataframe_to_feature_collection(aggregated, 'geom')))
-            zf.writestr(f'metadata.json', json.dumps(metadata))
-            zf.close()
+    tmp = write_compound_zipfile(hash_digest, release, table_code, aggregated, metadata)
 
     remote_filename = build_filename(hash_digest, release, table_code, 'zip')
-    move_file_to_s3(tmp.name,remote_filename)
+    move_file_to_s3(tmp.name,hash_digest,remote_filename)
     return tmp
 
-def move_file_to_s3(local_filename, destination_filename):
+def write_compound_zipfile(hash_digest, release, table_code, df, metadata):
+    """Given a dataframe with a 'geom' column, 
+    create a ZipFile with the data from that dataframe
+    in both CSV and GeoJSON, returning a semi-persistent 
+    temporary file.
+    """
+    with NamedTemporaryFile('wb',suffix='.zip',delete=False) as tmp:
+        with zipfile.ZipFile(tmp, 'w', zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr(build_filename(hash_digest, release, table_code, 'csv'), df.drop('geom', axis=1).to_csv(index=False))
+            zf.writestr(build_filename(hash_digest, release, table_code, 'geojson'), json.dumps(dataframe_to_feature_collection(df, 'geom')))
+            zf.writestr(f'metadata.json', json.dumps(metadata))
+            zf.close()
+    return tmp
+
+def move_file_to_s3(local_filename, hash_digest, destination_filename):
     """Considered making this a celery task, but don't think the file created on `web` is available on `worker`
        so lets wait to see if we even need the async.
     """
@@ -413,7 +502,7 @@ def move_file_to_s3(local_filename, destination_filename):
     try:
         response = s3_client.upload_file(local_filename, 
             "files.censusreporter.org", 
-            f"aggregation/{destination_filename}",
+            f"aggregation/{hash_digest}/{destination_filename}",
             ExtraArgs={'ACL': 'public-read'})
 
     except ClientError as e:

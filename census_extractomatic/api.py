@@ -46,12 +46,13 @@ from .validation import (
 from .user_geo import (
     COMPARISON_RELEASE_CODE,
     build_filename,
+    create_block_xref_download,
     fetch_user_geodata,
     join_user_geo_to_blocks_task,
     list_user_geographies,
     save_user_geojson,
     fetch_user_geog_as_geojson,
-    create_aggregate_download
+    create_aggregate_download,
 )
 from census_extractomatic.exporters import supported_formats
 
@@ -2276,6 +2277,28 @@ def fetch_user_geojson(hash_digest):
         abort(404)
     return jsonify(result)
 
+@app.route('/1.0/user_geo/<string:hash_digest>/blocks/<string:year>')
+@cross_origin(origin='*')
+def fetch_user_blocks_by_year(hash_digest, year):
+
+    # this is entangled with the S3 upload in user_geo, so if the name or S3 prefix change,
+    # check that too, or refactor for single point of control        
+    zipfile_name = build_filename(hash_digest, year, 'block_assignments', 'zip')
+    precomputed_url = f"http://files.censusreporter.org/aggregation/{hash_digest}/{zipfile_name}"
+    if file_exists(precomputed_url):
+        return redirect(precomputed_url)
+
+    try:
+        print(f'starting timer fetch_user_blocks_by_year({hash_digest}, {year})')
+        start = timer()
+        zf = create_block_xref_download(db, hash_digest, year)
+        end = timer()
+        print(f"fetch_user_blocks_by_year elapsed time {timedelta(seconds=end-start)}")
+        return send_file(zf.name, 'application/zip', attachment_filename=zipfile_name)
+    except ValueError:
+        abort(404)
+
+
 def file_exists(url):
     resp = requests.head(url)
     return resp.ok
@@ -2301,7 +2324,7 @@ def aggregate(hash_digest, release, table_code):
     # this is entangled with the S3 upload in user_geo, so if the name or S3 prefix change,
     # check that too, or refactor for single point of control        
     zipfile_name = build_filename(hash_digest, release, table_code, 'zip')
-    precomputed_url = f"http://files.censusreporter.org/aggregation/{zipfile_name}"
+    precomputed_url = f"http://files.censusreporter.org/aggregation/{hash_digest}/{zipfile_name}"
     if file_exists(precomputed_url):
         return redirect(precomputed_url)
 
