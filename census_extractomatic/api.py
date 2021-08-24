@@ -2277,6 +2277,9 @@ def fetch_user_geojson(hash_digest):
         abort(404)
     return jsonify(result)
 
+# some browsers weren't liking the CNAME form for some reason...
+AGGREGATION_S3_ROOT = 'https://s3.amazonaws.com/files.censusreporter.org/aggregation'
+
 @app.route('/1.0/user_geo/<string:hash_digest>/blocks/<string:year>')
 @cross_origin(origin='*')
 def fetch_user_blocks_by_year(hash_digest, year):
@@ -2284,24 +2287,26 @@ def fetch_user_blocks_by_year(hash_digest, year):
     # this is entangled with the S3 upload in user_geo, so if the name or S3 prefix change,
     # check that too, or refactor for single point of control        
     zipfile_name = build_filename(hash_digest, year, 'block_assignments', 'zip')
-    precomputed_url = f"http://files.censusreporter.org/aggregation/{hash_digest}/{zipfile_name}"
-    if file_exists(precomputed_url):
+    precomputed_url = f"{AGGREGATION_S3_ROOT}/{hash_digest}/{zipfile_name}"
+    if url_exists(precomputed_url):
         return redirect(precomputed_url)
 
     try:
-        print(f'starting timer fetch_user_blocks_by_year({hash_digest}, {year})')
         start = timer()
         zf = create_block_xref_download(db, hash_digest, year)
         end = timer()
-        print(f"fetch_user_blocks_by_year elapsed time {timedelta(seconds=end-start)}")
         return send_file(zf.name, 'application/zip', attachment_filename=zipfile_name)
     except ValueError:
         abort(404)
 
 
-def file_exists(url):
-    resp = requests.head(url)
-    return resp.ok
+def url_exists(url):
+    try:
+        resp = requests.head(url)
+        return resp.ok
+    except:
+        app.logger.warn("Error testing URL existence")
+        return False
 
 @app.route('/1.0/aggregate/<string:hash_digest>/<string:release>/<string:table_code>',methods=['GET'])
 @cross_origin(origin='*')
@@ -2318,21 +2323,18 @@ def aggregate(hash_digest, release, table_code):
         abort(404)
 
     if not re.match('[A-Fa-f0-9]{32}', hash_digest):
-        print(f"not a valid hash_digest {hash_digest}")
         abort(404) 
 
     # this is entangled with the S3 upload in user_geo, so if the name or S3 prefix change,
     # check that too, or refactor for single point of control        
     zipfile_name = build_filename(hash_digest, release, table_code, 'zip')
-    precomputed_url = f"http://files.censusreporter.org/aggregation/{hash_digest}/{zipfile_name}"
-    if file_exists(precomputed_url):
+    precomputed_url = f"{AGGREGATION_S3_ROOT}/{hash_digest}/{zipfile_name}"
+    if url_exists(precomputed_url):
         return redirect(precomputed_url)
 
-    print(f'starting timer {zipfile_name}')
     start = timer()
     zf = create_aggregate_download(db, hash_digest, release, table_code)
     end = timer()
-    print(f"create {zipfile_name} elapsed time {timedelta(seconds=end-start)}")
     return send_file(zf.name, 'application/zip', attachment_filename=zipfile_name)
 
 
