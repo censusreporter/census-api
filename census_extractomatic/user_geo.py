@@ -490,7 +490,7 @@ def write_compound_zipfile(hash_digest, release, table_code, df, metadata):
         with zipfile.ZipFile(tmp, 'w', zipfile.ZIP_DEFLATED) as zf:
             zf.writestr(build_filename(hash_digest, release, table_code, 'csv'), df.drop('geom', axis=1).to_csv(index=False))
             zf.writestr(build_filename(hash_digest, release, table_code, 'geojson'), json.dumps(dataframe_to_feature_collection(df, 'geom')))
-            zf.writestr(f'metadata.json', json.dumps(metadata))
+            zf.writestr(f'metadata.json', json.dumps(metadata,indent=2))
             zf.close()
     return tmp
 
