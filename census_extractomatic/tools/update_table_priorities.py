@@ -80,12 +80,15 @@ def parse_log(log):
                 referers[t][referer] = referers[t].get(referer, 0) + 1
 
 
-def prep():
-    for fn in sys.argv[1:]:
+def prep(log_files):
+    for fn in log_files:
         print('Reading log file: %s' % fn)
         with gzip.open(fn, 'rt') as f:
-            for line in f:
-                parse_log(line)
+            for i,line in enumerate(f):
+                try:
+                    parse_log(line)
+                except Exception as e:
+                    print(f"{fn}:{i} Error processing line {e}")
 
 normalized_counts = {}
 
@@ -117,8 +120,8 @@ def populate():
         db.session.commit()
 
 
-def main():
-    prep()
+def main(log_files):
+    prep(log_files)
     calculate()
     populate()
 
@@ -136,4 +139,4 @@ if __name__=='__main__':
     if len(sys.argv) < 2:
         print('\n.gz log files must be specified\n')
         exit()
-    main()
+    main(sys.argv[1:])
