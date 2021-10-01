@@ -1,3 +1,4 @@
+"""Run this against a collection of gzipped logfiles from the front-end Census Reporter site."""
 from __future__ import division
 import gzip
 import re
@@ -12,45 +13,44 @@ from ..api import db
 
 
 log_rx = re.compile(
-    r'^(?P<ip>\d+\.\d+\.\d+\.\d+) - - \[(?P<ts>.*?)\] "(?P<req>.*?)" '
+    r'^(?P<ip>\d+\.\d+\.\d+\.\d+) (?P<ident>\S+) (?P<userid>\S+) \[(?P<ts>.*?)\] "(?P<req>.*?)" '
     r'(?P<status>\d+) (?P<code>\d+) "(?P<path>.*?)" "(?P<agent>.*?)"')
 req_rx = re.compile('^GET (/profiles|/tables|/data/table).+$')
 table_rx = re.compile(r'[BC]\d{5,6}(?:[A-I]|[A-I]?PR)?$')
 
-agents = {}
-requests = set()
-paths = {}
 geo_ids = {}
 tables = {}
 referers = {}
 
 tables_x = re.compile('^/tables/(.+?)/?$')
 
+line_matches = []
 def parse_log(log):
     m = log_rx.search(log)
-    if not m.group('status') == '200':
+    line_matches.append((m,log))
+    if m is None:
+        print("None at idx ",len(line_matches) - 1)
         return
-    if req_rx.search(m.group('req')) is not None:
-        requests.add(m.group('req'))
-        agent = m.group('agent')
-        if agent not in agents:
-            agents[agent] = 0
-        agents[agent] += 1
-    url = m.group('req').split()[1]
+    try:
+        if not m.group('status') == '200':
+            return
+    except Exception as e:
+        print(f"no match: {log}")
+        return
+    req = m.group('req')
+    url = req.split()[1]
     if url.startswith('/static') or url.startswith('/healthcheck'):
         return
+
     parsed = urlparse(url)
     path = parsed.path
-    if path not in paths:
-        paths[path] = { 'count': 0, 'params': {} }
-    paths[path]['count'] += 1
     qs = parse_qs(parsed.query)
     referer = m.group('path')
     if path in ['/data/map/', '/data/table/', '/data/comparison']:
         for geo in qs.get('primary_geo_id', []):
             geo_ids[geo] = geo_ids.get(geo, 0) + 1
         for geolist in qs.get('geo_ids', []):
-            for geo in geolist.split(','): 
+            for geo in geolist.split(','):
                 if '|' in geo:
                     geo = geo.split('|', 1)[1]
                 geo_ids[geo] = geo_ids.get(geo, 0) + 1

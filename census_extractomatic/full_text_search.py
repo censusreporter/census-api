@@ -51,7 +51,7 @@ def do_search(db, q, object_type, limit):
                     ORDER BY relevance DESC
                     LIMIT :limit;"""
 
-    objects = db.session.execute(query, {"search_term": q, "limit": limit})
+    objects = db.execute(query, {"search_term": q, "limit": limit})
     return [row for row in objects]
 
 def compute_score(row):
@@ -69,12 +69,7 @@ def compute_score(row):
 
     if object_type == 'topic':
         relevance = row['relevance']
-
-        if relevance > 0.4:
-            return 1
-
-        else:
-            return relevance * 2
+        return relevance * .75 # topic pages have lots of words so look more relevant
 
     # Tables; take the PSQL relevance score, which (from our testing)
     # appears to always be in the range [1E-8, 1E-2]. For safety, we
@@ -89,10 +84,9 @@ def compute_score(row):
         try:            
             raw_priority = row['priority'] if row['priority'] else 0
         except KeyError:
-            print(f"No priority for {row['tabulation_code']} {row['simple_table_title']}")
             raw_priority = 0
         priority = raw_priority / TABLE_PRIORITY_RANGE
-        score = priority * 0.5 + relevance * 0.5
+        score = priority * 2 + relevance * 0.5
         return score
 
     # Profiles; compute score based off priority and population. In
@@ -184,7 +178,7 @@ def process_fulltext_result(row):
             'full_name': row['display_name'],
             'sumlevel': row['sumlevel'],
             'sumlevel_name': row['sumlevel_name'] if row['sumlevel_name'] else '',
-            'label': 'PROFILE {} {}'.format(row['full_geoid'],row['full_name'])
+            'label': 'PROFILE {} {}'.format(row['full_geoid'],row['display_name'])
         }
 
     elif row['type'] == 'table':
@@ -227,13 +221,13 @@ def perform_full_text_search(db, q, search_type, limit):
     profiles, tables, topics = [], [], []
 
     if search_type == 'profile' or search_type == 'all':
-        profiles = do_search(db, q, 'profile', limit)
+        profiles = do_search(db.session, q, 'profile', limit)
 
     if search_type == 'table' or search_type == 'all':
-        tables = do_search(db, q, 'table', limit)
+        tables = do_search(db.session, q, 'table', limit)
 
     if search_type == 'topic' or search_type == 'all':
-        topics = do_search(db, q, 'topic', limit)
+        topics = do_search(db.session, q, 'topic', limit)
 
     # Compute ranking scores of each object that we want to return
     results = []

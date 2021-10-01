@@ -14,7 +14,6 @@ from flask import (
 import simplejson as json # for easiest serialization of decimal.Decimal
 from decimal import Decimal
 from collections import OrderedDict
-
 from flask_caching import Cache
 from flask_cors import CORS, cross_origin
 from flask_sqlalchemy import SQLAlchemy
