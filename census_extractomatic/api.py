@@ -1232,7 +1232,7 @@ FTS_URL_BUILDERS = {
 @qwarg_validate({
     'q': {'valid': NonemptyString()},
     'type': {'valid': OneOf(allowed_searches), 'default': allowed_searches[3]},
-    'limit': {'valid': IntegerRange(1, 50), 'default': 10},
+    'limit': {'valid': IntegerRange(1, 1000), 'default': 10},
 })
 @cross_origin(origin='*')
 def full_text_search():
