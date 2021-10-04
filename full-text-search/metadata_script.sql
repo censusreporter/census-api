@@ -27,7 +27,8 @@ CREATE TABLE search_metadata AS (
     FROM (
         SELECT display_name, sumlevel, full_geoid, population, priority,
                setweight(to_tsvector('simple', coalesce(display_name, ' ')), 'A') ||
-               setweight(to_tsvector('simple', coalesce(full_geoid, ' ')), 'A') AS document
+               setweight(to_tsvector('simple', coalesce(full_geoid, ' ')), 'A') ||
+               AS document
         -- Exclude sumlevels without maps (067, 258, 355)
         FROM (
             SELECT DISTINCT display_name, sumlevel, full_geoid,
@@ -175,5 +176,15 @@ UPDATE search_metadata
          from search_metadata where type = 'profile' and text2 = '500') regex
     ) subquery
     WHERE search_metadata.text4 = subquery.geoid;
+
+-- Add full state name to overcome non-indexing of two-char state codes
+UPDATE search_metadata
+    SET document = document || to_tsvector('simple', coalesce(st.name, ' '))
+    FROM
+        tiger2019.state st,
+        acs2019_5yr.geoheader g
+    WHERE search_metadata.type = 'profile'
+      AND search_metadata.text4 = g.geoid
+      AND g.stusab = st.stusps;
 
 COMMIT;
