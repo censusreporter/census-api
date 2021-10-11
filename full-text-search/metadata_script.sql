@@ -27,7 +27,7 @@ CREATE TABLE search_metadata AS (
     FROM (
         SELECT display_name, sumlevel, full_geoid, population, priority,
                setweight(to_tsvector('simple', coalesce(display_name, ' ')), 'A') ||
-               setweight(to_tsvector('simple', coalesce(full_geoid, ' ')), 'A') ||
+               setweight(to_tsvector('simple', coalesce(full_geoid, ' ')), 'A')
                AS document
         -- Exclude sumlevels without maps (067, 258, 355)
         FROM (

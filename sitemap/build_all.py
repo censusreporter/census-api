@@ -3,8 +3,6 @@
    It has hard-coded the path where the files should be written, which is expected to be
    a checkout of the Census Reporter public webapp in a directory adjacent to this repository.
 
-   It also has the database connect string hardcoded, because it will only get run once or twice a year.
-
 """
 from table import write_table_sitemap
 from profile import write_profile_sitemaps

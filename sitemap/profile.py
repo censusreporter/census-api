@@ -1,4 +1,5 @@
 from jinja2 import Environment, FileSystemLoader
+import unicodedata
 import psycopg2
 import re
 import os.path
@@ -107,7 +108,7 @@ def query_one_level(level, db_conn):
     '''
 
     with db_conn.cursor() as cur:
-        q = "SELECT display_name, full_geoid from tiger2019.census_name_lookup where sumlevel = '%s'" % (level)
+        q = "SELECT display_name, full_geoid from tiger2019.census_name_lookup where sumlevel = '%s' order by full_geoid" % (level)
         cur.execute(q)
         results = cur.fetchall()
 
@@ -133,24 +134,21 @@ def build_url(display_name, full_geoid):
     new_name = slugify(display_name)
     return "https://censusreporter.org/profiles/" + full_geoid + "-" + new_name + "/"
 
-
-def slugify(name):
-    ''' Slugifies a string by (1) removing non-alphanumeric / space characters,
-    (2) converting to lowercase, (3) turning spaces to dashes
-
-    params: name = string to change
-    return: slugified string
-
-    '''
-
-    # Remove non-alphanumeric or non-space characters
-    name = re.sub('[^0-9a-zA-Z ]', '', name)
-
-    # Lowercase
-    name = name.lower()
-
-    # Spaces to dashes
-    return name.replace(' ', '-')
+# lifted from Django to make slugs common between sitemap and website
+def slugify(value, allow_unicode=False):
+    """
+    Convert to ASCII if 'allow_unicode' is False. Convert spaces or repeated
+    dashes to single dashes. Remove characters that aren't alphanumerics,
+    underscores, or hyphens. Convert to lowercase. Also strip leading and
+    trailing whitespace, dashes, and underscores.
+    """
+    value = str(value)
+    if allow_unicode:
+        value = unicodedata.normalize('NFKC', value)
+    else:
+        value = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore').decode('ascii')
+    value = re.sub(r'[^\w\s-]', '', value.lower())
+    return re.sub(r'[-\s]+', '-', value).strip('-_')
 
 
 def main():
@@ -158,8 +156,6 @@ def main():
 
 
 # Some tests
-assert slugify("This is a test") == "this-is-a-test"
-assert slugify("more ** complicated-- !!test") == "more--complicated-test"
 assert build_url("Indiana", "04000US18") == "https://censusreporter.org/profiles/04000US18-indiana/"
 assert build_url("Columbus, IN Metro Area", "31000US18020") == "https://censusreporter.org/profiles/31000US18020-columbus-in-metro-area/"
 
