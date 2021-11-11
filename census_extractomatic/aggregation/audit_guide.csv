@@ -1,0 +1,24 @@
+user_geodata_id,hash_digest,name,state,place
+1,9468bda0d5dab2f5afaff6a448195caf,Chicago Community Areas,17,14000
+2,04ad7fb6876a3ae56965b19774f1ec0d,NYC Community Districts,36,51000
+3,dab8d2ab2f8880ea0ad315a59156b71d,"Providence, RI Neighborhoods",44,59000
+9,2a2f6da72c44ad7d6e9f27223f9c1888,"Portland, OR Neighborhood Boundaries",41,59000
+7,86eb8025c9b60b059fad04a1e13c9e8c,"Atlanta, GA Neighborhoods",13,04000
+4,d814a70faabd893b5fe691848b06cca2,Boston Neighborhoods,25,07000
+11,17f4213c42af34b1e69fe87e6c43515a,"Pittsburgh, PA Neighborhoods",42,61000
+6,5ba3cab8f46894e47a97ad37ca7ccae6,"Washington, DC Neighborhood Clusters",11,50000
+8,c0555dd6f342dbdf6621585646508230,"Detroit, MI Neighborhoods",26,22000
+10,62b0492021125be2af7587a4fda18085,Philadelphia Neighborhoods,42,60000
+87,c169f7d97bf189daaf790d75e7b98932,"Birmingham, AL Neighborhoods",01,07000
+20,55e4cbbd5e9f5f864ed5f3b9e6e5ebe3,"Syracuse, NY Common Council Districts",36,73000
+15,36d2af1df79fb181a398dafee8b9fb96,"Denver, CO Statistical Neighborhoods",08,20000
+23,9d84465518b51ad727cd94ab7a31f62d,St. Louis neighborhoods,29,65000
+24,ffe1fad0214df2636c99fadfbf859f56,"Washington, DC Wards",11,50000
+85,99294f0d1d184d383d75bf6d2a25d6cb,"Seattle, WA Neighborhood Map Atlas Districts",53,63000
+12,c96480ea3b6c6957f603a4c3e0d09849,"Seattle, WA Community Reporting Areas",53,63000
+46,a17613830d37236a82cfb5c47e0de017,Sacramento City Council Districts,06,64000
+44,e81bec3aad4555190c63db84c58eeb20,"Richmond, VA neighborhoods",51,67000
+91,0106c5185819158edd5e676fccddfeee,"Baltimore, MD Neighborhoods",24,04000
+94,25c22a77f7386f75c8a53ba8aec5d215,"Minneapolis, MN Neighborhoods",27,43000
+95,3f6e12cd367089ec55787de253a4f0ec,"San Francisco, CA Supervisor Districts (2012 Redistricting)",06,67000
+97,6ff472721bbaee97d53984840921e034,"Oakland, CA Council Districts",06,53000

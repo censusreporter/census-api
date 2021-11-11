@@ -67,6 +67,7 @@ SELECT user_geodata_id,
        fields, 
        source_url,
        status,
+       notes_html,
        public
 FROM aggregation.user_geodata 
 WHERE hash_digest=:hash_digest
@@ -119,7 +120,8 @@ SELECT ug.name upload_name,
         ugg.name, 
         ugg.original_id, 
 		g.pop100,
-		g.hu100,        
+		g.hu100,
+		g.state || g.place as state_place_fips,        
         ST_asGeoJSON(ST_ForcePolygonCCW(b.geom)) geom
 FROM aggregation.user_geodata ug,
     aggregation.user_geodata_geometry ugg,
@@ -140,7 +142,8 @@ SELECT ug.name upload_name,
         ugg.name, 
         ugg.original_id, 
 		g.pop100,
-		g.hu100,        
+		g.hu100,
+		g.state || g.place as state_place_fips,        
         ST_asGeoJSON(ST_ForcePolygonCCW(b.geom)) geom
 FROM aggregation.user_geodata ug,
     aggregation.user_geodata_geometry ugg,
@@ -245,7 +248,7 @@ def save_user_geojson(db,
     return dataset_id
 
 def list_user_geographies(db):
-    cur = db.engine.execute('select *, st_asGeoJSON(bbox) bbox_json from aggregation.user_geodata where public = true order by name')
+    cur = db.engine.execute('select *, st_asGeoJSON(bbox) bbox_json from aggregation.user_geodata where public is not null order by name')
     results = []
     for row in cur:
         d = dict(row)
@@ -436,6 +439,7 @@ def create_block_xref_download(db, hash_digest, year):
             ('original_id', 'A unique identifier for a specific geography included in a user uploaded map, from the original source, if available'),
             ('pop100', f'The total population for the given block (Decennial Census {year})'),
             ('hu100', f'The total housing units (occupied or vacant) for the given block (Decennial Census {year})'),
+            ('state_place_fips', f'The combined State/Place FIPS code for the given block (Decennial Census {year})'),
         ))
     }
     release = f'tiger{year}'

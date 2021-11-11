@@ -1,0 +1,255 @@
+hash_digest,name,table,release,elapsed_secs
+04ad7fb6876a3ae56965b19774f1ec0d,NYC Community Districts,block_assignment,2010,0:00:15.848551
+04ad7fb6876a3ae56965b19774f1ec0d,NYC Community Districts,block_assignment,2020,0:00:28.438135
+04ad7fb6876a3ae56965b19774f1ec0d,NYC Community Districts,H1,dec_pl94_compare_2020_2010,0:02:47.833571
+04ad7fb6876a3ae56965b19774f1ec0d,NYC Community Districts,P1,dec_pl94_compare_2020_2010,0:05:11.088253
+04ad7fb6876a3ae56965b19774f1ec0d,NYC Community Districts,P2,dec_pl94_compare_2020_2010,0:04:29.426849
+04ad7fb6876a3ae56965b19774f1ec0d,NYC Community Districts,P3,dec_pl94_compare_2020_2010,0:03:08.539043
+04ad7fb6876a3ae56965b19774f1ec0d,NYC Community Districts,P4,dec_pl94_compare_2020_2010,0:05:03.564298
+04ad7fb6876a3ae56965b19774f1ec0d,NYC Community Districts,P5,dec2020_pl94,0:02:16.542248
+12895e183b0c022d5a527c612ce72865,LA County Neighborhoods,block_assignment,2010,0:01:04.269056
+12895e183b0c022d5a527c612ce72865,LA County Neighborhoods,block_assignment,2020,0:01:21.685431
+12895e183b0c022d5a527c612ce72865,LA County Neighborhoods,H1,dec_pl94_compare_2020_2010,0:01:02.210537
+12895e183b0c022d5a527c612ce72865,LA County Neighborhoods,P1,dec_pl94_compare_2020_2010,0:01:38.152581
+12895e183b0c022d5a527c612ce72865,LA County Neighborhoods,P2,dec_pl94_compare_2020_2010,0:01:27.063563
+12895e183b0c022d5a527c612ce72865,LA County Neighborhoods,P3,dec_pl94_compare_2020_2010,0:01:45.212646
+12895e183b0c022d5a527c612ce72865,LA County Neighborhoods,P4,dec_pl94_compare_2020_2010,0:02:05.421864
+12895e183b0c022d5a527c612ce72865,LA County Neighborhoods,P5,dec2020_pl94,0:00:54.503059
+17f4213c42af34b1e69fe87e6c43515a,"Pittsburgh, PA Neighborhoods",block_assignment,2010,0:00:09.380492
+17f4213c42af34b1e69fe87e6c43515a,"Pittsburgh, PA Neighborhoods",block_assignment,2020,0:00:12.974281
+17f4213c42af34b1e69fe87e6c43515a,"Pittsburgh, PA Neighborhoods",H1,dec_pl94_compare_2020_2010,0:00:21.391934
+17f4213c42af34b1e69fe87e6c43515a,"Pittsburgh, PA Neighborhoods",P1,dec_pl94_compare_2020_2010,0:00:33.432537
+17f4213c42af34b1e69fe87e6c43515a,"Pittsburgh, PA Neighborhoods",P2,dec_pl94_compare_2020_2010,0:00:32.188576
+17f4213c42af34b1e69fe87e6c43515a,"Pittsburgh, PA Neighborhoods",P3,dec_pl94_compare_2020_2010,0:00:40.377415
+17f4213c42af34b1e69fe87e6c43515a,"Pittsburgh, PA Neighborhoods",P4,dec_pl94_compare_2020_2010,0:00:28.041293
+17f4213c42af34b1e69fe87e6c43515a,"Pittsburgh, PA Neighborhoods",P5,dec2020_pl94,0:00:11.416860
+246e37d01ecf200aaf582dcbbd2ac007,"Seattle, WA Community Reporting Areas",H1,dec_pl94_compare_2020_2010,0:00:42.098373
+246e37d01ecf200aaf582dcbbd2ac007,"Seattle, WA Community Reporting Areas",P1,dec_pl94_compare_2020_2010,0:00:35.349861
+246e37d01ecf200aaf582dcbbd2ac007,"Seattle, WA Community Reporting Areas",P2,dec_pl94_compare_2020_2010,0:00:56.278372
+246e37d01ecf200aaf582dcbbd2ac007,"Seattle, WA Community Reporting Areas",P3,dec_pl94_compare_2020_2010,0:01:06.838081
+246e37d01ecf200aaf582dcbbd2ac007,"Seattle, WA Community Reporting Areas",P4,dec_pl94_compare_2020_2010,0:00:46.404824
+246e37d01ecf200aaf582dcbbd2ac007,"Seattle, WA Community Reporting Areas",P5,dec2020_pl94,0:00:27.262422
+2a2f6da72c44ad7d6e9f27223f9c1888,"Portland, OR Neighborhood Boundaries",block_assignment,2010,0:00:10.340819
+2a2f6da72c44ad7d6e9f27223f9c1888,"Portland, OR Neighborhood Boundaries",block_assignment,2020,0:00:10.856055
+2a2f6da72c44ad7d6e9f27223f9c1888,"Portland, OR Neighborhood Boundaries",H1,dec_pl94_compare_2020_2010,0:00:16.604970
+2a2f6da72c44ad7d6e9f27223f9c1888,"Portland, OR Neighborhood Boundaries",P1,dec_pl94_compare_2020_2010,0:00:26.506549
+2a2f6da72c44ad7d6e9f27223f9c1888,"Portland, OR Neighborhood Boundaries",P2,dec_pl94_compare_2020_2010,0:00:26.445524
+2a2f6da72c44ad7d6e9f27223f9c1888,"Portland, OR Neighborhood Boundaries",P3,dec_pl94_compare_2020_2010,0:00:21.014178
+2a2f6da72c44ad7d6e9f27223f9c1888,"Portland, OR Neighborhood Boundaries",P4,dec_pl94_compare_2020_2010,0:00:18.774008
+2a2f6da72c44ad7d6e9f27223f9c1888,"Portland, OR Neighborhood Boundaries",P5,dec2020_pl94,0:00:09.213157
+36d2af1df79fb181a398dafee8b9fb96,"Denver, CO Statistical Neighborhoods",block_assignment,2010,0:00:09.268294
+36d2af1df79fb181a398dafee8b9fb96,"Denver, CO Statistical Neighborhoods",block_assignment,2020,0:00:11.525646
+36d2af1df79fb181a398dafee8b9fb96,"Denver, CO Statistical Neighborhoods",H1,dec_pl94_compare_2020_2010,0:00:07.171580
+36d2af1df79fb181a398dafee8b9fb96,"Denver, CO Statistical Neighborhoods",P1,dec_pl94_compare_2020_2010,0:00:14.113600
+36d2af1df79fb181a398dafee8b9fb96,"Denver, CO Statistical Neighborhoods",P2,dec_pl94_compare_2020_2010,0:00:14.465019
+36d2af1df79fb181a398dafee8b9fb96,"Denver, CO Statistical Neighborhoods",P3,dec_pl94_compare_2020_2010,0:00:13.500861
+36d2af1df79fb181a398dafee8b9fb96,"Denver, CO Statistical Neighborhoods",P4,dec_pl94_compare_2020_2010,0:00:13.130947
+36d2af1df79fb181a398dafee8b9fb96,"Denver, CO Statistical Neighborhoods",P5,dec2020_pl94,0:00:04.442414
+51c7250d4099dc56c0631c48af838b41,"Thurston County, WA Cities",block_assignment,2010,0:00:04.841720
+51c7250d4099dc56c0631c48af838b41,"Thurston County, WA Cities",block_assignment,2020,0:00:05.683360
+51c7250d4099dc56c0631c48af838b41,"Thurston County, WA Cities",H1,dec_pl94_compare_2020_2010,0:00:27.103759
+51c7250d4099dc56c0631c48af838b41,"Thurston County, WA Cities",P1,dec_pl94_compare_2020_2010,0:00:15.066010
+51c7250d4099dc56c0631c48af838b41,"Thurston County, WA Cities",P2,dec_pl94_compare_2020_2010,0:00:15.543804
+51c7250d4099dc56c0631c48af838b41,"Thurston County, WA Cities",P3,dec_pl94_compare_2020_2010,0:00:17.854931
+51c7250d4099dc56c0631c48af838b41,"Thurston County, WA Cities",P4,dec_pl94_compare_2020_2010,0:00:25.291534
+51c7250d4099dc56c0631c48af838b41,"Thurston County, WA Cities",P5,dec2020_pl94,0:00:12.185869
+55e4cbbd5e9f5f864ed5f3b9e6e5ebe3,"Syracuse, NY Common Council Districts",block_assignment,2010,0:00:03.103965
+55e4cbbd5e9f5f864ed5f3b9e6e5ebe3,"Syracuse, NY Common Council Districts",block_assignment,2020,0:00:03.588035
+55e4cbbd5e9f5f864ed5f3b9e6e5ebe3,"Syracuse, NY Common Council Districts",H1,dec_pl94_compare_2020_2010,0:00:03.841411
+55e4cbbd5e9f5f864ed5f3b9e6e5ebe3,"Syracuse, NY Common Council Districts",P1,dec_pl94_compare_2020_2010,0:00:05.558266
+55e4cbbd5e9f5f864ed5f3b9e6e5ebe3,"Syracuse, NY Common Council Districts",P2,dec_pl94_compare_2020_2010,0:00:04.350579
+55e4cbbd5e9f5f864ed5f3b9e6e5ebe3,"Syracuse, NY Common Council Districts",P3,dec_pl94_compare_2020_2010,0:00:04.287719
+55e4cbbd5e9f5f864ed5f3b9e6e5ebe3,"Syracuse, NY Common Council Districts",P4,dec_pl94_compare_2020_2010,0:00:04.221246
+55e4cbbd5e9f5f864ed5f3b9e6e5ebe3,"Syracuse, NY Common Council Districts",P5,dec2020_pl94,0:00:02.152405
+5ba3cab8f46894e47a97ad37ca7ccae6,"Washington, DC Neighborhood Clusters",block_assignment,2010,0:00:14.339433
+5ba3cab8f46894e47a97ad37ca7ccae6,"Washington, DC Neighborhood Clusters",block_assignment,2020,0:00:08.734670
+5ba3cab8f46894e47a97ad37ca7ccae6,"Washington, DC Neighborhood Clusters",H1,dec_pl94_compare_2020_2010,0:00:43.214273
+5ba3cab8f46894e47a97ad37ca7ccae6,"Washington, DC Neighborhood Clusters",P1,dec_pl94_compare_2020_2010,0:00:38.823462
+5ba3cab8f46894e47a97ad37ca7ccae6,"Washington, DC Neighborhood Clusters",P2,dec_pl94_compare_2020_2010,0:00:36.858739
+5ba3cab8f46894e47a97ad37ca7ccae6,"Washington, DC Neighborhood Clusters",P3,dec_pl94_compare_2020_2010,0:00:55.713064
+5ba3cab8f46894e47a97ad37ca7ccae6,"Washington, DC Neighborhood Clusters",P4,dec_pl94_compare_2020_2010,0:00:36.435562
+5ba3cab8f46894e47a97ad37ca7ccae6,"Washington, DC Neighborhood Clusters",P5,dec2020_pl94,0:00:18.821172
+5e8dfccae58a6c2e8d99a6e85377b285,"New York, NY Historic Districts",block_assignment,2010,0:00:01.814519
+5e8dfccae58a6c2e8d99a6e85377b285,"New York, NY Historic Districts",block_assignment,2020,0:00:01.746043
+5e8dfccae58a6c2e8d99a6e85377b285,"New York, NY Historic Districts",H1,dec_pl94_compare_2020_2010,0:00:05.175752
+5e8dfccae58a6c2e8d99a6e85377b285,"New York, NY Historic Districts",P1,dec_pl94_compare_2020_2010,0:00:13.672438
+5e8dfccae58a6c2e8d99a6e85377b285,"New York, NY Historic Districts",P2,dec_pl94_compare_2020_2010,0:00:08.104980
+5e8dfccae58a6c2e8d99a6e85377b285,"New York, NY Historic Districts",P3,dec_pl94_compare_2020_2010,0:00:08.268460
+5e8dfccae58a6c2e8d99a6e85377b285,"New York, NY Historic Districts",P4,dec_pl94_compare_2020_2010,0:00:07.878452
+5e8dfccae58a6c2e8d99a6e85377b285,"New York, NY Historic Districts",P5,dec2020_pl94,0:00:04.376266
+62b0492021125be2af7587a4fda18085,Philadelphia Neighborhoods,block_assignment,2010,0:00:17.702132
+62b0492021125be2af7587a4fda18085,Philadelphia Neighborhoods,block_assignment,2020,0:00:15.999933
+62b0492021125be2af7587a4fda18085,Philadelphia Neighborhoods,H1,dec_pl94_compare_2020_2010,0:00:14.347901
+62b0492021125be2af7587a4fda18085,Philadelphia Neighborhoods,P1,dec_pl94_compare_2020_2010,0:00:18.483809
+62b0492021125be2af7587a4fda18085,Philadelphia Neighborhoods,P2,dec_pl94_compare_2020_2010,0:00:20.216716
+62b0492021125be2af7587a4fda18085,Philadelphia Neighborhoods,P3,dec_pl94_compare_2020_2010,0:00:20.495547
+62b0492021125be2af7587a4fda18085,Philadelphia Neighborhoods,P4,dec_pl94_compare_2020_2010,0:00:21.620421
+62b0492021125be2af7587a4fda18085,Philadelphia Neighborhoods,P5,dec2020_pl94,0:00:08.922283
+86eb8025c9b60b059fad04a1e13c9e8c,"Atlanta, GA Neighborhoods",block_assignment,2010,0:00:07.978197
+86eb8025c9b60b059fad04a1e13c9e8c,"Atlanta, GA Neighborhoods",block_assignment,2020,0:00:10.693871
+86eb8025c9b60b059fad04a1e13c9e8c,"Atlanta, GA Neighborhoods",H1,dec_pl94_compare_2020_2010,0:00:05.858867
+86eb8025c9b60b059fad04a1e13c9e8c,"Atlanta, GA Neighborhoods",P1,dec_pl94_compare_2020_2010,0:00:04.920259
+86eb8025c9b60b059fad04a1e13c9e8c,"Atlanta, GA Neighborhoods",P2,dec_pl94_compare_2020_2010,0:00:04.911792
+86eb8025c9b60b059fad04a1e13c9e8c,"Atlanta, GA Neighborhoods",P3,dec_pl94_compare_2020_2010,0:00:04.876911
+86eb8025c9b60b059fad04a1e13c9e8c,"Atlanta, GA Neighborhoods",P4,dec_pl94_compare_2020_2010,0:00:06.161203
+86eb8025c9b60b059fad04a1e13c9e8c,"Atlanta, GA Neighborhoods",P5,dec2020_pl94,0:00:02.237372
+9468bda0d5dab2f5afaff6a448195caf,Chicago Community Areas,block_assignment,2010,0:00:17.631281
+9468bda0d5dab2f5afaff6a448195caf,Chicago Community Areas,block_assignment,2020,0:00:21.152069
+9468bda0d5dab2f5afaff6a448195caf,Chicago Community Areas,H1,dec_pl94_compare_2020_2010,0:01:15.880941
+9468bda0d5dab2f5afaff6a448195caf,Chicago Community Areas,P1,dec_pl94_compare_2020_2010,0:01:27.666726
+9468bda0d5dab2f5afaff6a448195caf,Chicago Community Areas,P2,dec_pl94_compare_2020_2010,0:02:46.155704
+9468bda0d5dab2f5afaff6a448195caf,Chicago Community Areas,P3,dec_pl94_compare_2020_2010,0:01:30.711956
+9468bda0d5dab2f5afaff6a448195caf,Chicago Community Areas,P4,dec_pl94_compare_2020_2010,0:01:40.708677
+9468bda0d5dab2f5afaff6a448195caf,Chicago Community Areas,P5,dec2020_pl94,0:01:00.655171
+99294f0d1d184d383d75bf6d2a25d6cb,"Seattle, WA Neighborhood Map Atlas Districts",block_assignment,2010,0:00:05.399940
+99294f0d1d184d383d75bf6d2a25d6cb,"Seattle, WA Neighborhood Map Atlas Districts",block_assignment,2020,0:00:11.738055
+99294f0d1d184d383d75bf6d2a25d6cb,"Seattle, WA Neighborhood Map Atlas Districts",H1,dec_pl94_compare_2020_2010,0:00:55.202453
+99294f0d1d184d383d75bf6d2a25d6cb,"Seattle, WA Neighborhood Map Atlas Districts",P1,dec_pl94_compare_2020_2010,0:00:53.541751
+99294f0d1d184d383d75bf6d2a25d6cb,"Seattle, WA Neighborhood Map Atlas Districts",P2,dec_pl94_compare_2020_2010,0:01:21.617387
+99294f0d1d184d383d75bf6d2a25d6cb,"Seattle, WA Neighborhood Map Atlas Districts",P3,dec_pl94_compare_2020_2010,0:01:32.078959
+99294f0d1d184d383d75bf6d2a25d6cb,"Seattle, WA Neighborhood Map Atlas Districts",P4,dec_pl94_compare_2020_2010,0:01:20.786409
+99294f0d1d184d383d75bf6d2a25d6cb,"Seattle, WA Neighborhood Map Atlas Districts",P5,dec2020_pl94,0:00:38.659920
+9d84465518b51ad727cd94ab7a31f62d,St. Louis neighborhoods,block_assignment,2010,0:00:03.958605
+9d84465518b51ad727cd94ab7a31f62d,St. Louis neighborhoods,block_assignment,2020,0:00:10.571128
+9d84465518b51ad727cd94ab7a31f62d,St. Louis neighborhoods,H1,dec_pl94_compare_2020_2010,0:00:03.126167
+9d84465518b51ad727cd94ab7a31f62d,St. Louis neighborhoods,P1,dec_pl94_compare_2020_2010,0:00:05.768655
+9d84465518b51ad727cd94ab7a31f62d,St. Louis neighborhoods,P2,dec_pl94_compare_2020_2010,0:00:05.009862
+9d84465518b51ad727cd94ab7a31f62d,St. Louis neighborhoods,P3,dec_pl94_compare_2020_2010,0:00:04.570995
+9d84465518b51ad727cd94ab7a31f62d,St. Louis neighborhoods,P4,dec_pl94_compare_2020_2010,0:00:04.748737
+9d84465518b51ad727cd94ab7a31f62d,St. Louis neighborhoods,P5,dec2020_pl94,0:00:01.941363
+a17613830d37236a82cfb5c47e0de017,Sacramento City Council Districts,block_assignment,2010,0:00:08.028248
+a17613830d37236a82cfb5c47e0de017,Sacramento City Council Districts,block_assignment,2020,0:00:10.517020
+a17613830d37236a82cfb5c47e0de017,Sacramento City Council Districts,H1,dec_pl94_compare_2020_2010,0:00:14.796328
+a17613830d37236a82cfb5c47e0de017,Sacramento City Council Districts,P1,dec_pl94_compare_2020_2010,0:00:26.331177
+a17613830d37236a82cfb5c47e0de017,Sacramento City Council Districts,P2,dec_pl94_compare_2020_2010,0:00:20.528529
+a17613830d37236a82cfb5c47e0de017,Sacramento City Council Districts,P3,dec_pl94_compare_2020_2010,0:00:16.028911
+a17613830d37236a82cfb5c47e0de017,Sacramento City Council Districts,P4,dec_pl94_compare_2020_2010,0:00:16.728244
+a17613830d37236a82cfb5c47e0de017,Sacramento City Council Districts,P5,dec2020_pl94,0:00:08.264644
+c0555dd6f342dbdf6621585646508230,"Detroit, MI Neighborhoods",block_assignment,2010,0:00:09.148621
+c0555dd6f342dbdf6621585646508230,"Detroit, MI Neighborhoods",block_assignment,2020,0:00:09.168898
+c0555dd6f342dbdf6621585646508230,"Detroit, MI Neighborhoods",H1,dec_pl94_compare_2020_2010,0:00:12.299744
+c0555dd6f342dbdf6621585646508230,"Detroit, MI Neighborhoods",P1,dec_pl94_compare_2020_2010,0:00:14.093371
+c0555dd6f342dbdf6621585646508230,"Detroit, MI Neighborhoods",P2,dec_pl94_compare_2020_2010,0:00:19.199290
+c0555dd6f342dbdf6621585646508230,"Detroit, MI Neighborhoods",P3,dec_pl94_compare_2020_2010,0:00:23.273640
+c0555dd6f342dbdf6621585646508230,"Detroit, MI Neighborhoods",P4,dec_pl94_compare_2020_2010,0:00:15.906724
+c0555dd6f342dbdf6621585646508230,"Detroit, MI Neighborhoods",P5,dec2020_pl94,0:00:07.609969
+c169f7d97bf189daaf790d75e7b98932,"Birmingham, AL Neighborhoods",block_assignment,2010,0:00:08.605747
+c169f7d97bf189daaf790d75e7b98932,"Birmingham, AL Neighborhoods",block_assignment,2020,0:00:08.687748
+c169f7d97bf189daaf790d75e7b98932,"Birmingham, AL Neighborhoods",H1,dec_pl94_compare_2020_2010,0:00:34.213926
+c169f7d97bf189daaf790d75e7b98932,"Birmingham, AL Neighborhoods",P1,dec_pl94_compare_2020_2010,0:00:38.248665
+c169f7d97bf189daaf790d75e7b98932,"Birmingham, AL Neighborhoods",P2,dec_pl94_compare_2020_2010,0:00:39.022020
+c169f7d97bf189daaf790d75e7b98932,"Birmingham, AL Neighborhoods",P3,dec_pl94_compare_2020_2010,0:00:41.268669
+c169f7d97bf189daaf790d75e7b98932,"Birmingham, AL Neighborhoods",P4,dec_pl94_compare_2020_2010,0:00:41.988748
+c169f7d97bf189daaf790d75e7b98932,"Birmingham, AL Neighborhoods",P5,dec2020_pl94,0:00:19.709555
+c96480ea3b6c6957f603a4c3e0d09849,"Seattle, WA Community Reporting Areas",block_assignment,2010,0:00:03.155292
+c96480ea3b6c6957f603a4c3e0d09849,"Seattle, WA Community Reporting Areas",block_assignment,2020,0:00:06.214814
+c96480ea3b6c6957f603a4c3e0d09849,"Seattle, WA Community Reporting Areas",H1,dec_pl94_compare_2020_2010,0:00:56.385192
+c96480ea3b6c6957f603a4c3e0d09849,"Seattle, WA Community Reporting Areas",P1,dec_pl94_compare_2020_2010,0:01:03.852665
+c96480ea3b6c6957f603a4c3e0d09849,"Seattle, WA Community Reporting Areas",P2,dec_pl94_compare_2020_2010,0:00:57.001388
+c96480ea3b6c6957f603a4c3e0d09849,"Seattle, WA Community Reporting Areas",P3,dec_pl94_compare_2020_2010,0:01:02.173741
+c96480ea3b6c6957f603a4c3e0d09849,"Seattle, WA Community Reporting Areas",P4,dec_pl94_compare_2020_2010,0:00:53.543289
+c96480ea3b6c6957f603a4c3e0d09849,"Seattle, WA Community Reporting Areas",P5,dec2020_pl94,0:00:24.415635
+d814a70faabd893b5fe691848b06cca2,Boston Neighborhoods,block_assignment,2010,0:00:06.812367
+d814a70faabd893b5fe691848b06cca2,Boston Neighborhoods,block_assignment,2020,0:00:08.088023
+d814a70faabd893b5fe691848b06cca2,Boston Neighborhoods,H1,dec_pl94_compare_2020_2010,0:00:34.135089
+d814a70faabd893b5fe691848b06cca2,Boston Neighborhoods,P1,dec_pl94_compare_2020_2010,0:00:37.522003
+d814a70faabd893b5fe691848b06cca2,Boston Neighborhoods,P2,dec_pl94_compare_2020_2010,0:00:47.932692
+d814a70faabd893b5fe691848b06cca2,Boston Neighborhoods,P3,dec_pl94_compare_2020_2010,0:00:57.308622
+d814a70faabd893b5fe691848b06cca2,Boston Neighborhoods,P4,dec_pl94_compare_2020_2010,0:00:50.899620
+d814a70faabd893b5fe691848b06cca2,Boston Neighborhoods,P5,dec2020_pl94,0:00:31.177912
+dab8d2ab2f8880ea0ad315a59156b71d,"Providence, RI Neighborhoods",block_assignment,2010,0:00:03.802581
+dab8d2ab2f8880ea0ad315a59156b71d,"Providence, RI Neighborhoods",block_assignment,2020,0:00:05.203598
+dab8d2ab2f8880ea0ad315a59156b71d,"Providence, RI Neighborhoods",H1,dec_pl94_compare_2020_2010,0:00:04.146142
+dab8d2ab2f8880ea0ad315a59156b71d,"Providence, RI Neighborhoods",P1,dec_pl94_compare_2020_2010,0:00:14.738814
+dab8d2ab2f8880ea0ad315a59156b71d,"Providence, RI Neighborhoods",P2,dec_pl94_compare_2020_2010,0:00:04.985311
+dab8d2ab2f8880ea0ad315a59156b71d,"Providence, RI Neighborhoods",P3,dec_pl94_compare_2020_2010,0:00:04.419514
+dab8d2ab2f8880ea0ad315a59156b71d,"Providence, RI Neighborhoods",P4,dec_pl94_compare_2020_2010,0:00:05.546517
+dab8d2ab2f8880ea0ad315a59156b71d,"Providence, RI Neighborhoods",P5,dec2020_pl94,0:00:02.918776
+e81bec3aad4555190c63db84c58eeb20,"Richmond, VA neighborhoods",block_assignment,2010,0:00:06.658294
+e81bec3aad4555190c63db84c58eeb20,"Richmond, VA neighborhoods",block_assignment,2020,0:00:05.839903
+e81bec3aad4555190c63db84c58eeb20,"Richmond, VA neighborhoods",H1,dec_pl94_compare_2020_2010,0:00:06.411650
+e81bec3aad4555190c63db84c58eeb20,"Richmond, VA neighborhoods",P1,dec_pl94_compare_2020_2010,0:00:04.820648
+e81bec3aad4555190c63db84c58eeb20,"Richmond, VA neighborhoods",P2,dec_pl94_compare_2020_2010,0:00:07.077386
+e81bec3aad4555190c63db84c58eeb20,"Richmond, VA neighborhoods",P3,dec_pl94_compare_2020_2010,0:00:08.596345
+e81bec3aad4555190c63db84c58eeb20,"Richmond, VA neighborhoods",P4,dec_pl94_compare_2020_2010,0:00:08.600157
+e81bec3aad4555190c63db84c58eeb20,"Richmond, VA neighborhoods",P5,dec2020_pl94,0:00:04.522812
+ffe1fad0214df2636c99fadfbf859f56,"Washington, DC Wards",block_assignment,2010,0:00:07.611388
+ffe1fad0214df2636c99fadfbf859f56,"Washington, DC Wards",block_assignment,2020,0:00:03.627217
+ffe1fad0214df2636c99fadfbf859f56,"Washington, DC Wards",H1,dec_pl94_compare_2020_2010,0:01:21.604472
+ffe1fad0214df2636c99fadfbf859f56,"Washington, DC Wards",P1,dec_pl94_compare_2020_2010,0:00:44.355310
+ffe1fad0214df2636c99fadfbf859f56,"Washington, DC Wards",P2,dec_pl94_compare_2020_2010,0:00:57.593492
+ffe1fad0214df2636c99fadfbf859f56,"Washington, DC Wards",P3,dec_pl94_compare_2020_2010,0:00:58.029597
+ffe1fad0214df2636c99fadfbf859f56,"Washington, DC Wards",P4,dec_pl94_compare_2020_2010,0:00:59.175185
+ffe1fad0214df2636c99fadfbf859f56,"Washington, DC Wards",P5,dec2020_pl94,0:00:49.295774
+3b6101179aae946744be8a2c89453480,"Chicago, IL wards",block_assignment,2020,0:00:23.682162
+3b6101179aae946744be8a2c89453480,"Chicago, IL wards",block_assignment,2010,0:00:22.275164
+3b6101179aae946744be8a2c89453480,"Chicago, IL wards",P1,dec_pl94_compare_2020_2010,0:04:57.372339
+3b6101179aae946744be8a2c89453480,"Chicago, IL wards",P2,dec_pl94_compare_2020_2010,0:05:29.112616
+3b6101179aae946744be8a2c89453480,"Chicago, IL wards",P3,dec_pl94_compare_2020_2010,0:04:45.641941
+3b6101179aae946744be8a2c89453480,"Chicago, IL wards",P4,dec_pl94_compare_2020_2010,0:04:44.642677
+3b6101179aae946744be8a2c89453480,"Chicago, IL wards",P5,dec2020_pl94,0:01:55.256222
+3b6101179aae946744be8a2c89453480,"Chicago, IL wards",H1,dec_pl94_compare_2020_2010,0:04:19.508779
+8f713302ff6f5094c6776f21ce87bd89,Orlando Neighborhoods,block_assignment,2020,0:00:13.533381
+8f713302ff6f5094c6776f21ce87bd89,Orlando Neighborhoods,block_assignment,2010,0:00:08.428397
+8f713302ff6f5094c6776f21ce87bd89,Orlando Neighborhoods,P1,dec_pl94_compare_2020_2010,0:00:12.138754
+8f713302ff6f5094c6776f21ce87bd89,Orlando Neighborhoods,P2,dec_pl94_compare_2020_2010,0:00:12.124986
+8f713302ff6f5094c6776f21ce87bd89,Orlando Neighborhoods,P3,dec_pl94_compare_2020_2010,0:00:14.844829
+8f713302ff6f5094c6776f21ce87bd89,Orlando Neighborhoods,P4,dec_pl94_compare_2020_2010,0:00:09.423417
+8f713302ff6f5094c6776f21ce87bd89,Orlando Neighborhoods,P5,dec2020_pl94,0:00:04.645592
+8f713302ff6f5094c6776f21ce87bd89,Orlando Neighborhoods,H1,dec_pl94_compare_2020_2010,0:00:06.913203
+baeccd2261f7c219d7c547b327dd55c5,"Huntsville, AL City Council Districts",block_assignment,2020,0:00:06.513491
+baeccd2261f7c219d7c547b327dd55c5,"Huntsville, AL City Council Districts",block_assignment,2010,0:00:07.118761
+baeccd2261f7c219d7c547b327dd55c5,"Huntsville, AL City Council Districts",P1,dec_pl94_compare_2020_2010,0:01:21.589626
+baeccd2261f7c219d7c547b327dd55c5,"Huntsville, AL City Council Districts",P2,dec_pl94_compare_2020_2010,0:01:20.755692
+baeccd2261f7c219d7c547b327dd55c5,"Huntsville, AL City Council Districts",P3,dec_pl94_compare_2020_2010,0:01:19.496492
+baeccd2261f7c219d7c547b327dd55c5,"Huntsville, AL City Council Districts",P4,dec_pl94_compare_2020_2010,0:01:28.732534
+baeccd2261f7c219d7c547b327dd55c5,"Huntsville, AL City Council Districts",P5,dec2020_pl94,0:00:51.938110
+baeccd2261f7c219d7c547b327dd55c5,"Huntsville, AL City Council Districts",H1,dec_pl94_compare_2020_2010,0:01:16.722084
+0106c5185819158edd5e676fccddfeee,"Baltimore, MD Neighborhoods",block_assignment,2020,0:00:08.465925
+0106c5185819158edd5e676fccddfeee,"Baltimore, MD Neighborhoods",block_assignment,2010,0:00:09.007074
+0106c5185819158edd5e676fccddfeee,"Baltimore, MD Neighborhoods",P1,dec_pl94_compare_2020_2010,0:00:48.902658
+0106c5185819158edd5e676fccddfeee,"Baltimore, MD Neighborhoods",P2,dec_pl94_compare_2020_2010,0:00:47.802236
+0106c5185819158edd5e676fccddfeee,"Baltimore, MD Neighborhoods",P3,dec_pl94_compare_2020_2010,0:00:59.876601
+0106c5185819158edd5e676fccddfeee,"Baltimore, MD Neighborhoods",P4,dec_pl94_compare_2020_2010,0:00:49.532719
+0106c5185819158edd5e676fccddfeee,"Baltimore, MD Neighborhoods",P5,dec2020_pl94,0:00:20.473597
+0106c5185819158edd5e676fccddfeee,"Baltimore, MD Neighborhoods",H1,dec_pl94_compare_2020_2010,0:00:43.824407
+dba5c5e280ebbe8a92f19f25715303b3,"Grand Rapids, MI Downtown Development Authority",block_assignment,2020,0:00:02.165342
+dba5c5e280ebbe8a92f19f25715303b3,"Grand Rapids, MI Downtown Development Authority",block_assignment,2010,0:00:01.390790
+dba5c5e280ebbe8a92f19f25715303b3,"Grand Rapids, MI Downtown Development Authority",P1,dec_pl94_compare_2020_2010,0:00:03.621540
+dba5c5e280ebbe8a92f19f25715303b3,"Grand Rapids, MI Downtown Development Authority",P2,dec_pl94_compare_2020_2010,0:00:02.609523
+dba5c5e280ebbe8a92f19f25715303b3,"Grand Rapids, MI Downtown Development Authority",P3,dec_pl94_compare_2020_2010,0:00:02.138434
+dba5c5e280ebbe8a92f19f25715303b3,"Grand Rapids, MI Downtown Development Authority",P4,dec_pl94_compare_2020_2010,0:00:01.939005
+dba5c5e280ebbe8a92f19f25715303b3,"Grand Rapids, MI Downtown Development Authority",P5,dec2020_pl94,0:00:01.012236
+dba5c5e280ebbe8a92f19f25715303b3,"Grand Rapids, MI Downtown Development Authority",H1,dec_pl94_compare_2020_2010,0:00:01.667728
+25c22a77f7386f75c8a53ba8aec5d215,"Minneapolis, MN Neighborhoods",block_assignment,2020,0:00:08.501161
+25c22a77f7386f75c8a53ba8aec5d215,"Minneapolis, MN Neighborhoods",block_assignment,2010,0:00:05.356395
+25c22a77f7386f75c8a53ba8aec5d215,"Minneapolis, MN Neighborhoods",P1,dec_pl94_compare_2020_2010,0:00:23.766718
+25c22a77f7386f75c8a53ba8aec5d215,"Minneapolis, MN Neighborhoods",P2,dec_pl94_compare_2020_2010,0:00:16.308246
+25c22a77f7386f75c8a53ba8aec5d215,"Minneapolis, MN Neighborhoods",P3,dec_pl94_compare_2020_2010,0:00:14.698203
+25c22a77f7386f75c8a53ba8aec5d215,"Minneapolis, MN Neighborhoods",P4,dec_pl94_compare_2020_2010,0:00:16.204206
+25c22a77f7386f75c8a53ba8aec5d215,"Minneapolis, MN Neighborhoods",P5,dec2020_pl94,0:00:08.506699
+25c22a77f7386f75c8a53ba8aec5d215,"Minneapolis, MN Neighborhoods",H1,dec_pl94_compare_2020_2010,0:00:10.855990
+3f6e12cd367089ec55787de253a4f0ec,"San Francisco, CA Supervisor Districts (2012 Redistricting)",block_assignment,2020,0:00:07.980096
+3f6e12cd367089ec55787de253a4f0ec,"San Francisco, CA Supervisor Districts (2012 Redistricting)",block_assignment,2010,0:00:07.146897
+3f6e12cd367089ec55787de253a4f0ec,"San Francisco, CA Supervisor Districts (2012 Redistricting)",P1,dec_pl94_compare_2020_2010,0:00:38.339413
+3f6e12cd367089ec55787de253a4f0ec,"San Francisco, CA Supervisor Districts (2012 Redistricting)",P2,dec_pl94_compare_2020_2010,0:00:33.362315
+3f6e12cd367089ec55787de253a4f0ec,"San Francisco, CA Supervisor Districts (2012 Redistricting)",P3,dec_pl94_compare_2020_2010,0:00:32.982865
+3f6e12cd367089ec55787de253a4f0ec,"San Francisco, CA Supervisor Districts (2012 Redistricting)",P4,dec_pl94_compare_2020_2010,0:00:32.994536
+3f6e12cd367089ec55787de253a4f0ec,"San Francisco, CA Supervisor Districts (2012 Redistricting)",P5,dec2020_pl94,0:00:15.412848
+3f6e12cd367089ec55787de253a4f0ec,"San Francisco, CA Supervisor Districts (2012 Redistricting)",H1,dec_pl94_compare_2020_2010,0:00:31.771152
+6ff472721bbaee97d53984840921e034,"Oakland, CA Council Districts",block_assignment,2020,0:00:08.975963
+6ff472721bbaee97d53984840921e034,"Oakland, CA Council Districts",block_assignment,2010,0:00:04.074080
+6ff472721bbaee97d53984840921e034,"Oakland, CA Council Districts",P1,dec_pl94_compare_2020_2010,0:00:49.438536
+6ff472721bbaee97d53984840921e034,"Oakland, CA Council Districts",P2,dec_pl94_compare_2020_2010,0:00:46.783215
+6ff472721bbaee97d53984840921e034,"Oakland, CA Council Districts",P3,dec_pl94_compare_2020_2010,0:01:12.484110
+6ff472721bbaee97d53984840921e034,"Oakland, CA Council Districts",P4,dec_pl94_compare_2020_2010,0:00:58.583240
+6ff472721bbaee97d53984840921e034,"Oakland, CA Council Districts",P5,dec2020_pl94,0:00:20.514425
+6ff472721bbaee97d53984840921e034,"Oakland, CA Council Districts",H1,dec_pl94_compare_2020_2010,0:00:41.150136
+0738571574015592f9654205e2e92c39,"Raleigh, NC Traffic Analysis Zones",block_assignment,2020,0:00:04.356164
+0738571574015592f9654205e2e92c39,"Raleigh, NC Traffic Analysis Zones",block_assignment,2010,0:00:04.678960
+0738571574015592f9654205e2e92c39,"Raleigh, NC Traffic Analysis Zones",P1,dec_pl94_compare_2020_2010,0:00:13.022642
+0738571574015592f9654205e2e92c39,"Raleigh, NC Traffic Analysis Zones",P2,dec_pl94_compare_2020_2010,0:00:12.415009
+0738571574015592f9654205e2e92c39,"Raleigh, NC Traffic Analysis Zones",P3,dec_pl94_compare_2020_2010,0:00:12.580737
+0738571574015592f9654205e2e92c39,"Raleigh, NC Traffic Analysis Zones",P4,dec_pl94_compare_2020_2010,0:00:12.996224
+0738571574015592f9654205e2e92c39,"Raleigh, NC Traffic Analysis Zones",P5,dec2020_pl94,0:00:06.486954
+0738571574015592f9654205e2e92c39,"Raleigh, NC Traffic Analysis Zones",H1,dec_pl94_compare_2020_2010,0:00:07.584694
