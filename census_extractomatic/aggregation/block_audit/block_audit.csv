@@ -22,3 +22,4 @@ user_geodata_id,hash_digest,name,state,place,pop100_agg,pop100_real,hu100_agg,hu
 94,25c22a77f7386f75c8a53ba8aec5d215,"Minneapolis, MN Neighborhoods",27,43000,429956,429954,199144,199143,0,4
 95,3f6e12cd367089ec55787de253a4f0ec,"San Francisco, CA Supervisor Districts (2012 Redistricting)",06,67000,873965,873965,406628,406628,0,0
 97,6ff472721bbaee97d53984840921e034,"Oakland, CA Council Districts",06,53000,440749,440646,178531,178469,0,1
+100,25e6284347cdda90befb35612fa6b6d5,St. Louis wards,29,65000,301578,301578,173479,173479,0,0

@@ -10,18 +10,20 @@ from datetime import timedelta
 import os
 from sqlalchemy import create_engine
 import csv
+from pathlib import Path
 
 SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
 
 engine = create_engine(SQLALCHEMY_DATABASE_URI)
 
 def main():
+    LOGFILE_PATH = Path(Path(__file__).parent,'timing.log')
     done = set()
-    if os.path.isfile('timing.log'):
-        for row in csv.DictReader(open("timing.log")):
+    if os.path.isfile(LOGFILE_PATH):
+        for row in csv.DictReader(open(LOGFILE_PATH)):
             done.add(row['hash_digest'])
     datasets = list(engine.execute("select hash_digest, name from aggregation.user_geodata where status = 'READY'"))
-    with open("timing.log","a+") as f:
+    with open(LOGFILE_PATH,"a+") as f:
         w = csv.DictWriter(f, ['hash_digest','name','table','release', 'elapsed_secs'])
         if len(done) == 0:
             w.writeheader()

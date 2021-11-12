@@ -5,6 +5,7 @@ from sqlalchemy import create_engine, text
 import geopandas as gpd
 import pandas as pd
 import csv
+from pathlib import Path
 
 def place_blocks2020(db,state,place):
     sql = text("""select g.geoid, g.hu100::integer, g.pop100::integer, g.state || g.place fips, b.geom
@@ -41,19 +42,25 @@ def create_compound(db, hash_digest, state, place):
     return crblocks
 
 def main():
+    BASE_DIR = Path(__file__).parent
+    block_audit_dir = Path(BASE_DIR,'block_audit')
+    block_audit_csv_path = Path(block_audit_dir,'block_audit.csv')
+
     db = create_engine(os.environ['CR_PSQL_TUNNEL_URL'])
-    os.makedirs('block_audit',exist_ok=True)
-    basis = list(csv.DictReader(open("/Users/germuska/src/census-api/audit_guide.csv",'r')))
+
+    os.makedirs(block_audit_dir,exist_ok=True)
+    basis = list(csv.DictReader(open(Path(BASE_DIR,"audit_guide.csv"),'r')))
     fieldnames = ['user_geodata_id', 'hash_digest', 'name', 'state', 'place', 'pop100_agg', 'pop100_real', 'hu100_agg', 'hu100_real', 'missing_blocks', 'wrong_blocks' ]
-    done = set(x.split('.')[0] for x in os.listdir('block_audit/') if x.endswith('.geojson'))
-    appending = os.path.exists('block_audit/block_audit.csv')
-    with open('block_audit/block_audit.csv','a+') as f:
+    done = set(x.split('.')[0] for x in os.listdir(block_audit_dir) if x.endswith('.geojson'))
+    appending = os.path.exists(block_audit_csv_path)
+    with open(block_audit_csv_path,'a+') as f:
         w = csv.DictWriter(f,fieldnames=fieldnames)
         if not appending:
             w.writeheader()
         for row in basis:
             print(f"{row['hash_digest']} {row['name']} {row['hash_digest'] in done}")
             if row['hash_digest'] not in done:
+                geojson_file_path = Path(block_audit_dir,f'{row["hash_digest"]}.geojson')
                 combined = create_compound(db, row['hash_digest'], row['state'], row['place'])
                 row['pop100_agg'] = combined[combined['status'].isin(['correct', 'incorrect'])]['pop100'].sum()
                 row['hu100_agg'] = combined[combined['status'].isin(['correct', 'incorrect'])]['hu100'].sum()
@@ -62,7 +69,7 @@ def main():
                 row['missing_blocks'] = len(combined[combined['status'] == 'missing'])
                 row['wrong_blocks'] = len(combined[combined['status'] == 'incorrect'])
                 w.writerow(row)
-                combined.to_file(f'block_audit/{row["hash_digest"]}.geojson', driver='GeoJSON')  
+                combined.to_file(geojson_file_path, driver='GeoJSON')  
     print("done")
             
             
