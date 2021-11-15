@@ -3,7 +3,7 @@ user_geodata_id,hash_digest,name,state,place
 2,04ad7fb6876a3ae56965b19774f1ec0d,NYC Community Districts,36,51000
 3,dab8d2ab2f8880ea0ad315a59156b71d,"Providence, RI Neighborhoods",44,59000
 9,2a2f6da72c44ad7d6e9f27223f9c1888,"Portland, OR Neighborhood Boundaries",41,59000
-7,86eb8025c9b60b059fad04a1e13c9e8c,"Atlanta, GA Neighborhoods",13,04000
+7,86eb8025c9b60b059fad04a1e13c9e8c,"Atlanta, GA Neighborhoods (Deprecated)",13,04000
 4,d814a70faabd893b5fe691848b06cca2,Boston Neighborhoods,25,07000
 11,17f4213c42af34b1e69fe87e6c43515a,"Pittsburgh, PA Neighborhoods",42,61000
 6,5ba3cab8f46894e47a97ad37ca7ccae6,"Washington, DC Neighborhood Clusters",11,50000
@@ -23,3 +23,4 @@ user_geodata_id,hash_digest,name,state,place
 95,3f6e12cd367089ec55787de253a4f0ec,"San Francisco, CA Supervisor Districts (2012 Redistricting)",06,67000
 97,6ff472721bbaee97d53984840921e034,"Oakland, CA Council Districts",06,53000
 100,25e6284347cdda90befb35612fa6b6d5,St. Louis wards,29,65000
+101,496b4a27911ad1d252830bf0cd1a55b3,"Atlanta, GA Neighborhoods",13,04000
