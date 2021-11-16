@@ -24,3 +24,5 @@ user_geodata_id,hash_digest,name,state,place
 97,6ff472721bbaee97d53984840921e034,"Oakland, CA Council Districts",06,53000
 100,25e6284347cdda90befb35612fa6b6d5,St. Louis wards,29,65000
 101,496b4a27911ad1d252830bf0cd1a55b3,"Atlanta, GA Neighborhoods",13,04000
+102,70623cc2a11b0ad0e223a2eaa330cf8d,"Cleveland, OH City Neighborhoods (Statistical Planning Areas)",39,16000
+103,d5df8e95d49885e21d780daae1539d18,"Spokane, WA Neighborhoods",53,67000
