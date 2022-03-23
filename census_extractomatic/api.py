@@ -81,13 +81,15 @@ cors = CORS(app)
 sentry = Sentry(app)
 
 # Allowed ACS's in "best" order (newest and smallest range preferred)
+#
+# In 2020 there wasn't a 1-year release, so we put 5-year first because it is newest.
 allowed_acs = [
-    'acs2019_1yr',
     'acs2020_5yr',
+    'acs2019_1yr',
 ]
 # When table searches happen without a specified release, use this
 # release to do the table search.
-default_table_search_release = allowed_acs[1]
+default_table_search_release = allowed_acs[0]
 
 # Allowed TIGER releases in newest order
 allowed_tiger = [
