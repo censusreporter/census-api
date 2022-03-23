@@ -174,7 +174,8 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
   - If you are updating a 5yr release, you probably want to update the `default_table_search_release` variables, too.
   - Add an entry for the `ACS_NAMES` dict for the new release.
   - Commit the changes
-  - Push to the `dokku.censusreporter.org` remote: 
+  - Push to the `dokku.censusreporter.org` remote
+    - `git push dokku`
 
 - Update the Postgres full text index (from the EC2 instance)
   - `cd /home/ubuntu`
