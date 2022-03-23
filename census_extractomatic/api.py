@@ -65,7 +65,7 @@ gunicorn_error_logger = logging.getLogger('gunicorn.error')
 app.logger.handlers.extend(gunicorn_error_logger.handlers)
 
 # decimal.Decimal is supposed to be automatically handled when simplejson is installed
-# but that is not proving the case (chk /1.0/geo/show/tiger2019?geo_ids=16000US1714000 to verify)
+# but that is not proving the case (chk /1.0/geo/show/tiger2020?geo_ids=16000US1714000 to verify)
 from flask.json import JSONEncoder
 class CustomJSONEncoder(JSONEncoder):
     def default(self, obj):
@@ -83,7 +83,7 @@ sentry = Sentry(app)
 # Allowed ACS's in "best" order (newest and smallest range preferred)
 allowed_acs = [
     'acs2019_1yr',
-    'acs2019_5yr',
+    'acs2020_5yr',
 ]
 # When table searches happen without a specified release, use this
 # release to do the table search.
@@ -91,7 +91,7 @@ default_table_search_release = allowed_acs[1]
 
 # Allowed TIGER releases in newest order
 allowed_tiger = [
-    'tiger2019',
+    'tiger2020',
 ]
 
 allowed_searches = [
@@ -102,7 +102,7 @@ allowed_searches = [
 ]
 
 ACS_NAMES = {
-    'acs2019_5yr': {'name': 'ACS 2019 5-year', 'years': '2015-2019'},
+    'acs2020_5yr': {'name': 'ACS 2020 5-year', 'years': '2016-2020'},
     'acs2019_1yr': {'name': 'ACS 2019 1-year', 'years': '2019'},
 }
 
@@ -371,7 +371,7 @@ def compute_profile_item_levels(geoid):
 
     if sumlevel in ('140', '150', '160', '310', '330', '350', '860', '950', '960', '970'):
         result = db.session.execute(
-            """SELECT * FROM tiger2019.census_geo_containment
+            """SELECT * FROM tiger2020.census_geo_containment
                WHERE child_geoid=:geoid
                ORDER BY percent_covered ASC
             """,
@@ -478,13 +478,13 @@ def geo_search():
 
     if with_geom:
         sql = """SELECT DISTINCT geoid,sumlevel,population,display_name,full_geoid,priority,ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geom
-            FROM tiger2019.census_name_lookup
+            FROM tiger2020.census_name_lookup
             WHERE %s
             ORDER BY priority, population DESC NULLS LAST
             LIMIT 25;""" % (where)
     else:
         sql = """SELECT DISTINCT geoid,sumlevel,population,display_name,full_geoid,priority
-            FROM tiger2019.census_name_lookup
+            FROM tiger2020.census_name_lookup
             WHERE %s
             ORDER BY priority, population DESC NULLS LAST
             LIMIT 25;""" % (where)
@@ -1295,7 +1295,7 @@ def get_child_geoids_by_coverage(release, parent_geoid, child_summary_level):
     db.session.execute("SET search_path=:acs,public;", {'acs': release})
     result = db.session.execute(
         """SELECT geoid, name
-           FROM tiger2019.census_geo_containment, geoheader
+           FROM tiger2020.census_geo_containment, geoheader
            WHERE geoheader.geoid = census_geo_containment.child_geoid
              AND census_geo_containment.parent_geoid = :parent_geoid
              AND census_geo_containment.child_geoid LIKE :child_geoids""",
@@ -1317,8 +1317,8 @@ def get_child_geoids_by_gis(release, parent_geoid, child_summary_level):
     child_geoids = []
     result = db.session.execute(
         """SELECT child.full_geoid
-           FROM tiger2019.census_name_lookup parent
-           JOIN tiger2019.census_name_lookup child ON ST_Intersects(parent.geom, child.geom) AND child.sumlevel=:child_sumlevel
+           FROM tiger2020.census_name_lookup parent
+           JOIN tiger2020.census_name_lookup child ON ST_Intersects(parent.geom, child.geom) AND child.sumlevel=:child_sumlevel
            WHERE parent.full_geoid=:parent_geoid AND parent.sumlevel=:parent_sumlevel""",
         {'child_sumlevel': child_summary_level, 'parent_geoid': parent_geoid, 'parent_sumlevel': parent_sumlevel}
     )
@@ -1450,7 +1450,7 @@ def show_specified_data(acs):
     # Fill in the display name for the geos
     result = db.session.execute(
         """SELECT full_geoid,population,display_name
-           FROM tiger2019.census_name_lookup
+           FROM tiger2020.census_name_lookup
            WHERE full_geoid IN :geoids;""",
         {'geoids': tuple(named_geo_ids)}
     )
@@ -1627,7 +1627,7 @@ def download_specified_data(acs):
         """SELECT full_geoid,
                   population,
                   display_name
-           FROM tiger2019.census_name_lookup
+           FROM tiger2020.census_name_lookup
            WHERE full_geoid IN :geo_ids;""",
         {'geo_ids': tuple(valid_geo_ids)}
     )
@@ -1843,7 +1843,7 @@ def data_compare_geographies_within_parent(acs, table_id):
         # get the parent geometry and add to API response
         result = db.session.execute(
             """SELECT ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geometry
-               FROM tiger2019.census_name_lookup
+               FROM tiger2020.census_name_lookup
                WHERE full_geoid=:geo_ids;""",
             {'geo_ids': parent_geoid}
         )
@@ -1857,7 +1857,7 @@ def data_compare_geographies_within_parent(acs, table_id):
         # get the child geometries and store for later
         result = db.session.execute(
             """SELECT geoid, ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geometry
-               FROM tiger2019.census_name_lookup
+               FROM tiger2020.census_name_lookup
                WHERE full_geoid IN :geo_ids
                ORDER BY full_geoid;""",
             {'geo_ids': tuple(child_geoid_list)}
@@ -1973,8 +1973,8 @@ def import_geography():
                 result['ok'] = True
                 return jsonify(result)
 
-            dataset_id = save_user_geojson(db, 
-                    geojson_str, 
+            dataset_id = save_user_geojson(db,
+                    geojson_str,
                     hash_digest,
                     request_data.get('dataset_name'),
                     request_data.get('name_field'),
@@ -1993,7 +1993,7 @@ def import_geography():
             result['message'] = f"Exception: {e}"
     else:
         result['message'] = 'This endpoint only accepts JSON data.'
-    
+
     result['elapsed_time'] = str(datetime.now()-start)
     return jsonify(result)
 
@@ -2048,7 +2048,7 @@ AGGREGATION_S3_ROOT = 'https://s3.amazonaws.com/files.censusreporter.org/aggrega
 def fetch_user_blocks_by_year(hash_digest, year):
 
     # this is entangled with the S3 upload in user_geo, so if the name or S3 prefix change,
-    # check that too, or refactor for single point of control        
+    # check that too, or refactor for single point of control
     zipfile_name = build_filename(hash_digest, year, 'block_assignments', 'zip')
     precomputed_url = f"{AGGREGATION_S3_ROOT}/{hash_digest}/{zipfile_name}"
     if url_exists(precomputed_url):
@@ -2086,10 +2086,10 @@ def aggregate(hash_digest, release, table_code):
         abort(404)
 
     if not re.match('[A-Fa-f0-9]{32}', hash_digest):
-        abort(404) 
+        abort(404)
 
     # this is entangled with the S3 upload in user_geo, so if the name or S3 prefix change,
-    # check that too, or refactor for single point of control        
+    # check that too, or refactor for single point of control
     zipfile_name = build_filename(hash_digest, release, table_code, 'zip')
     precomputed_url = f"{AGGREGATION_S3_ROOT}/{hash_digest}/{zipfile_name}"
     if url_exists(precomputed_url):

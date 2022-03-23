@@ -111,12 +111,12 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
   - python meta-scripts/build_sql_files.py --working_dir=acs2013_1yr acs2013_1yr
 
 - copy non-changing sql files from previous release to this one:
-  - cd acs2013_1yr
-  - cp ../acs2017_5yr/create_geoheader.sql \
-         ../acs2017_5yr/create_tmp_geoheader.sql \
-         ../acs2017_5yr/geoheader_comments.sql \
-         ../acs2017_5yr/parse_tmp_geoheader.sql \
-         ../acs2017_5yr/README.md \
+  - cd acs2020_5yr
+  - cp ../acs2019_5yr/create_geoheader.sql \
+         ../acs2019_5yr/create_tmp_geoheader.sql \
+         ../acs2019_5yr/geoheader_comments.sql \
+         ../acs2019_5yr/parse_tmp_geoheader.sql \
+         ../acs2019_5yr/README.md \
          .
 
 - update copied sql files to point to new release's schema
@@ -154,8 +154,8 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
   - Open a psql terminal: `psql -U census census` (it should connect using the `PGHOST` envvar from above)
     - Copy and execute in the psql terminal the CREATE TABLE and CREATE INDEX's for the new release from `census_metadata.sql`
     - Run the following in the psql terminal (adapted for your release):
-      - `\copy acs2014_1yr.census_table_metadata  FROM '/home/ubuntu/census-table-metadata/precomputed/acs2014_1yr/census_table_metadata.csv' WITH csv ENCODING 'utf8' HEADER`
-      - `\copy acs2014_1yr.census_column_metadata FROM '/home/ubuntu/census-table-metadata/precomputed/acs2014_1yr/census_column_metadata.csv' WITH csv ENCODING 'utf8' HEADER`
+      - `\copy acs2020_5yr.census_table_metadata  FROM '/home/ubuntu/census-table-metadata/precomputed/acs2020_5yr/census_table_metadata.csv' WITH csv ENCODING 'utf8' HEADER`
+      - `\copy acs2020_5yr.census_column_metadata FROM '/home/ubuntu/census-table-metadata/precomputed/acs2020_5yr/census_column_metadata.csv' WITH csv ENCODING 'utf8' HEADER`
 
 - Update the unified tabulation metadata (from the census-table-metadata repo)
   - Truncate the existing census_tabulation_metadata on the EC2 instance:
@@ -171,17 +171,17 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
 
 - Update the census-api `api.py` file to include the new release that's now in the database
   - Add the new release to the `allowed_releases` list. Usually you want to replace the existing release with the newer one you just imported. You might want to move the older release of the same type to the bottom of the list so that people can use it for specific requests.
-  - If you are updating a 5yr release, you probably want to update the `release_to_expand_with` and `default_table_search_release` variables, too.
+  - If you are updating a 5yr release, you probably want to update the `default_table_search_release` variables, too.
   - Add an entry for the `ACS_NAMES` dict for the new release.
   - Commit the changes
-  - Run fabric to deploy those changes: `fab -i ~/.ssh/censusreporter.ec2_key.pem -u ubuntu -H 52.71.251.119 deploy`
+  - Push to the `dokku.censusreporter.org` remote: 
 
 - Update the Postgres full text index (from the EC2 instance)
   - `cd /home/ubuntu`
   - `git clone https://github.com/censusreporter/census-api.git`
   - `cd census-api`
-  - Set the PGHOST environment variable: `export PGHOST=censusreporter.redacted.us-east-1.rds.amazonaws.com`
-  - `psql -d census -U census -f /home/ubuntu/census-api/full-text-search/metadata_script.sql`
+  - Set the PGHOST, PGPORT, PGUSER, PGDATABASE environment variables
+  - `psql -f /home/ubuntu/census-api/full-text-search/metadata_script.sql`
   - Scrape the topic pages:
         - `virtualenv --no-site-packages env`
         - `source env/bin/activate`
