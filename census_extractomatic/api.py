@@ -91,6 +91,8 @@ allowed_acs = [
 # release to do the table search.
 default_table_search_release = allowed_acs[0]
 
+release_to_expand_with = allowed_acs[0]
+
 # Allowed TIGER releases in newest order
 allowed_tiger = [
     'tiger2020',
@@ -688,7 +690,7 @@ def geo_parent(release, geoid):
 def show_specified_geo_data(release):
     if release not in allowed_tiger:
         abort(404, "Unknown TIGER release")
-    geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids, allowed_acs[1])
+    geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids, release_to_expand_with)
 
     if not geo_ids:
         abort(404, 'None of the geo_ids specified were valid: %s' % ', '.join(geo_ids))
@@ -1537,7 +1539,7 @@ def show_specified_data(acs):
             # If we end up at the 'most complete' release, we should include every bit of
             # data we can instead of erroring out on the user.
             # See https://www.pivotaltracker.com/story/show/70906084
-            this_geo_has_data = False or release_to_use == allowed_acs[1]
+            this_geo_has_data = False or release_to_use == allowed_acs[-1]
 
             cols_iter = iter(sorted(list(row.items()), key=lambda tup: tup[0]))
             for table_id, data_iter in groupby(cols_iter, lambda x: x[0][:-3].upper()):
