@@ -1429,9 +1429,11 @@ def show_specified_data(acs):
     for release in acs_to_try:
         try:
             valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release)
+            app.logger.warning("Using %s to expand %s got %s", release, requested_geo_ids, valid_geo_ids)
             releases_to_use.append(release)
         except ShowDataException as e:
             expand_errors.append(e)
+            app.logger.warning("Using %s to expand %s got ShowDataException %s", release, requested_geo_ids, e)
             continue
 
     if not releases_to_use:
