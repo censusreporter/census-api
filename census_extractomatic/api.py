@@ -1425,15 +1425,17 @@ def show_specified_data(acs):
     # look for the releases that have the requested geoids
     releases_to_use = []
     expand_errors = []
+    valid_geo_ids = set()
     requested_geo_ids = request.qwargs.geo_ids
     for release in acs_to_try:
         try:
-            valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release)
-            app.logger.warning("Using %s to expand %s got %s", release, requested_geo_ids, valid_geo_ids)
-            releases_to_use.append(release)
+            this_valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release)
+
+            if this_valid_geo_ids:
+                releases_to_use.append(release)
+                valid_geo_ids.update(this_valid_geo_ids)
         except ShowDataException as e:
             expand_errors.append(e)
-            app.logger.warning("Using %s to expand %s got ShowDataException %s", release, requested_geo_ids, e)
             continue
 
     if not releases_to_use:
@@ -1609,11 +1611,15 @@ def download_specified_data(acs):
     # look for the releases that have the requested geoids
     releases_to_use = []
     expand_errors = []
+    valid_geo_ids = set()
     requested_geo_ids = request.qwargs.geo_ids
     for release in acs_to_try:
         try:
-            valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release)
-            releases_to_use.append(release)
+            this_valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release)
+
+            if this_valid_geo_ids:
+                releases_to_use.append(release)
+                valid_geo_ids.update(this_valid_geo_ids)
         except ShowDataException as e:
             expand_errors.append(e)
             continue
