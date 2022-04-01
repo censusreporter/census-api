@@ -1537,6 +1537,8 @@ def show_specified_data(acs):
             # If we end up at the 'most complete' release, we should include every bit of
             # data we can instead of erroring out on the user.
             # See https://www.pivotaltracker.com/story/show/70906084
+            # This logic is incompatible with our one-time decision to change the 
+            # order of the allowed_acs to deal with the 2020 1-year release issue...
             this_geo_has_data = False or release_to_use == allowed_acs[1]
 
             cols_iter = iter(sorted(list(row.items()), key=lambda tup: tup[0]))
