@@ -1,3 +1,5 @@
+# run with
+# python -m census_extractomatic.aggregation.test
 from census_extractomatic.user_geo import (
     aggregate_decennial_comparison,
     create_aggregate_download,

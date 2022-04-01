@@ -1,5 +1,8 @@
 # GeoPandas is not a dependency for census-api because it is too heavy
 # so write this to run without census-api code
+# To run: NOT from the 'census-api' virtualenv 
+#         but whatever you've set up that has the right deps
+# python -m census_extractomatic.aggregation.audit
 import os
 from sqlalchemy import create_engine, text
 import geopandas as gpd
