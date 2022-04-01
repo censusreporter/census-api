@@ -87,7 +87,7 @@ def query_all_levels(db_conn):
     '''
 
     with db_conn.cursor() as cur:
-        q = "SELECT DISTINCT sumlevel FROM tiger2019.census_name_lookup order by sumlevel;"
+        q = "SELECT DISTINCT sumlevel FROM tiger2020.census_name_lookup order by sumlevel;"
         cur.execute(q)
         results = cur.fetchall()
         # Format of results is [('000',), ('001',), ...]
@@ -108,7 +108,7 @@ def query_one_level(level, db_conn):
     '''
 
     with db_conn.cursor() as cur:
-        q = "SELECT display_name, full_geoid from tiger2019.census_name_lookup where sumlevel = '%s' order by full_geoid" % (level)
+        q = "SELECT display_name, full_geoid from tiger2020.census_name_lookup where sumlevel = '%s' order by full_geoid" % (level)
         cur.execute(q)
         results = cur.fetchall()
 
