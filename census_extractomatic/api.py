@@ -91,6 +91,8 @@ allowed_acs = [
 # release to do the table search.
 default_table_search_release = allowed_acs[0]
 
+release_to_expand_with = allowed_acs[0]
+
 # Allowed TIGER releases in newest order
 allowed_tiger = [
     'tiger2020',
@@ -688,7 +690,7 @@ def geo_parent(release, geoid):
 def show_specified_geo_data(release):
     if release not in allowed_tiger:
         abort(404, "Unknown TIGER release")
-    geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids, allowed_acs[1])
+    geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids, release_to_expand_with)
 
     if not geo_ids:
         abort(404, 'None of the geo_ids specified were valid: %s' % ', '.join(geo_ids))
@@ -1423,11 +1425,15 @@ def show_specified_data(acs):
     # look for the releases that have the requested geoids
     releases_to_use = []
     expand_errors = []
+    valid_geo_ids = set()
     requested_geo_ids = request.qwargs.geo_ids
     for release in acs_to_try:
         try:
-            valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release)
-            releases_to_use.append(release)
+            this_valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release)
+
+            if this_valid_geo_ids:
+                releases_to_use.append(release)
+                valid_geo_ids.update(this_valid_geo_ids)
         except ShowDataException as e:
             expand_errors.append(e)
             continue
@@ -1539,7 +1545,7 @@ def show_specified_data(acs):
             # See https://www.pivotaltracker.com/story/show/70906084
             # This logic is incompatible with our one-time decision to change the 
             # order of the allowed_acs to deal with the 2020 1-year release issue...
-            this_geo_has_data = False or release_to_use == allowed_acs[1]
+            this_geo_has_data = False or release_to_use == allowed_acs[-1]
 
             cols_iter = iter(sorted(list(row.items()), key=lambda tup: tup[0]))
             for table_id, data_iter in groupby(cols_iter, lambda x: x[0][:-3].upper()):
@@ -1607,11 +1613,15 @@ def download_specified_data(acs):
     # look for the releases that have the requested geoids
     releases_to_use = []
     expand_errors = []
+    valid_geo_ids = set()
     requested_geo_ids = request.qwargs.geo_ids
     for release in acs_to_try:
         try:
-            valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release)
-            releases_to_use.append(release)
+            this_valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release)
+
+            if this_valid_geo_ids:
+                releases_to_use.append(release)
+                valid_geo_ids.update(this_valid_geo_ids)
         except ShowDataException as e:
             expand_errors.append(e)
             continue
