@@ -510,6 +510,8 @@ def num2deg(xtile, ytile, zoom):
 @app.route("/1.0/geo/<release>/tiles/<sumlevel>/<int:zoom>/<int:x>/<int:y>.geojson")
 @cross_origin(origin='*')
 def geo_tiles(release, sumlevel, zoom, x, y):
+    if release == 'latest':
+        release = allowed_tiger[0]
     if release not in allowed_tiger:
         abort(404, "Unknown TIGER release")
     if sumlevel not in SUMLEV_NAMES:
@@ -576,6 +578,8 @@ def geo_tiles(release, sumlevel, zoom, x, y):
 })
 @cross_origin(origin='*')
 def geo_lookup(release, geoid):
+    if release == 'latest':
+        release = allowed_tiger[0]
     if release not in allowed_tiger:
         abort(404, "Unknown TIGER release")
 
@@ -631,6 +635,8 @@ def geo_lookup(release, geoid):
 @app.route("/1.0/geo/<release>/<geoid>/parents")
 @cross_origin(origin='*')
 def geo_parent(release, geoid):
+    if release == 'latest':
+        release = allowed_tiger[0]
     if release not in allowed_tiger:
         abort(404, "Unknown TIGER release")
 
@@ -688,6 +694,8 @@ def geo_parent(release, geoid):
 })
 @cross_origin(origin='*')
 def show_specified_geo_data(release):
+    if release == 'latest':
+        release = allowed_tiger[0]
     if release not in allowed_tiger:
         abort(404, "Unknown TIGER release")
     geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids, release_to_expand_with)
