@@ -155,6 +155,8 @@ $ curl "https://api.censusreporter.org/2.0/table/latest/B01001A"
 
 Returns a [GeoJSON](http://geojson.org/) representation of all geographies at summary level `sumlevel` and contained within a [map tile](http://www.maptiler.org/google-maps-coordinates-tile-bounds-projection/) specified by the `zoom`, `x`, and `y` parameters. You can use this to create a map of Census geographies on top of an existing map. The returned GeoJSON data includes attributes for the name and geoid of the geography.
 
+The `release` parameter specifies the TIGER release to use. Since the TIGER data is pretty expensive to keep around, Census Reporter typically only maintains the TIGER release that corresponds with the current ACS year.
+
 #### `GET /1.0/geo/<release>/<geoid>`
 
  URL Argument    | Type   | Required? | Description
@@ -168,9 +170,11 @@ Returns a [GeoJSON](http://geojson.org/) representation of all geographies at su
 
 Returns a [GeoJSON](http://geojson.org/) representation of the Census geography specified by the `geoid` parameter. By default, the returned GeoJSON only contains the attributes for the geography (including the land and water area, name, and geography ID). You can include the geography by setting the `geom` query argument to `true`. Note that this will usually make the response significantly larger, but will allow you to draw it on a map.
 
+The `release` parameter specifies the TIGER release to use. Since the TIGER data is pretty expensive to keep around, Census Reporter typically only maintains the TIGER release that corresponds with the current ACS year.
+
 Examples:
 ```bash
-$ curl "https://api.censusreporter.org/1.0/geo/tiger2016/04000US55"
+$ curl "https://api.censusreporter.org/1.0/geo/tiger2020/04000US55"
 {
     "geometry": null,
     "type": "Feature",
@@ -185,7 +189,7 @@ $ curl "https://api.censusreporter.org/1.0/geo/tiger2016/04000US55"
     }
 }
 
-$ curl "https://api.censusreporter.org/1.0/geo/tiger2016/04000US55?geom=true"
+$ curl "https://api.censusreporter.org/1.0/geo/tiger2020/04000US55?geom=true"
 {
     "geometry": {
         "type": "Polygon",
@@ -225,9 +229,11 @@ In some cases, the requested geography sits in multiple parents of the same summ
 
 This endpoint will also return the specified geography with a `relation` of `this`.
 
+The `release` parameter specifies the TIGER release to use. Since the TIGER data is pretty expensive to keep around, Census Reporter typically only maintains the TIGER release that corresponds with the current ACS year.
+
 Examples:
 ```bash
-$ curl "https://api.censusreporter.org/1.0/geo/tiger2016/04000US55/parents"
+$ curl "https://api.censusreporter.org/1.0/geo/tiger2020/04000US55/parents"
 {
     "parents": [
         {
@@ -247,7 +253,7 @@ $ curl "https://api.censusreporter.org/1.0/geo/tiger2016/04000US55/parents"
     ]
 }
 
-$ curl "http://api.censusreporter.org/1.0/geo/tiger2016/16000US1714000/parents"
+$ curl "http://api.censusreporter.org/1.0/geo/tiger2020/16000US1714000/parents"
 {
     "parents": [
         {
@@ -311,6 +317,8 @@ Returns a [GeoJSON](http://geojson.org/) representation of the specified comma-s
 The data included will always have the geography data included. Unlike the single-geography request above you cannot disable geography representation in the response.
 
 The attributes in the response will only include the geography name and the geoid.
+
+The `release` parameter specifies the TIGER release to use. Since the TIGER data is pretty expensive to keep around, Census Reporter typically only maintains the TIGER release that corresponds with the current ACS year.
 
 ### Data Retrieval
 
