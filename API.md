@@ -170,7 +170,7 @@ Returns a [GeoJSON](http://geojson.org/) representation of the Census geography 
 
 Examples:
 ```bash
-$ curl "https://api.censusreporter.org/1.0/geo/tiger2016/04000US55"
+$ curl "https://api.censusreporter.org/1.0/geo/tiger2020/04000US55"
 {
     "geometry": null,
     "type": "Feature",
@@ -185,7 +185,7 @@ $ curl "https://api.censusreporter.org/1.0/geo/tiger2016/04000US55"
     }
 }
 
-$ curl "https://api.censusreporter.org/1.0/geo/tiger2016/04000US55?geom=true"
+$ curl "https://api.censusreporter.org/1.0/geo/tiger2020/04000US55?geom=true"
 {
     "geometry": {
         "type": "Polygon",
@@ -212,6 +212,10 @@ $ curl "https://api.censusreporter.org/1.0/geo/tiger2016/04000US55?geom=true"
 }
 ```
 
+#### Note
+Every since and then, the tigers are deprecated. If by the time you are reading this documentation the endpoint returns a message such as "error Unknown TIGER release", try replacing the year part of the URl by the consecutive year one. e.g: /`tiger2020`/04000US55 does not work, then try using  /`tiger2021`/04000US55
+
+
 #### `GET /1.0/geo/<release>/<geoid>/parents`
 
  URL Argument    | Type   | Required? | Description
@@ -227,7 +231,7 @@ This endpoint will also return the specified geography with a `relation` of `thi
 
 Examples:
 ```bash
-$ curl "https://api.censusreporter.org/1.0/geo/tiger2016/04000US55/parents"
+$ curl "https://api.censusreporter.org/1.0/geo/tiger2020/04000US55/parents"
 {
     "parents": [
         {
@@ -247,7 +251,7 @@ $ curl "https://api.censusreporter.org/1.0/geo/tiger2016/04000US55/parents"
     ]
 }
 
-$ curl "http://api.censusreporter.org/1.0/geo/tiger2016/16000US1714000/parents"
+$ curl "http://api.censusreporter.org/1.0/geo/tiger2020/16000US1714000/parents"
 {
     "parents": [
         {
