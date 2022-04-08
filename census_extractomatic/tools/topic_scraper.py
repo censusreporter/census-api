@@ -4,7 +4,9 @@ from html.parser import HTMLParser
 import psycopg2
 import re
 import requests
-
+from flask import Flask
+import os
+from flask_sqlalchemy import SQLAlchemy
 
 class HTMLStripper(HTMLParser):
     """ Stripper for HTML tags; simply stores data in self.data. """
@@ -303,27 +305,25 @@ def scrape_glossary_page():
     return {'text': ' '.join(parser.text), 'terms': ' '.join(parser.terms) }
 
 
-def remove_old_topics():
+def remove_old_topics(cur):
     """" Removes old topics entries from search_metadata. """
-
-    # Connect to database
-    connection = psycopg2.connect("")
-    cur = connection.cursor()
 
     # Remove old entries
     q = "DELETE FROM search_metadata WHERE type = 'topic';"
 
     cur.execute(q)
-    print(cur.statusmessage)
+    # statusmessage is only in psycopg2 not in flask_sqlalchemy db.engine
+    # if we want this have to figure out where it is
+    # print(cur.statusmessage)
 
-    connection.commit()
-    cur.close()
-    connection.close()
+    # connection.commit()
+    # cur.close()
+    # connection.close()
 
     return
 
 
-def add_topics_to_table(topics_data):
+def add_topics_to_table(topics_data, cur):
     """ Adds topics data into the search_metadata table.
 
     Requires that the format be a list of dictionaries, i.e.,
@@ -333,10 +333,6 @@ def add_topics_to_table(topics_data):
           text: '...', tables: {not relevant}},
          ... ]
     """
-
-    # Connect to database
-    connection = psycopg2.connect("")
-    cur = connection.cursor()
 
     for topic in topics_data:
         # Format each "text" entry properly, i.e., &-delimited. We replace spaces
@@ -359,24 +355,22 @@ def add_topics_to_table(topics_data):
                topic['name'], ' '.join(topic['table_codes']), topic['url'], topic['text'])
 
         cur.execute(q)
-        print(cur.statusmessage)
+        # statusmessage is only in psycopg2 not in flask_sqlalchemy db.engine
+        # if we want this have to figure out where it is
+        # print(cur.statusmessage)
 
-    connection.commit()
-    cur.close()
-    connection.close()
+    # connection.commit()
+    # cur.close()
+    # connection.close()
 
     return
 
 
-def add_glossary_to_table(glossary):
+def add_glossary_to_table(glossary, cur):
     """ Add glossary data to search_metadata table.
 
     Requires that it be formatted as { terms: [term1, term2, ...], text: '...'}
     """
-
-    # Connect to database
-    connection = psycopg2.connect("")
-    cur = connection.cursor()
 
     # Format text properly, i.e., &-delimited and without multiple spaces
     glossary['text'] = re.sub('\s+', ' ', glossary['text'].strip())
@@ -398,11 +392,13 @@ def add_glossary_to_table(glossary):
            glossary['terms'], glossary['text'])
 
     cur.execute(q)
-    print(cur.statusmessage)
+    # statusmessage is only in psycopg2 not in flask_sqlalchemy db.engine
+    # if we want this have to figure out where it is
+    # print(cur.statusmessage)
 
-    connection.commit()
-    cur.close()
-    connection.close()
+    # connection.commit()
+    # cur.close()
+    # connection.close()
 
     return
 
@@ -420,8 +416,18 @@ if __name__ == "__main__":
     glossary = scrape_glossary_page()
     print("Finished sraping glossary page")
 
-    remove_old_topics()
+    # Connect to database
+    # connection = psycopg2.connect("")
+    # cur = connection.cursor()
+
+    app = Flask(__name__)
+    app.config.from_object(os.environ.get('EXTRACTOMATIC_CONFIG_MODULE', 'census_extractomatic.config.Development'))
+    db = SQLAlchemy(app)
+
+    remove_old_topics(db.engine)
     print("Removed old topics entries from search_metadata.")
-    add_topics_to_table(topics)
-    add_glossary_to_table(glossary)
+    add_topics_to_table(topics, db.engine)
+    add_glossary_to_table(glossary, db.engine)
     print("Added new topics entries to search_metadata.")
+
+    db.close_all_sessions()

@@ -184,10 +184,11 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
   - Set the PGHOST, PGPORT, PGUSER, PGDATABASE environment variables
   - `psql -f /home/ubuntu/census-api/full-text-search/metadata_script.sql`
   - Scrape the topic pages:
-        - `virtualenv --no-site-packages env`
-        - `source env/bin/activate`
-        - `pip install requests psycopg2-binary`
-        - `python /home/ubuntu/census-api/full-text-search/topic_scraper.py`
+        - activate a `census-api` environment
+        - `python -m census_extractomatic.tools.topic_scraper`
+  - Update the priority weighting. 
+        - activate a `census-api` environment
+        - `python -m census_extractomatic.tools.update_table_priorities FILES` (where FILES is a list or glob of gzip'd Census Reporter access logs as found on dokku at `/var/log/nginx/censusreporter-access*gz`)
 
 - Regenerate the sitemap files
   - From a system which has the `census-api` and `censusreporter` repositories both checked out in the same parent directory, open an SSH tunnel to the database server tunneling on port `5433`
