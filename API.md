@@ -14,9 +14,9 @@ To continue with the spreadsheet metaphor, the endpoints for this API can be rou
 
 #### `GET /1.0/tabulation/<tabulation_id>`
 
- URL Argument    | Type   | Required? | Description
-:----------------|:-------|:----------|:-----------
- `tabulation_id` | string | Yes       | The tabulation ID to retrieve.
+| URL Argument    | Type   | Required? | Description                    |
+|:----------------|:-------|:----------|:-------------------------------|
+| `tabulation_id` | string | Yes       | The tabulation ID to retrieve. |
 
 Returns information about the specified tabulation. A tabulation is a grouping of tables that share the numeric part of the table ID. Each tabulation can have multiple tables spread across the three yearly American Community Survey releases (1-, 3-, and 5-year).
 
@@ -57,14 +57,13 @@ $ curl "https://api.censusreporter.org/1.0/tabulation/01001"
 
 **Deprecated**: You should use the endpoint `GET /2.0/table/<release>/<table_id>`, documented below.
 
- URL Argument    | Type   | Required? | Description
-:----------------|:-------|:----------|:-----------
- `table_id`      | string | Yes       | The table ID to retrieve.
+| URL Argument | Type   | Required? | Description               |
+|:-------------|:-------|:----------|:--------------------------|
+| `table_id`   | string | Yes       | The table ID to retrieve. |
 
-
- Query Argument | Type   | Required? | Description
-:---------------|:-------|:----------|:-----------
- `acs`          | string | No        | The ACS release to use. Defaults to the most recent version.
+| Query Argument | Type   | Required? | Description                                                  |
+|:---------------|:-------|:----------|:-------------------------------------------------------------|
+| `acs`          | string | No        | The ACS release to use. Defaults to the most recent version. |
 
 Returns information about the specified table in the specified release. Information returned includes the table's title, subject area, universe, a list of topics covered by the table, and a list of columns contained in the table.
 
@@ -101,10 +100,10 @@ $ curl "https://api.censusreporter.org/1.0/table/B01001A"
 
 #### `GET /2.0/table/<acs>/<table_id>`
 
- URL Argument    | Type   | Required? | Description
-:----------------|:-------|:----------|:-----------
- `acs`           | string | Yes       | The release to use for this data.
- `table_id`      | string | Yes       | The table ID to retrieve.
+| URL Argument | Type   | Required? | Description                       |
+|:-------------|:-------|:----------|:----------------------------------|
+| `acs`        | string | Yes       | The release to use for this data. |
+| `table_id`   | string | Yes       | The table ID to retrieve.         |
 
 Returns information about the specified table in the specified release. Information returned includes the table's title, subject area, universe, a list of topics covered by the table, and a list of columns contained in the table.
 
@@ -145,32 +144,36 @@ $ curl "https://api.censusreporter.org/2.0/table/latest/B01001A"
 
 #### `GET /1.0/geo/<release>/tiles/<sumlevel>/<zoom>/<x>/<y>.geojson`
 
- URL Argument    | Type   | Required? | Description
-:----------------|:-------|:----------|:-----------
- `release`       | string | Yes       | The TIGER release to use in the tile.
- `sumlevel`      | string | Yes       | The summary to use in the tile.
- `zoom`          | int    | Yes       | The zoom level for the tile.
- `x`             | int    | Yes       | The x value for the tile.
- `y`             | int    | Yes       | The y value for the tile.
+| URL Argument | Type   | Required? | Description                           |
+|:-------------|:-------|:----------|:--------------------------------------|
+| `release`    | string | Yes       | The TIGER release to use in the tile. |
+| `sumlevel`   | string | Yes       | The summary to use in the tile.       |
+| `zoom`       | int    | Yes       | The zoom level for the tile.          |
+| `x`          | int    | Yes       | The x value for the tile.             |
+| `y`          | int    | Yes       | The y value for the tile.             |
 
 Returns a [GeoJSON](http://geojson.org/) representation of all geographies at summary level `sumlevel` and contained within a [map tile](http://www.maptiler.org/google-maps-coordinates-tile-bounds-projection/) specified by the `zoom`, `x`, and `y` parameters. You can use this to create a map of Census geographies on top of an existing map. The returned GeoJSON data includes attributes for the name and geoid of the geography.
 
+The `release` parameter specifies the TIGER release to use. Since the TIGER data is pretty expensive to keep around, Census Reporter typically only maintains the TIGER release that corresponds with the current ACS year. If you aren't sure, use the word `latest` and we will pick the most recent release.
+
 #### `GET /1.0/geo/<release>/<geoid>`
 
- URL Argument    | Type   | Required? | Description
-:----------------|:-------|:----------|:-----------
- `release`       | string | Yes       | The TIGER release to use retrieve data from.
- `geoid`         | string | Yes       | The geography identifier to retrieve data for.
+| URL Argument | Type   | Required? | Description                                    |
+|:-------------|:-------|:----------|:-----------------------------------------------|
+| `release`    | string | Yes       | The TIGER release to use retrieve data from.   |
+| `geoid`      | string | Yes       | The geography identifier to retrieve data for. |
 
- Query Argument | Type   | Required? | Description
-:---------------|:-------|:----------|:-----------
- `geom`         | bool   | No        | Whether or not to include the geography portion of the GeoJSON.
+| Query Argument | Type | Required? | Description                                                     |
+|:---------------|:-----|:----------|:----------------------------------------------------------------|
+| `geom`         | bool | No        | Whether or not to include the geography portion of the GeoJSON. |
 
 Returns a [GeoJSON](http://geojson.org/) representation of the Census geography specified by the `geoid` parameter. By default, the returned GeoJSON only contains the attributes for the geography (including the land and water area, name, and geography ID). You can include the geography by setting the `geom` query argument to `true`. Note that this will usually make the response significantly larger, but will allow you to draw it on a map.
 
+The `release` parameter specifies the TIGER release to use. Since the TIGER data is pretty expensive to keep around, Census Reporter typically only maintains the TIGER release that corresponds with the current ACS year. If you aren't sure, use the word `latest` and we will pick the most recent release.
+
 Examples:
 ```bash
-$ curl "https://api.censusreporter.org/1.0/geo/tiger2016/04000US55"
+$ curl "https://api.censusreporter.org/1.0/geo/tiger2020/04000US55"
 {
     "geometry": null,
     "type": "Feature",
@@ -185,7 +188,7 @@ $ curl "https://api.censusreporter.org/1.0/geo/tiger2016/04000US55"
     }
 }
 
-$ curl "https://api.censusreporter.org/1.0/geo/tiger2016/04000US55?geom=true"
+$ curl "https://api.censusreporter.org/1.0/geo/tiger2020/04000US55?geom=true"
 {
     "geometry": {
         "type": "Polygon",
@@ -214,10 +217,10 @@ $ curl "https://api.censusreporter.org/1.0/geo/tiger2016/04000US55?geom=true"
 
 #### `GET /1.0/geo/<release>/<geoid>/parents`
 
- URL Argument    | Type   | Required? | Description
-:----------------|:-------|:----------|:-----------
- `release`       | string | Yes       | The TIGER release to use.
- `geoid`         | string | Yes       | The geography identifier to retrieve parent geographies for.
+| URL Argument | Type   | Required? | Description                                                  |
+|:-------------|:-------|:----------|:-------------------------------------------------------------|
+| `release`    | string | Yes       | The TIGER release to use.                                    |
+| `geoid`      | string | Yes       | The geography identifier to retrieve parent geographies for. |
 
 Returns a list of geographies that might be considered the parent of the specified geography. The information returned includes the name, geoid, and summary level code for each geography.
 
@@ -225,9 +228,11 @@ In some cases, the requested geography sits in multiple parents of the same summ
 
 This endpoint will also return the specified geography with a `relation` of `this`.
 
+The `release` parameter specifies the TIGER release to use. Since the TIGER data is pretty expensive to keep around, Census Reporter typically only maintains the TIGER release that corresponds with the current ACS year. If you aren't sure, use the word `latest` and we will pick the most recent release.
+
 Examples:
 ```bash
-$ curl "https://api.censusreporter.org/1.0/geo/tiger2016/04000US55/parents"
+$ curl "https://api.censusreporter.org/1.0/geo/tiger2020/04000US55/parents"
 {
     "parents": [
         {
@@ -247,7 +252,7 @@ $ curl "https://api.censusreporter.org/1.0/geo/tiger2016/04000US55/parents"
     ]
 }
 
-$ curl "http://api.censusreporter.org/1.0/geo/tiger2016/16000US1714000/parents"
+$ curl "http://api.censusreporter.org/1.0/geo/tiger2020/16000US1714000/parents"
 {
     "parents": [
         {
@@ -298,13 +303,13 @@ $ curl "http://api.censusreporter.org/1.0/geo/tiger2016/16000US1714000/parents"
 
 #### `GET /1.0/geo/show/<release>`
 
- URL Argument    | Type   | Required? | Description
-:----------------|:-------|:----------|:-----------
- `release`       | string | Yes       | The TIGER release to use.
+| URL Argument | Type   | Required? | Description               |
+|:-------------|:-------|:----------|:--------------------------|
+| `release`    | string | Yes       | The TIGER release to use. |
 
- Query Argument | Type   | Required? | Description
-:---------------|:-------|:----------|:-----------
- `geo_ids`      | string | Yes       | A comma-separated list of geographies to request information about.
+| Query Argument | Type   | Required? | Description                                                         |
+|:---------------|:-------|:----------|:--------------------------------------------------------------------|
+| `geo_ids`      | string | Yes       | A comma-separated list of geographies to request information about. |
 
 Returns a [GeoJSON](http://geojson.org/) representation of the specified comma-separated list of Census geographies. Each item in the comma-separated list can either be a single geoid or a "geoid grouping" specified by `<child summary level>|<parent geoid>`. A grouping is a shortcut so you don't have to specify individual geoids for contiguous groups of geographies. For example, to get states (summary level `040`) in the United States (geoid `01000US`), you'd use `040|01000US` as an element in your `geo_ids` list.
 
@@ -312,18 +317,20 @@ The data included will always have the geography data included. Unlike the singl
 
 The attributes in the response will only include the geography name and the geoid.
 
+The `release` parameter specifies the TIGER release to use. Since the TIGER data is pretty expensive to keep around, Census Reporter typically only maintains the TIGER release that corresponds with the current ACS year. If you aren't sure, use the word `latest` and we will pick the most recent release.
+
 ### Data Retrieval
 
 #### `GET /1.0/data/show/<acs>`
 
- URL Argument    | Type   | Required? | Description
-:----------------|:-------|:----------|:-----------
- `acs`           | string | Yes       | The release to use for this data.
+| URL Argument | Type   | Required? | Description                       |
+|:-------------|:-------|:----------|:----------------------------------|
+| `acs`        | string | Yes       | The release to use for this data. |
 
- Query Argument | Type   | Required? | Description
-:---------------|:-------|:----------|:-----------
- `table_ids`    | string | Yes       | A comma-separated list of table IDs to request data for.
- `geo_ids`      | string | Yes       | A comma-separated list of geographies to request information about.
+| Query Argument | Type   | Required? | Description                                                         |
+|:---------------|:-------|:----------|:--------------------------------------------------------------------|
+| `table_ids`    | string | Yes       | A comma-separated list of table IDs to request data for.            |
+| `geo_ids`      | string | Yes       | A comma-separated list of geographies to request information about. |
 
 Returns the data for the given comma-separated list of table IDs in the given geo IDs. The data includes basic information about the specified tables and geographies along with the estimate and error data.
 
