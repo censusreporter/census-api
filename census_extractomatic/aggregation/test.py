@@ -1,7 +1,15 @@
-# run with
+# Despite the name, this is more than testing. It forces the generation
+# (and caching) of all of the files which people might wish to download, 
+# thus avoiding the risk of a timeout when someone requests an uncached
+# file from the public web interface.
+# It's called "test" because it also stores timing data, should we ever
+# want to assess that. It also uses that stored data to know which 
+# user geo datasets even need processing, so this should only do "new" ones.
+#
+# In a census-api environment, with a database tunnel open, 
+# run this with
 # python -m census_extractomatic.aggregation.test
 from census_extractomatic.user_geo import (
-    aggregate_decennial_comparison,
     create_aggregate_download,
     COMPARISON_RELEASE_CODE,
     create_block_xref_download

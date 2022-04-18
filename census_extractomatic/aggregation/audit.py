@@ -1,5 +1,13 @@
+# Audit user geographies against Census PLACEs to see how many blocks
+# in the computed block assignment are not actually from the expected place
+# as well as how many blocks from the expected place were not included in the
+# block assignment.
+#
+# Before running, update audit_guide.csv to include a row linking a given
+# uploaded user_geo map to a specific Census place
+#
 # GeoPandas is not a dependency for census-api because it is too heavy
-# so write this to run without census-api code
+# so this should be run without any actual census-api code
 # To run: NOT from the 'census-api' virtualenv 
 #         but whatever you've set up that has the right deps
 # python -m census_extractomatic.aggregation.audit

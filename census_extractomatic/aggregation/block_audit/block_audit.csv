@@ -29,3 +29,4 @@ user_geodata_id,hash_digest,name,state,place,pop100_agg,pop100_real,hu100_agg,hu
 104,8e0908d3e227091101403878f4f1b99a,"St. Paul, MN Community Council Districts",27,58000,311527,311527,127392,127392,0,5
 107,6f66e09efa830fe5d8a2e08681b1779b,Proposed St. Louis wards,29,65000,302595,301578,174219,173479,1,28
 108,8fff534f46196c1381fd0c0993aad746,"St. Louis, MO Proposed Wards 2012-12-16",29,65000,301584,301589,173479,173487,1,0
+111,12ae0fa2b6d42b1bdf8787edcdfec6b1,"Phoenix, AZ Urban Villages",04,55000,1618728,1608139,634621,630752,0,497
