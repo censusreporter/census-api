@@ -1518,10 +1518,10 @@ def show_specified_data(acs):
             ])
 
         invalid_table_ids = set(request.qwargs.table_ids) - set(valid_table_ids)
-        if invalid_table_ids:
+        if invalid_table_ids: 
             resp = jsonify(error="The %s release doesn't include table(s) %s." % (get_acs_name(release_to_use), ','.join(invalid_table_ids)))
             resp.status_code = 404
-            return resp
+            return resp # why should this be fatal when we might be able to loop and try another release... JLG 2022-04-25
 
         # Now fetch the actual data
         from_stmt = '%s_moe' % (valid_table_ids[0])
@@ -1565,8 +1565,9 @@ def show_specified_data(acs):
                     col_name = col_name.upper()
                     (moe_name, moe_value) = next(cols_iter)
 
-                    if value is not None and moe_value is not None:
-                        this_geo_has_data = True
+                    this_geo_has_data = True
+                    # if value is not None and moe_value is not None:
+                    #     this_geo_has_data = True
 
                     table_for_geoid['estimate'][col_name] = value
                     table_for_geoid['error'][col_name] = moe_value
