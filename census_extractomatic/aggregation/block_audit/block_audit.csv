@@ -31,3 +31,4 @@ user_geodata_id,hash_digest,name,state,place,pop100_agg,pop100_real,hu100_agg,hu
 108,8fff534f46196c1381fd0c0993aad746,"St. Louis, MO Proposed Wards 2012-12-16",29,65000,301584,301589,173479,173487,1,0
 111,12ae0fa2b6d42b1bdf8787edcdfec6b1,"Phoenix, AZ Urban Villages",04,55000,1618728,1608139,634621,630752,0,497
 116,3798a95fe4785987e67efd123b01d941,"Cincinnati, OH Statistical Neighborhood Approximations (SNA)",39,15000,309451,309317,158824,158773,2,9
+117,6f6c4518e7c9964ae7a9d0e9fca6f089,"San Francisco, CA Find Neighborhoods",06,67000,873732,873965,406520,406628,1,0

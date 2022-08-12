@@ -7,6 +7,7 @@ To process an aggregation request:
     - run `python -m census_extractomatic.aggregation.test` 
     - for any fully READY datasets that aren't already in the timing.log file, it will generate all of the downloadables, avoiding the timeout issue when triggering the generation via a "just-in-time" click
 - If the upload aligns with a Census PLACE
-    - update audit_guide.csv with a stub row that matches the user_geo hash with the place FIPS code
+    - update `audit_guide.csv` with a stub row that matches the user_geo hash with the place FIPS code
     - switch to the `data` env (or at least something that has the right deps, which census-api doesn't)
     - run `python -m census_extractomatic.aggregation.audit`
+    - the `block_analysis.ipynb` file has some code used to poke around the data

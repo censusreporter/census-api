@@ -192,6 +192,7 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
 
 - Regenerate the sitemap files
   - From a system which has the `census-api` and `censusreporter` repositories both checked out in the same parent directory, open an SSH tunnel to the database server tunneling on port `5433`
+  - activate the `census-api` virtual environment
   - change to the `census-api/sitemap` directory
   - execute `python build_all.py`
   - `cd ../../censusreporter`
