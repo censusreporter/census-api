@@ -65,7 +65,7 @@ gunicorn_error_logger = logging.getLogger('gunicorn.error')
 app.logger.handlers.extend(gunicorn_error_logger.handlers)
 
 # decimal.Decimal is supposed to be automatically handled when simplejson is installed
-# but that is not proving the case (chk /1.0/geo/show/tiger2020?geo_ids=16000US1714000 to verify)
+# but that is not proving the case (chk /1.0/geo/show/tiger2021?geo_ids=16000US1714000 to verify)
 from flask.json import JSONEncoder
 class CustomJSONEncoder(JSONEncoder):
     def default(self, obj):
@@ -81,20 +81,19 @@ cors = CORS(app)
 sentry = Sentry(app)
 
 # Allowed ACS's in "best" order (newest and smallest range preferred)
-#
-# In 2020 there wasn't a 1-year release, so we put 5-year first because it is newest.
 allowed_acs = [
+    'acs2021_1yr',
     'acs2020_5yr',
-    'acs2019_1yr',
 ]
 # When table searches happen without a specified release, use this
 # release to do the table search.
 default_table_search_release = allowed_acs[0]
 
-release_to_expand_with = allowed_acs[0]
+release_to_expand_with = allowed_acs[1]
 
 # Allowed TIGER releases in newest order
 allowed_tiger = [
+    'tiger2021',
     'tiger2020',
 ]
 
@@ -107,7 +106,7 @@ allowed_searches = [
 
 ACS_NAMES = {
     'acs2020_5yr': {'name': 'ACS 2020 5-year', 'years': '2016-2020'},
-    'acs2019_1yr': {'name': 'ACS 2019 1-year', 'years': '2019'},
+    'acs2021_1yr': {'name': 'ACS 2021 1-year', 'years': '2021'},
 }
 
 PARENT_CHILD_CONTAINMENT = {
@@ -375,7 +374,7 @@ def compute_profile_item_levels(geoid):
 
     if sumlevel in ('140', '150', '160', '310', '330', '350', '860', '950', '960', '970'):
         result = db.session.execute(
-            """SELECT * FROM tiger2020.census_geo_containment
+            """SELECT * FROM tiger2021.census_geo_containment
                WHERE child_geoid=:geoid
                ORDER BY percent_covered ASC
             """,
@@ -482,13 +481,13 @@ def geo_search():
 
     if with_geom:
         sql = """SELECT DISTINCT geoid,sumlevel,population,display_name,full_geoid,priority,ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geom
-            FROM tiger2020.census_name_lookup
+            FROM tiger2021.census_name_lookup
             WHERE %s
             ORDER BY priority, population DESC NULLS LAST
             LIMIT 25;""" % (where)
     else:
         sql = """SELECT DISTINCT geoid,sumlevel,population,display_name,full_geoid,priority
-            FROM tiger2020.census_name_lookup
+            FROM tiger2021.census_name_lookup
             WHERE %s
             ORDER BY priority, population DESC NULLS LAST
             LIMIT 25;""" % (where)
@@ -1307,7 +1306,7 @@ def get_child_geoids_by_coverage(release, parent_geoid, child_summary_level):
     db.session.execute("SET search_path=:acs,public;", {'acs': release})
     result = db.session.execute(
         """SELECT geoid, name
-           FROM tiger2020.census_geo_containment, geoheader
+           FROM tiger2021.census_geo_containment, geoheader
            WHERE geoheader.geoid = census_geo_containment.child_geoid
              AND census_geo_containment.parent_geoid = :parent_geoid
              AND census_geo_containment.child_geoid LIKE :child_geoids""",
@@ -1329,8 +1328,8 @@ def get_child_geoids_by_gis(release, parent_geoid, child_summary_level):
     child_geoids = []
     result = db.session.execute(
         """SELECT child.full_geoid
-           FROM tiger2020.census_name_lookup parent
-           JOIN tiger2020.census_name_lookup child ON ST_Intersects(parent.geom, child.geom) AND child.sumlevel=:child_sumlevel
+           FROM tiger2021.census_name_lookup parent
+           JOIN tiger2021.census_name_lookup child ON ST_Intersects(parent.geom, child.geom) AND child.sumlevel=:child_sumlevel
            WHERE parent.full_geoid=:parent_geoid AND parent.sumlevel=:parent_sumlevel""",
         {'child_sumlevel': child_summary_level, 'parent_geoid': parent_geoid, 'parent_sumlevel': parent_sumlevel}
     )
@@ -1466,7 +1465,7 @@ def show_specified_data(acs):
     # Fill in the display name for the geos
     result = db.session.execute(
         """SELECT full_geoid,population,display_name
-           FROM tiger2020.census_name_lookup
+           FROM tiger2021.census_name_lookup
            WHERE full_geoid IN :geoids;""",
         {'geoids': tuple(named_geo_ids)}
     )
@@ -1551,7 +1550,7 @@ def show_specified_data(acs):
             # If we end up at the 'most complete' release, we should include every bit of
             # data we can instead of erroring out on the user.
             # See https://www.pivotaltracker.com/story/show/70906084
-            # This logic is incompatible with our one-time decision to change the 
+            # This logic is incompatible with our one-time decision to change the
             # order of the allowed_acs to deal with the 2020 1-year release issue...
             this_geo_has_data = False or release_to_use == allowed_acs[-1]
 
@@ -1650,7 +1649,7 @@ def download_specified_data(acs):
         """SELECT full_geoid,
                   population,
                   display_name
-           FROM tiger2020.census_name_lookup
+           FROM tiger2021.census_name_lookup
            WHERE full_geoid IN :geo_ids;""",
         {'geo_ids': tuple(valid_geo_ids)}
     )
@@ -1866,7 +1865,7 @@ def data_compare_geographies_within_parent(acs, table_id):
         # get the parent geometry and add to API response
         result = db.session.execute(
             """SELECT ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geometry
-               FROM tiger2020.census_name_lookup
+               FROM tiger2021.census_name_lookup
                WHERE full_geoid=:geo_ids;""",
             {'geo_ids': parent_geoid}
         )
@@ -1880,7 +1879,7 @@ def data_compare_geographies_within_parent(acs, table_id):
         # get the child geometries and store for later
         result = db.session.execute(
             """SELECT geoid, ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geometry
-               FROM tiger2020.census_name_lookup
+               FROM tiger2021.census_name_lookup
                WHERE full_geoid IN :geo_ids
                ORDER BY full_geoid;""",
             {'geo_ids': tuple(child_geoid_list)}
