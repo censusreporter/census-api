@@ -397,3 +397,43 @@ b950f04b8cbc4f958d695cb58dc06038,"SD-15",H1,dec_pl94_compare_2020_2010,0:00:02.1
 6f6c4518e7c9964ae7a9d0e9fca6f089,"San Francisco, CA Find Neighborhoods",P4,dec_pl94_compare_2020_2010,0:00:05.753273
 6f6c4518e7c9964ae7a9d0e9fca6f089,"San Francisco, CA Find Neighborhoods",P5,dec2020_pl94,0:00:02.391322
 6f6c4518e7c9964ae7a9d0e9fca6f089,"San Francisco, CA Find Neighborhoods",H1,dec_pl94_compare_2020_2010,0:00:04.366162
+35e920490c603eb9d151fae5951921a0,"North Dakota State Senate District 21 (2022-2030)",block_assignment,2020,0:00:01.711107
+35e920490c603eb9d151fae5951921a0,"North Dakota State Senate District 21 (2022-2030)",block_assignment,2010,0:00:01.364901
+35e920490c603eb9d151fae5951921a0,"North Dakota State Senate District 21 (2022-2030)",P1,dec_pl94_compare_2020_2010,0:00:04.620510
+35e920490c603eb9d151fae5951921a0,"North Dakota State Senate District 21 (2022-2030)",P2,dec_pl94_compare_2020_2010,0:00:02.875344
+35e920490c603eb9d151fae5951921a0,"North Dakota State Senate District 21 (2022-2030)",P3,dec_pl94_compare_2020_2010,0:00:03.011260
+35e920490c603eb9d151fae5951921a0,"North Dakota State Senate District 21 (2022-2030)",P4,dec_pl94_compare_2020_2010,0:00:03.001252
+35e920490c603eb9d151fae5951921a0,"North Dakota State Senate District 21 (2022-2030)",P5,dec2020_pl94,0:00:01.927586
+35e920490c603eb9d151fae5951921a0,"North Dakota State Senate District 21 (2022-2030)",H1,dec_pl94_compare_2020_2010,0:00:04.386016
+aef3e4808ddc1732ce835ea113570ef8,"CA State Assembly District 51 (2021)",block_assignment,2020,0:00:07.488299
+aef3e4808ddc1732ce835ea113570ef8,"CA State Assembly District 51 (2021)",block_assignment,2010,0:00:04.016900
+aef3e4808ddc1732ce835ea113570ef8,"CA State Assembly District 51 (2021)",P1,dec_pl94_compare_2020_2010,0:01:01.888392
+aef3e4808ddc1732ce835ea113570ef8,"CA State Assembly District 51 (2021)",P2,dec_pl94_compare_2020_2010,0:02:01.799182
+aef3e4808ddc1732ce835ea113570ef8,"CA State Assembly District 51 (2021)",P3,dec_pl94_compare_2020_2010,0:01:01.560347
+aef3e4808ddc1732ce835ea113570ef8,"CA State Assembly District 51 (2021)",P4,dec_pl94_compare_2020_2010,0:01:18.738923
+aef3e4808ddc1732ce835ea113570ef8,"CA State Assembly District 51 (2021)",P5,dec2020_pl94,0:00:31.942325
+aef3e4808ddc1732ce835ea113570ef8,"CA State Assembly District 51 (2021)",H1,dec_pl94_compare_2020_2010,0:01:10.257390
+110956430af8e84b02ba50279d95d878,"Valley View Community Unit School District 365U, IL",block_assignment,2020,0:00:02.766183
+110956430af8e84b02ba50279d95d878,"Valley View Community Unit School District 365U, IL",block_assignment,2010,0:00:01.969937
+110956430af8e84b02ba50279d95d878,"Valley View Community Unit School District 365U, IL",P1,dec_pl94_compare_2020_2010,0:00:07.267766
+110956430af8e84b02ba50279d95d878,"Valley View Community Unit School District 365U, IL",P2,dec_pl94_compare_2020_2010,0:00:07.806257
+110956430af8e84b02ba50279d95d878,"Valley View Community Unit School District 365U, IL",P3,dec_pl94_compare_2020_2010,0:00:07.421045
+110956430af8e84b02ba50279d95d878,"Valley View Community Unit School District 365U, IL",P4,dec_pl94_compare_2020_2010,0:00:07.697017
+110956430af8e84b02ba50279d95d878,"Valley View Community Unit School District 365U, IL",P5,dec2020_pl94,0:00:04.191750
+110956430af8e84b02ba50279d95d878,"Valley View Community Unit School District 365U, IL",H1,dec_pl94_compare_2020_2010,0:00:10.538710
+9c37b6733793dcc5261bf37bf19e71c7,"Boston, MA precinct boundaries (2022)",block_assignment,2020,0:00:03.376575
+9c37b6733793dcc5261bf37bf19e71c7,"Boston, MA precinct boundaries (2022)",block_assignment,2010,0:00:04.051045
+9c37b6733793dcc5261bf37bf19e71c7,"Boston, MA precinct boundaries (2022)",P1,dec_pl94_compare_2020_2010,0:00:19.225102
+9c37b6733793dcc5261bf37bf19e71c7,"Boston, MA precinct boundaries (2022)",P2,dec_pl94_compare_2020_2010,0:00:15.016635
+9c37b6733793dcc5261bf37bf19e71c7,"Boston, MA precinct boundaries (2022)",P3,dec_pl94_compare_2020_2010,0:00:15.665601
+9c37b6733793dcc5261bf37bf19e71c7,"Boston, MA precinct boundaries (2022)",P4,dec_pl94_compare_2020_2010,0:00:13.270249
+9c37b6733793dcc5261bf37bf19e71c7,"Boston, MA precinct boundaries (2022)",P5,dec2020_pl94,0:00:04.096888
+9c37b6733793dcc5261bf37bf19e71c7,"Boston, MA precinct boundaries (2022)",H1,dec_pl94_compare_2020_2010,0:00:05.356537
+43a475206e7fd6ae95bf1ee400d22390,"Boston, MA City Council Districts",block_assignment,2020,0:00:02.468977
+43a475206e7fd6ae95bf1ee400d22390,"Boston, MA City Council Districts",block_assignment,2010,0:00:02.982327
+43a475206e7fd6ae95bf1ee400d22390,"Boston, MA City Council Districts",P1,dec_pl94_compare_2020_2010,0:00:19.454178
+43a475206e7fd6ae95bf1ee400d22390,"Boston, MA City Council Districts",P2,dec_pl94_compare_2020_2010,0:00:24.864215
+43a475206e7fd6ae95bf1ee400d22390,"Boston, MA City Council Districts",P3,dec_pl94_compare_2020_2010,0:00:41.796573
+43a475206e7fd6ae95bf1ee400d22390,"Boston, MA City Council Districts",P4,dec_pl94_compare_2020_2010,0:00:15.161248
+43a475206e7fd6ae95bf1ee400d22390,"Boston, MA City Council Districts",P5,dec2020_pl94,0:00:08.247104
+43a475206e7fd6ae95bf1ee400d22390,"Boston, MA City Council Districts",H1,dec_pl94_compare_2020_2010,0:00:26.840969
