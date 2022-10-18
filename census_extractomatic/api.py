@@ -251,30 +251,6 @@ def add_metadata(dictionary, table_id, universe, acs_release):
     dictionary['metadata'] = val
 
 
-def find_geoid(geoid, acs=None):
-    "Find the best acs to use for a given geoid or None if the geoid is not found."
-
-    if acs:
-        if acs not in allowed_acs:
-            abort(404, "We don't have data for that release.")
-        acs_to_search = [acs]
-    else:
-        acs_to_search = allowed_acs
-
-    for acs in acs_to_search:
-
-        result = db.session.execute(
-            """SELECT geoid
-               FROM %s.geoheader
-               WHERE geoid=:geoid""" % acs,
-            {'geoid': geoid}
-        )
-        if result.rowcount == 1:
-            result = result.first()
-            return (acs, result['geoid'])
-    return (None, None)
-
-
 def get_data_fallback(table_ids, geoids, acs=None):
     if type(geoids) != list:
         geoids = [geoids]
@@ -1564,9 +1540,9 @@ def show_specified_data(acs):
                     col_name = col_name.upper()
                     (moe_name, moe_value) = next(cols_iter)
 
-                    this_geo_has_data = True
-                    # if value is not None and moe_value is not None:
-                    #     this_geo_has_data = True
+                    # this_geo_has_data = True
+                    if value is not None and moe_value is not None:
+                        this_geo_has_data = True
 
                     table_for_geoid['estimate'][col_name] = value
                     table_for_geoid['error'][col_name] = moe_value
