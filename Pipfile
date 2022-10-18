@@ -22,8 +22,8 @@ flask-caching = "*"
 redis = "*"
 gunicorn = "*"
 simplejson = "*"
-celery = "*"
-pandas = "*"
+celery = "==5.2.2"
+pandas = "==1.5.0"
 # Different GDAL (C) versions on Dokku and local dev 
 # mean unfortunate monkeying around with this.
 # For now needs to be 2.4.0 for Dokku
