@@ -1741,7 +1741,7 @@ def download_specified_data(acs):
                 zfile.write(os.path.join(root, f), os.path.join(file_ident, f))
         zfile.close()
 
-        resp = send_file(zfile_path, as_attachment=True, attachment_filename=file_ident + '.zip')
+        resp = send_file(zfile_path, as_attachment=True, download_name=file_ident + '.zip')
 
         shutil.rmtree(temp_path)
 
@@ -2056,7 +2056,7 @@ def fetch_user_blocks_by_year(hash_digest, year):
         start = timer()
         zf = create_block_xref_download(db, hash_digest, year)
         end = timer()
-        return send_file(zf.name, 'application/zip', attachment_filename=zipfile_name)
+        return send_file(zf.name, 'application/zip', download_name=zipfile_name)
     except ValueError:
         abort(404)
 
@@ -2096,7 +2096,7 @@ def aggregate(hash_digest, release, table_code):
     start = timer()
     zf = create_aggregate_download(db, hash_digest, release, table_code)
     end = timer()
-    return send_file(zf.name, 'application/zip', attachment_filename=zipfile_name)
+    return send_file(zf.name, 'application/zip', download_name=zipfile_name)
 
 
 if __name__ == "__main__":
