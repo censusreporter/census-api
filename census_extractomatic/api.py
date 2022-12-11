@@ -83,7 +83,7 @@ sentry = Sentry(app)
 # Allowed ACS's in "best" order (newest and smallest range preferred)
 allowed_acs = [
     'acs2021_1yr',
-    'acs2020_5yr',
+    'acs2021_5yr',
 ]
 # When table searches happen without a specified release, use this
 # release to do the table search.
@@ -105,7 +105,7 @@ allowed_searches = [
 ]
 
 ACS_NAMES = {
-    'acs2020_5yr': {'name': 'ACS 2020 5-year', 'years': '2016-2020'},
+    'acs2021_5yr': {'name': 'ACS 2021 5-year', 'years': '2017-2021'},
     'acs2021_1yr': {'name': 'ACS 2021 1-year', 'years': '2021'},
 }
 
@@ -1493,7 +1493,7 @@ def show_specified_data(acs):
             ])
 
         invalid_table_ids = set(request.qwargs.table_ids) - set(valid_table_ids)
-        if invalid_table_ids: 
+        if invalid_table_ids:
             resp = jsonify(error="The %s release doesn't include table(s) %s." % (get_acs_name(release_to_use), ','.join(invalid_table_ids)))
             resp.status_code = 404
             return resp # why should this be fatal when we might be able to loop and try another release... JLG 2022-04-25
