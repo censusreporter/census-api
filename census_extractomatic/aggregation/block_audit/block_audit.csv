@@ -34,3 +34,5 @@ user_geodata_id,hash_digest,name,state,place,pop100_agg,pop100_real,hu100_agg,hu
 117,6f6c4518e7c9964ae7a9d0e9fca6f089,"San Francisco, CA Find Neighborhoods",06,67000,873732,873965,406520,406628,1,0
 122,9c37b6733793dcc5261bf37bf19e71c7,"Boston, MA precinct boundaries (2022)",25,07000,675647,675647,301702,301702,0,0
 123,43a475206e7fd6ae95bf1ee400d22390,"Boston, MA City Council Districts",25,07000,674704,675647,301191,301702,7,8
+125,760bf29d05b86877b826dbffb80ff5c7,"Waco, TX Neighborhood Associations",48,76000,132051,138486,55643,58107,73,33
+127,81bf61860eb300ae2acf8ab8ccacbfd6,"Oakland, CA electoral precincts (2022)",06,53000,440646,440646,178469,178469,0,2
