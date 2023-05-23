@@ -482,9 +482,9 @@ def num2deg(xtile, ytile, zoom):
 
 # Example: /1.0/geo/tiger2014/tiles/160/10/261/373.geojson
 # Example: /1.0/geo/tiger2013/tiles/160/10/261/373.geojson
-@app.route("/1.0/geo/<release>/tiles/<sumlevel>/<int:zoom>/<int:x>/<int:y>.geojson")
+@app.route("/1.0/geo/<release>/tiles/<sumlevel>/<int:zoom>/<int:x>/<int:y>.<extension>")
 @cross_origin(origin='*')
-def geo_tiles(release, sumlevel, zoom, x, y):
+def geo_tiles(release, sumlevel, zoom, x, y, extension):
     if release == 'latest':
         release = allowed_tiger[0]
     if release not in allowed_tiger:
@@ -494,21 +494,117 @@ def geo_tiles(release, sumlevel, zoom, x, y):
     if sumlevel == '010':
         abort(400, "Don't support US tiles")
 
-    cache_key = str('1.0/geo/%s/tiles/%s/%s/%s/%s.geojson' % (release, sumlevel, zoom, x, y))
+    if extension == 'geojson':
+        result_func = create_geojson_result
+        content_type = 'application/json'
+    elif extension == 'mvt':
+        result_func = create_mvt_result
+        content_type = 'application/vnd.mapbox-vector-tile'
+    else:
+        abort(400, "Invalid format extension")
+
+    cache_key = str('1.0/geo/%s/tiles/%s/%s/%s/%s.%s' % (release, sumlevel, zoom, x, y, extension))
     cached = cache.get(cache_key)
     if cached:
         resp = make_response(cached)
     else:
-        (miny, minx) = num2deg(x, y, zoom)
-        (maxy, maxx) = num2deg(x + 1, y + 1, zoom)
 
-        tiles_across = 2**zoom
-        deg_per_tile = 360.0 / tiles_across
-        deg_per_pixel = deg_per_tile / 256
-        tile_buffer = 10 * deg_per_pixel  # ~ 10 pixel buffer
-        simplify_threshold = deg_per_pixel / 5
+        envelope = compute_envelope(zoom, x, y)        
+        result = result_func(release, sumlevel, envelope)
 
-        result = db.session.execute(
+        resp = make_response(result)
+        try:
+            cache.set(cache_key, result)
+        except Exception as e:
+            app.logger.warn('Skipping cache set for {} because {}'.format(cache_key, e.args))
+
+    resp.headers.set('Content-Type', content_type)
+    resp.headers.set('Cache-Control', 'public,max-age=86400')  # 1 day
+    return resp
+
+def compute_envelope(zoom, x, y):
+    # combination of Ian's prior art 
+    # plus segSize from https://github.com/pramsey/minimal-mvt/blob/master/minimal-mvt.py#L64
+    (miny, minx) = num2deg(x, y, zoom)
+    (maxy, maxx) = num2deg(x + 1, y + 1, zoom)
+
+    tiles_across = 2**zoom
+    deg_per_tile = 360.0 / tiles_across
+    deg_per_pixel = deg_per_tile / 256
+    tile_buffer = 10 * deg_per_pixel  # ~ 10 pixel buffer
+    simplify_threshold = deg_per_pixel / 5
+    
+    return {
+        'miny': miny,
+        'minx': minx,
+        'maxy': maxy,
+        'maxx': maxx,
+        'tile_buffer': tile_buffer,
+        'simplify_threshold': simplify_threshold,
+    }
+
+def create_mvt_result_adapted_from_orig(release, sumlevel, env):
+    result = db.session.execute(
+            """WITH
+                    mvtgeom as (SELECT
+                        ST_AsMVTGeom(ST_SimplifyPreserveTopology(
+                            ST_Intersection(ST_Buffer(ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 3857), %f, 'join=mitre'), geom),
+                            %f), 5) as geom,
+                        full_geoid,
+                        display_name
+                    FROM %s.census_name_lookup
+                    WHERE sumlevel=:sumlev AND ST_Intersects(ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 3857), geom))
+                SELECT ST_AsMVT(mvtgeom.*) FROM mvtgeom     
+               """ % (
+                env['tile_buffer'], env['simplify_threshold'], release,),
+            {'minx': env['minx'], 'miny': env['miny'], 'maxx': env['maxx'], 'maxy': env['maxy'], 'sumlev': sumlevel}
+        )
+
+    for row in result:
+        return row
+    return None
+
+def create_mvt_result(release, sumlevel, env):
+    # sql adapted from https://github.com/pramsey/minimal-mvt/blob/master/minimal-mvt.py#L64
+    DENSIFY_FACTOR = 4
+    env = dict(env) # so we can add to it
+    env['segSize'] = (env['maxx'] - env['minx'])/DENSIFY_FACTOR
+
+    env['bounds_sql'] = 'ST_Segmentize(ST_MakeEnvelope({minx}, {miny}, {maxx}, {maxy}, 4326),{segSize})'.format(**env)
+    env['release'] = release
+
+    mvt_sql = """WITH 
+            bounds AS (
+                SELECT {bounds_sql} AS geom, 
+                       {bounds_sql}::box2d AS b2d
+            ),
+            mvtgeom AS (
+                SELECT ST_AsMVTGeom(ST_Transform(t.geom, 4326), bounds.b2d) AS geom, 
+                       full_geoid,
+                       display_name
+                FROM {release}.census_name_lookup t, bounds
+                WHERE sumlevel=:sumlev AND ST_Intersects(t.geom, ST_Transform(bounds.geom, 4326))
+            ) 
+            SELECT ST_AsMVT(mvtgeom.*) FROM mvtgeom""".format(**env)
+
+    app.logger.info(f"--- create_mvt_result {sumlevel} ---")
+    app.logger.info(mvt_sql)
+    app.logger.info(f"---------------------------------")
+
+
+    result = db.session.execute(
+            mvt_sql,
+            {'sumlev': sumlevel}
+        )
+
+    for row in result:
+        return bytes(row[0])
+    return None
+
+
+def create_geojson_result(release, sumlevel, env):
+
+    result = db.session.execute(
             """SELECT
                 ST_AsGeoJSON(ST_SimplifyPreserveTopology(
                     ST_Intersection(ST_Buffer(ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 4326), %f, 'join=mitre'), geom),
@@ -517,13 +613,13 @@ def geo_tiles(release, sumlevel, zoom, x, y):
                 display_name
                FROM %s.census_name_lookup
                WHERE sumlevel=:sumlev AND ST_Intersects(ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 4326), geom)""" % (
-                tile_buffer, simplify_threshold, release,),
-            {'minx': minx, 'miny': miny, 'maxx': maxx, 'maxy': maxy, 'sumlev': sumlevel}
+                env['tile_buffer'], env['simplify_threshold'], release,),
+            {'minx': env['minx'], 'miny': env['miny'], 'maxx': env['maxx'], 'maxy': env['maxy'], 'sumlev': sumlevel}
         )
 
-        results = []
-        for row in result:
-            results.append({
+    results = []
+    for row in result:
+        results.append({
                 "type": "Feature",
                 "properties": {
                     "geoid": row['full_geoid'],
@@ -532,17 +628,8 @@ def geo_tiles(release, sumlevel, zoom, x, y):
                 "geometry": json.loads(row['geom']) if row['geom'] else None
             })
 
-        result = json.dumps(dict(type="FeatureCollection", features=results), separators=(',', ':'))
-
-        resp = make_response(result)
-        try:
-            cache.set(cache_key, result)
-        except Exception as e:
-            app.logger.warn('Skipping cache set for {} because {}'.format(cache_key, e.args))
-
-    resp.headers.set('Content-Type', 'application/json')
-    resp.headers.set('Cache-Control', 'public,max-age=86400')  # 1 day
-    return resp
+    result = json.dumps(dict(type="FeatureCollection", features=results), separators=(',', ':'))
+    return result
 
 
 # Example: /1.0/geo/tiger2014/04000US53
