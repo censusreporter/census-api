@@ -508,9 +508,7 @@ def geo_tiles(release, sumlevel, zoom, x, y, extension):
     if cached:
         resp = make_response(cached)
     else:
-
-        envelope = compute_envelope(zoom, x, y)        
-        result = result_func(release, sumlevel, envelope)
+        result = result_func(release, sumlevel, (zoom, x, y))
 
         resp = make_response(result)
         try:
@@ -523,7 +521,7 @@ def geo_tiles(release, sumlevel, zoom, x, y, extension):
     return resp
 
 def compute_envelope(zoom, x, y):
-    # combination of Ian's prior art 
+    # combination of Ian's prior art
     # plus segSize from https://github.com/pramsey/minimal-mvt/blob/master/minimal-mvt.py#L64
     (miny, minx) = num2deg(x, y, zoom)
     (maxy, maxx) = num2deg(x + 1, y + 1, zoom)
@@ -533,7 +531,7 @@ def compute_envelope(zoom, x, y):
     deg_per_pixel = deg_per_tile / 256
     tile_buffer = 10 * deg_per_pixel  # ~ 10 pixel buffer
     simplify_threshold = deg_per_pixel / 5
-    
+
     return {
         'miny': miny,
         'minx': minx,
@@ -564,28 +562,18 @@ def create_mvt_result_adapted_from_orig(release, sumlevel, env):
         return row
     return None
 
-def create_mvt_result(release, sumlevel, env):
-    # sql adapted from https://github.com/pramsey/minimal-mvt/blob/master/minimal-mvt.py#L64
-    DENSIFY_FACTOR = 4
-    env = dict(env) # so we can add to it
-    env['segSize'] = (env['maxx'] - env['minx'])/DENSIFY_FACTOR
+def create_mvt_result(release, sumlevel, tile):
+    (zoom, x, y) = tile
 
-    env['bounds_sql'] = 'ST_Segmentize(ST_MakeEnvelope({minx}, {miny}, {maxx}, {maxy}, 4326),{segSize})'.format(**env)
-    env['release'] = release
-
-    mvt_sql = """WITH 
-            bounds AS (
-                SELECT {bounds_sql} AS geom, 
-                       {bounds_sql}::box2d AS b2d
-            ),
-            mvtgeom AS (
-                SELECT ST_AsMVTGeom(ST_Transform(t.geom, 4326), bounds.b2d) AS geom, 
-                       full_geoid,
-                       display_name
-                FROM {release}.census_name_lookup t, bounds
-                WHERE sumlevel=:sumlev AND ST_Intersects(t.geom, ST_Transform(bounds.geom, 4326))
-            ) 
-            SELECT ST_AsMVT(mvtgeom.*) FROM mvtgeom""".format(**env)
+    mvt_sql = f"""
+        WITH mvtgeom AS
+        (
+          SELECT ST_AsMVTGeom(geom, ST_TileEnvelope(:zoom, :x, :y), extent => 4096, buffer => 64) AS geom, display_name, full_geoid
+          FROM {release}.census_name_lookup
+          WHERE geom && ST_TileEnvelope(:zoom, :x, :y) AND sumlevel=:sumlev
+        )
+        SELECT ST_AsMVT(mvtgeom.*)
+        FROM mvtgeom;"""
 
     app.logger.info(f"--- create_mvt_result {sumlevel} ---")
     app.logger.info(mvt_sql)
@@ -593,16 +581,20 @@ def create_mvt_result(release, sumlevel, env):
 
 
     result = db.session.execute(
-            mvt_sql,
-            {'sumlev': sumlevel}
-        )
+        mvt_sql,
+        {
+            'sumlev': sumlevel,
+            'zoom': zoom,
+            'x': x,
+            'y': y,
+        }
+    )
 
-    for row in result:
-        return bytes(row[0])
-    return None
+    return bytes(result.fetchone())
 
 
-def create_geojson_result(release, sumlevel, env):
+def create_geojson_result(release, sumlevel, tile):
+    env = compute_envelope(*tile)
 
     result = db.session.execute(
             """SELECT
