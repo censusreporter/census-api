@@ -521,8 +521,6 @@ def geo_tiles(release, sumlevel, zoom, x, y, extension):
     return resp
 
 def compute_envelope(zoom, x, y):
-    # combination of Ian's prior art
-    # plus segSize from https://github.com/pramsey/minimal-mvt/blob/master/minimal-mvt.py#L64
     (miny, minx) = num2deg(x, y, zoom)
     (maxy, maxx) = num2deg(x + 1, y + 1, zoom)
 
@@ -541,56 +539,30 @@ def compute_envelope(zoom, x, y):
         'simplify_threshold': simplify_threshold,
     }
 
-def create_mvt_result_adapted_from_orig(release, sumlevel, env):
-    result = db.session.execute(
-            """WITH
-                    mvtgeom as (SELECT
-                        ST_AsMVTGeom(ST_SimplifyPreserveTopology(
-                            ST_Intersection(ST_Buffer(ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 3857), %f, 'join=mitre'), geom),
-                            %f), 5) as geom,
-                        full_geoid,
-                        display_name
-                    FROM %s.census_name_lookup
-                    WHERE sumlevel=:sumlev AND ST_Intersects(ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 3857), geom))
-                SELECT ST_AsMVT(mvtgeom.*) FROM mvtgeom     
-               """ % (
-                env['tile_buffer'], env['simplify_threshold'], release,),
-            {'minx': env['minx'], 'miny': env['miny'], 'maxx': env['maxx'], 'maxy': env['maxy'], 'sumlev': sumlevel}
-        )
-
-    for row in result:
-        return row
-    return None
-
 def create_mvt_result(release, sumlevel, tile):
     (zoom, x, y) = tile
 
     mvt_sql = f"""
         WITH mvtgeom AS
         (
-          SELECT ST_AsMVTGeom(geom, ST_TileEnvelope(:zoom, :x, :y), extent => 4096, buffer => 64) AS geom, display_name, full_geoid
+          SELECT ST_AsMVTGeom(ST_Transform(geom, 3857), ST_TileEnvelope(:zoom, :x, :y), extent => 4096, buffer => 64) AS geom, display_name, full_geoid
           FROM {release}.census_name_lookup
-          WHERE geom && ST_TileEnvelope(:zoom, :x, :y) AND sumlevel=:sumlev
+          WHERE ST_Transform(geom, 3857) && ST_TileEnvelope(:zoom, :x, :y) AND sumlevel=:sumlev
         )
         SELECT ST_AsMVT(mvtgeom.*)
         FROM mvtgeom;"""
 
-    app.logger.info(f"--- create_mvt_result {sumlevel} ---")
-    app.logger.info(mvt_sql)
-    app.logger.info(f"---------------------------------")
-
-
-    result = db.session.execute(
-        mvt_sql,
-        {
+    params = {
             'sumlev': sumlevel,
             'zoom': zoom,
             'x': x,
             'y': y,
         }
-    )
 
-    return bytes(result.fetchone())
+    result = db.session.execute(mvt_sql, params)
+
+    row = result.fetchone()
+    return row[0].tobytes()
 
 
 def create_geojson_result(release, sumlevel, tile):
