@@ -482,9 +482,9 @@ def num2deg(xtile, ytile, zoom):
 
 # Example: /1.0/geo/tiger2014/tiles/160/10/261/373.geojson
 # Example: /1.0/geo/tiger2013/tiles/160/10/261/373.geojson
-@app.route("/1.0/geo/<release>/tiles/<sumlevel>/<int:zoom>/<int:x>/<int:y>.geojson")
+@app.route("/1.0/geo/<release>/tiles/<sumlevel>/<int:zoom>/<int:x>/<int:y>.<extension>")
 @cross_origin(origin='*')
-def geo_tiles(release, sumlevel, zoom, x, y):
+def geo_tiles(release, sumlevel, zoom, x, y, extension):
     if release == 'latest':
         release = allowed_tiger[0]
     if release not in allowed_tiger:
@@ -494,21 +494,81 @@ def geo_tiles(release, sumlevel, zoom, x, y):
     if sumlevel == '010':
         abort(400, "Don't support US tiles")
 
-    cache_key = str('1.0/geo/%s/tiles/%s/%s/%s/%s.geojson' % (release, sumlevel, zoom, x, y))
+    if extension == 'geojson':
+        result_func = create_geojson_result
+        content_type = 'application/json'
+    elif extension == 'mvt':
+        result_func = create_mvt_result
+        content_type = 'application/vnd.mapbox-vector-tile'
+    else:
+        abort(400, "Invalid format extension")
+
+    cache_key = str('1.0/geo/%s/tiles/%s/%s/%s/%s.%s' % (release, sumlevel, zoom, x, y, extension))
     cached = cache.get(cache_key)
     if cached:
         resp = make_response(cached)
     else:
-        (miny, minx) = num2deg(x, y, zoom)
-        (maxy, maxx) = num2deg(x + 1, y + 1, zoom)
+        result = result_func(release, sumlevel, (zoom, x, y))
 
-        tiles_across = 2**zoom
-        deg_per_tile = 360.0 / tiles_across
-        deg_per_pixel = deg_per_tile / 256
-        tile_buffer = 10 * deg_per_pixel  # ~ 10 pixel buffer
-        simplify_threshold = deg_per_pixel / 5
+        resp = make_response(result)
+        try:
+            cache.set(cache_key, result)
+        except Exception as e:
+            app.logger.warn('Skipping cache set for {} because {}'.format(cache_key, e.args))
 
-        result = db.session.execute(
+    resp.headers.set('Content-Type', content_type)
+    resp.headers.set('Cache-Control', 'public,max-age=86400')  # 1 day
+    return resp
+
+def compute_envelope(zoom, x, y):
+    (miny, minx) = num2deg(x, y, zoom)
+    (maxy, maxx) = num2deg(x + 1, y + 1, zoom)
+
+    tiles_across = 2**zoom
+    deg_per_tile = 360.0 / tiles_across
+    deg_per_pixel = deg_per_tile / 256
+    tile_buffer = 10 * deg_per_pixel  # ~ 10 pixel buffer
+    simplify_threshold = deg_per_pixel / 5
+
+    return {
+        'miny': miny,
+        'minx': minx,
+        'maxy': maxy,
+        'maxx': maxx,
+        'tile_buffer': tile_buffer,
+        'simplify_threshold': simplify_threshold,
+    }
+
+def create_mvt_result(release, sumlevel, tile):
+    (zoom, x, y) = tile
+
+    mvt_sql = f"""
+        WITH mvtgeom AS
+        (
+          SELECT ST_AsMVTGeom(ST_Transform(geom, 3857), ST_TileEnvelope(:zoom, :x, :y), extent => 4096, buffer => 64) AS geom, display_name, full_geoid
+          FROM {release}.census_name_lookup
+          WHERE ST_Transform(geom, 3857) && ST_TileEnvelope(:zoom, :x, :y) AND sumlevel=:sumlev
+        )
+        SELECT ST_AsMVT(mvtgeom.*)
+        FROM mvtgeom;"""
+
+    params = {
+            'sumlev': sumlevel,
+            'zoom': zoom,
+            'x': x,
+            'y': y,
+        }
+
+    result = db.session.execute(mvt_sql, params)
+
+    row = result.fetchone()
+    return row[0].tobytes()
+
+
+def create_geojson_result(release, sumlevel, tile):
+    env = compute_envelope(*tile)
+
+    result = db.session.execute(
             """SELECT
                 ST_AsGeoJSON(ST_SimplifyPreserveTopology(
                     ST_Intersection(ST_Buffer(ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 4326), %f, 'join=mitre'), geom),
@@ -517,13 +577,13 @@ def geo_tiles(release, sumlevel, zoom, x, y):
                 display_name
                FROM %s.census_name_lookup
                WHERE sumlevel=:sumlev AND ST_Intersects(ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 4326), geom)""" % (
-                tile_buffer, simplify_threshold, release,),
-            {'minx': minx, 'miny': miny, 'maxx': maxx, 'maxy': maxy, 'sumlev': sumlevel}
+                env['tile_buffer'], env['simplify_threshold'], release,),
+            {'minx': env['minx'], 'miny': env['miny'], 'maxx': env['maxx'], 'maxy': env['maxy'], 'sumlev': sumlevel}
         )
 
-        results = []
-        for row in result:
-            results.append({
+    results = []
+    for row in result:
+        results.append({
                 "type": "Feature",
                 "properties": {
                     "geoid": row['full_geoid'],
@@ -532,17 +592,8 @@ def geo_tiles(release, sumlevel, zoom, x, y):
                 "geometry": json.loads(row['geom']) if row['geom'] else None
             })
 
-        result = json.dumps(dict(type="FeatureCollection", features=results), separators=(',', ':'))
-
-        resp = make_response(result)
-        try:
-            cache.set(cache_key, result)
-        except Exception as e:
-            app.logger.warn('Skipping cache set for {} because {}'.format(cache_key, e.args))
-
-    resp.headers.set('Content-Type', 'application/json')
-    resp.headers.set('Cache-Control', 'public,max-age=86400')  # 1 day
-    return resp
+    result = json.dumps(dict(type="FeatureCollection", features=results), separators=(',', ':'))
+    return result
 
 
 # Example: /1.0/geo/tiger2014/04000US53
