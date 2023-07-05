@@ -547,7 +547,7 @@ def create_mvt_result(release, sumlevel, tile):
         (
           SELECT ST_AsMVTGeom(ST_Transform(geom, 3857), ST_TileEnvelope(:zoom, :x, :y), extent => 4096, buffer => 64) AS geom, display_name, full_geoid
           FROM {release}.census_name_lookup
-          WHERE ST_Transform(geom, 3857) && ST_TileEnvelope(:zoom, :x, :y) AND sumlevel=:sumlev
+          WHERE geom && ST_Transform(ST_TileEnvelope(:zoom, :x, :y), 3857) AND sumlevel=:sumlev
         )
         SELECT ST_AsMVT(mvtgeom.*)
         FROM mvtgeom;"""
