@@ -30,3 +30,9 @@ user_geodata_id,hash_digest,name,state,place
 108,8fff534f46196c1381fd0c0993aad746,"St. Louis, MO Proposed Wards 2012-12-16",29,65000
 110,60131bfbb1bfa9454e0266dac669d273,"Oakland, CA Community Police Beats",06,53000
 111,12ae0fa2b6d42b1bdf8787edcdfec6b1,"Phoenix, AZ Urban Villages",04,55000
+116,3798a95fe4785987e67efd123b01d941,"Cincinnati, OH Statistical Neighborhood Approximations (SNA)",39,15000
+117,6f6c4518e7c9964ae7a9d0e9fca6f089,"San Francisco, CA Find Neighborhoods",06,67000
+122,9c37b6733793dcc5261bf37bf19e71c7,"Boston, MA precinct boundaries (2022)",25,07000
+123,43a475206e7fd6ae95bf1ee400d22390,"Boston, MA City Council Districts",25,07000
+125,760bf29d05b86877b826dbffb80ff5c7,"Waco, TX Neighborhood Associations",48,76000
+127,81bf61860eb300ae2acf8ab8ccacbfd6,"Oakland, CA electoral precincts (2022)",06,53000

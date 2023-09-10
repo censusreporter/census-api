@@ -69,6 +69,7 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
 1. Update and run the geocontainment_scripts/cbsa_containment.py script
     - It should point to the new release year and a new delineation URL
     - Run the containtment script (it will generate a new 15_cbsa script)
+    - (This doesn't exist for 2021?)
 1. Commit the update to git
 1. Update the repository on the EC2 instance to bring in the new scripts
 1. from the census-postgres-scripts dir on the EC2 instance, run:
@@ -192,6 +193,7 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
 
 - Regenerate the sitemap files
   - From a system which has the `census-api` and `censusreporter` repositories both checked out in the same parent directory, open an SSH tunnel to the database server tunneling on port `5433`
+  - activate the `census-api` virtual environment
   - change to the `census-api/sitemap` directory
   - execute `python build_all.py`
   - `cd ../../censusreporter`

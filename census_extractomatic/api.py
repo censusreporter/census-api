@@ -65,7 +65,7 @@ gunicorn_error_logger = logging.getLogger('gunicorn.error')
 app.logger.handlers.extend(gunicorn_error_logger.handlers)
 
 # decimal.Decimal is supposed to be automatically handled when simplejson is installed
-# but that is not proving the case (chk /1.0/geo/show/tiger2020?geo_ids=16000US1714000 to verify)
+# but that is not proving the case (chk /1.0/geo/show/tiger2021?geo_ids=16000US1714000 to verify)
 from flask.json import JSONEncoder
 class CustomJSONEncoder(JSONEncoder):
     def default(self, obj):
@@ -81,20 +81,19 @@ cors = CORS(app)
 sentry = Sentry(app)
 
 # Allowed ACS's in "best" order (newest and smallest range preferred)
-#
-# In 2020 there wasn't a 1-year release, so we put 5-year first because it is newest.
 allowed_acs = [
-    'acs2020_5yr',
-    'acs2019_1yr',
+    'acs2021_1yr',
+    'acs2021_5yr',
 ]
 # When table searches happen without a specified release, use this
 # release to do the table search.
 default_table_search_release = allowed_acs[0]
 
-release_to_expand_with = allowed_acs[0]
+release_to_expand_with = allowed_acs[1]
 
 # Allowed TIGER releases in newest order
 allowed_tiger = [
+    'tiger2021',
     'tiger2020',
 ]
 
@@ -106,8 +105,8 @@ allowed_searches = [
 ]
 
 ACS_NAMES = {
-    'acs2020_5yr': {'name': 'ACS 2020 5-year', 'years': '2016-2020'},
-    'acs2019_1yr': {'name': 'ACS 2019 1-year', 'years': '2019'},
+    'acs2021_5yr': {'name': 'ACS 2021 5-year', 'years': '2017-2021'},
+    'acs2021_1yr': {'name': 'ACS 2021 1-year', 'years': '2021'},
 }
 
 PARENT_CHILD_CONTAINMENT = {
@@ -252,30 +251,6 @@ def add_metadata(dictionary, table_id, universe, acs_release):
     dictionary['metadata'] = val
 
 
-def find_geoid(geoid, acs=None):
-    "Find the best acs to use for a given geoid or None if the geoid is not found."
-
-    if acs:
-        if acs not in allowed_acs:
-            abort(404, "We don't have data for that release.")
-        acs_to_search = [acs]
-    else:
-        acs_to_search = allowed_acs
-
-    for acs in acs_to_search:
-
-        result = db.session.execute(
-            """SELECT geoid
-               FROM %s.geoheader
-               WHERE geoid=:geoid""" % acs,
-            {'geoid': geoid}
-        )
-        if result.rowcount == 1:
-            result = result.first()
-            return (acs, result['geoid'])
-    return (None, None)
-
-
 def get_data_fallback(table_ids, geoids, acs=None):
     if type(geoids) != list:
         geoids = [geoids]
@@ -375,7 +350,7 @@ def compute_profile_item_levels(geoid):
 
     if sumlevel in ('140', '150', '160', '310', '330', '350', '860', '950', '960', '970'):
         result = db.session.execute(
-            """SELECT * FROM tiger2020.census_geo_containment
+            """SELECT * FROM tiger2021.census_geo_containment
                WHERE child_geoid=:geoid
                ORDER BY percent_covered ASC
             """,
@@ -482,13 +457,13 @@ def geo_search():
 
     if with_geom:
         sql = """SELECT DISTINCT geoid,sumlevel,population,display_name,full_geoid,priority,ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geom
-            FROM tiger2020.census_name_lookup
+            FROM tiger2021.census_name_lookup
             WHERE %s
             ORDER BY priority, population DESC NULLS LAST
             LIMIT 25;""" % (where)
     else:
         sql = """SELECT DISTINCT geoid,sumlevel,population,display_name,full_geoid,priority
-            FROM tiger2020.census_name_lookup
+            FROM tiger2021.census_name_lookup
             WHERE %s
             ORDER BY priority, population DESC NULLS LAST
             LIMIT 25;""" % (where)
@@ -507,9 +482,9 @@ def num2deg(xtile, ytile, zoom):
 
 # Example: /1.0/geo/tiger2014/tiles/160/10/261/373.geojson
 # Example: /1.0/geo/tiger2013/tiles/160/10/261/373.geojson
-@app.route("/1.0/geo/<release>/tiles/<sumlevel>/<int:zoom>/<int:x>/<int:y>.geojson")
+@app.route("/1.0/geo/<release>/tiles/<sumlevel>/<int:zoom>/<int:x>/<int:y>.<extension>")
 @cross_origin(origin='*')
-def geo_tiles(release, sumlevel, zoom, x, y):
+def geo_tiles(release, sumlevel, zoom, x, y, extension):
     if release == 'latest':
         release = allowed_tiger[0]
     if release not in allowed_tiger:
@@ -519,21 +494,81 @@ def geo_tiles(release, sumlevel, zoom, x, y):
     if sumlevel == '010':
         abort(400, "Don't support US tiles")
 
-    cache_key = str('1.0/geo/%s/tiles/%s/%s/%s/%s.geojson' % (release, sumlevel, zoom, x, y))
+    if extension == 'geojson':
+        result_func = create_geojson_result
+        content_type = 'application/json'
+    elif extension == 'mvt':
+        result_func = create_mvt_result
+        content_type = 'application/vnd.mapbox-vector-tile'
+    else:
+        abort(400, "Invalid format extension")
+
+    cache_key = str('1.0/geo/%s/tiles/%s/%s/%s/%s.%s' % (release, sumlevel, zoom, x, y, extension))
     cached = cache.get(cache_key)
     if cached:
         resp = make_response(cached)
     else:
-        (miny, minx) = num2deg(x, y, zoom)
-        (maxy, maxx) = num2deg(x + 1, y + 1, zoom)
+        result = result_func(release, sumlevel, (zoom, x, y))
 
-        tiles_across = 2**zoom
-        deg_per_tile = 360.0 / tiles_across
-        deg_per_pixel = deg_per_tile / 256
-        tile_buffer = 10 * deg_per_pixel  # ~ 10 pixel buffer
-        simplify_threshold = deg_per_pixel / 5
+        resp = make_response(result)
+        try:
+            cache.set(cache_key, result)
+        except Exception as e:
+            app.logger.warn('Skipping cache set for {} because {}'.format(cache_key, e.args))
 
-        result = db.session.execute(
+    resp.headers.set('Content-Type', content_type)
+    resp.headers.set('Cache-Control', 'public,max-age=86400')  # 1 day
+    return resp
+
+def compute_envelope(zoom, x, y):
+    (miny, minx) = num2deg(x, y, zoom)
+    (maxy, maxx) = num2deg(x + 1, y + 1, zoom)
+
+    tiles_across = 2**zoom
+    deg_per_tile = 360.0 / tiles_across
+    deg_per_pixel = deg_per_tile / 256
+    tile_buffer = 10 * deg_per_pixel  # ~ 10 pixel buffer
+    simplify_threshold = deg_per_pixel / 5
+
+    return {
+        'miny': miny,
+        'minx': minx,
+        'maxy': maxy,
+        'maxx': maxx,
+        'tile_buffer': tile_buffer,
+        'simplify_threshold': simplify_threshold,
+    }
+
+def create_mvt_result(release, sumlevel, tile):
+    (zoom, x, y) = tile
+
+    mvt_sql = f"""
+        WITH mvtgeom AS
+        (
+          SELECT ST_AsMVTGeom(ST_Transform(geom, 3857), ST_TileEnvelope(:zoom, :x, :y), extent => 4096, buffer => 64) AS geom, display_name, full_geoid
+          FROM {release}.census_name_lookup
+          WHERE geom && ST_Transform(ST_TileEnvelope(:zoom, :x, :y), 4326) AND sumlevel=:sumlev
+        )
+        SELECT ST_AsMVT(mvtgeom.*)
+        FROM mvtgeom;"""
+
+    params = {
+            'sumlev': sumlevel,
+            'zoom': zoom,
+            'x': x,
+            'y': y,
+        }
+
+    result = db.session.execute(mvt_sql, params)
+
+    row = result.fetchone()
+    return row[0].tobytes()
+
+
+def create_geojson_result(release, sumlevel, tile):
+    env = compute_envelope(*tile)
+
+    result = db.session.execute(
             """SELECT
                 ST_AsGeoJSON(ST_SimplifyPreserveTopology(
                     ST_Intersection(ST_Buffer(ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 4326), %f, 'join=mitre'), geom),
@@ -542,13 +577,13 @@ def geo_tiles(release, sumlevel, zoom, x, y):
                 display_name
                FROM %s.census_name_lookup
                WHERE sumlevel=:sumlev AND ST_Intersects(ST_MakeEnvelope(:minx, :miny, :maxx, :maxy, 4326), geom)""" % (
-                tile_buffer, simplify_threshold, release,),
-            {'minx': minx, 'miny': miny, 'maxx': maxx, 'maxy': maxy, 'sumlev': sumlevel}
+                env['tile_buffer'], env['simplify_threshold'], release,),
+            {'minx': env['minx'], 'miny': env['miny'], 'maxx': env['maxx'], 'maxy': env['maxy'], 'sumlev': sumlevel}
         )
 
-        results = []
-        for row in result:
-            results.append({
+    results = []
+    for row in result:
+        results.append({
                 "type": "Feature",
                 "properties": {
                     "geoid": row['full_geoid'],
@@ -557,17 +592,8 @@ def geo_tiles(release, sumlevel, zoom, x, y):
                 "geometry": json.loads(row['geom']) if row['geom'] else None
             })
 
-        result = json.dumps(dict(type="FeatureCollection", features=results), separators=(',', ':'))
-
-        resp = make_response(result)
-        try:
-            cache.set(cache_key, result)
-        except Exception as e:
-            app.logger.warn('Skipping cache set for {} because {}'.format(cache_key, e.args))
-
-    resp.headers.set('Content-Type', 'application/json')
-    resp.headers.set('Cache-Control', 'public,max-age=86400')  # 1 day
-    return resp
+    result = json.dumps(dict(type="FeatureCollection", features=results), separators=(',', ':'))
+    return result
 
 
 # Example: /1.0/geo/tiger2014/04000US53
@@ -1307,7 +1333,7 @@ def get_child_geoids_by_coverage(release, parent_geoid, child_summary_level):
     db.session.execute("SET search_path=:acs,public;", {'acs': release})
     result = db.session.execute(
         """SELECT geoid, name
-           FROM tiger2020.census_geo_containment, geoheader
+           FROM tiger2021.census_geo_containment, geoheader
            WHERE geoheader.geoid = census_geo_containment.child_geoid
              AND census_geo_containment.parent_geoid = :parent_geoid
              AND census_geo_containment.child_geoid LIKE :child_geoids""",
@@ -1329,8 +1355,8 @@ def get_child_geoids_by_gis(release, parent_geoid, child_summary_level):
     child_geoids = []
     result = db.session.execute(
         """SELECT child.full_geoid
-           FROM tiger2020.census_name_lookup parent
-           JOIN tiger2020.census_name_lookup child ON ST_Intersects(parent.geom, child.geom) AND child.sumlevel=:child_sumlevel
+           FROM tiger2021.census_name_lookup parent
+           JOIN tiger2021.census_name_lookup child ON ST_Intersects(parent.geom, child.geom) AND child.sumlevel=:child_sumlevel
            WHERE parent.full_geoid=:parent_geoid AND parent.sumlevel=:parent_sumlevel""",
         {'child_sumlevel': child_summary_level, 'parent_geoid': parent_geoid, 'parent_sumlevel': parent_sumlevel}
     )
@@ -1466,7 +1492,7 @@ def show_specified_data(acs):
     # Fill in the display name for the geos
     result = db.session.execute(
         """SELECT full_geoid,population,display_name
-           FROM tiger2020.census_name_lookup
+           FROM tiger2021.census_name_lookup
            WHERE full_geoid IN :geoids;""",
         {'geoids': tuple(named_geo_ids)}
     )
@@ -1518,7 +1544,7 @@ def show_specified_data(acs):
             ])
 
         invalid_table_ids = set(request.qwargs.table_ids) - set(valid_table_ids)
-        if invalid_table_ids: 
+        if invalid_table_ids:
             resp = jsonify(error="The %s release doesn't include table(s) %s." % (get_acs_name(release_to_use), ','.join(invalid_table_ids)))
             resp.status_code = 404
             return resp # why should this be fatal when we might be able to loop and try another release... JLG 2022-04-25
@@ -1551,7 +1577,7 @@ def show_specified_data(acs):
             # If we end up at the 'most complete' release, we should include every bit of
             # data we can instead of erroring out on the user.
             # See https://www.pivotaltracker.com/story/show/70906084
-            # This logic is incompatible with our one-time decision to change the 
+            # This logic is incompatible with our one-time decision to change the
             # order of the allowed_acs to deal with the 2020 1-year release issue...
             this_geo_has_data = False or release_to_use == allowed_acs[-1]
 
@@ -1565,9 +1591,9 @@ def show_specified_data(acs):
                     col_name = col_name.upper()
                     (moe_name, moe_value) = next(cols_iter)
 
-                    this_geo_has_data = True
-                    # if value is not None and moe_value is not None:
-                    #     this_geo_has_data = True
+                    # this_geo_has_data = True
+                    if value is not None and moe_value is not None:
+                        this_geo_has_data = True
 
                     table_for_geoid['estimate'][col_name] = value
                     table_for_geoid['error'][col_name] = moe_value
@@ -1650,7 +1676,7 @@ def download_specified_data(acs):
         """SELECT full_geoid,
                   population,
                   display_name
-           FROM tiger2020.census_name_lookup
+           FROM tiger2021.census_name_lookup
            WHERE full_geoid IN :geo_ids;""",
         {'geo_ids': tuple(valid_geo_ids)}
     )
@@ -1766,7 +1792,7 @@ def download_specified_data(acs):
                 zfile.write(os.path.join(root, f), os.path.join(file_ident, f))
         zfile.close()
 
-        resp = send_file(zfile_path, as_attachment=True, attachment_filename=file_ident + '.zip')
+        resp = send_file(zfile_path, as_attachment=True, download_name=file_ident + '.zip')
 
         shutil.rmtree(temp_path)
 
@@ -1866,7 +1892,7 @@ def data_compare_geographies_within_parent(acs, table_id):
         # get the parent geometry and add to API response
         result = db.session.execute(
             """SELECT ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geometry
-               FROM tiger2020.census_name_lookup
+               FROM tiger2021.census_name_lookup
                WHERE full_geoid=:geo_ids;""",
             {'geo_ids': parent_geoid}
         )
@@ -1880,7 +1906,7 @@ def data_compare_geographies_within_parent(acs, table_id):
         # get the child geometries and store for later
         result = db.session.execute(
             """SELECT geoid, ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom,0.001), 5) as geometry
-               FROM tiger2020.census_name_lookup
+               FROM tiger2021.census_name_lookup
                WHERE full_geoid IN :geo_ids
                ORDER BY full_geoid;""",
             {'geo_ids': tuple(child_geoid_list)}
@@ -2081,7 +2107,7 @@ def fetch_user_blocks_by_year(hash_digest, year):
         start = timer()
         zf = create_block_xref_download(db, hash_digest, year)
         end = timer()
-        return send_file(zf.name, 'application/zip', attachment_filename=zipfile_name)
+        return send_file(zf.name, 'application/zip', download_name=zipfile_name)
     except ValueError:
         abort(404)
 
@@ -2121,7 +2147,7 @@ def aggregate(hash_digest, release, table_code):
     start = timer()
     zf = create_aggregate_download(db, hash_digest, release, table_code)
     end = timer()
-    return send_file(zf.name, 'application/zip', attachment_filename=zipfile_name)
+    return send_file(zf.name, 'application/zip', download_name=zipfile_name)
 
 
 if __name__ == "__main__":
