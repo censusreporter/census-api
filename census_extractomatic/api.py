@@ -82,7 +82,7 @@ sentry = Sentry(app)
 
 # Allowed ACS's in "best" order (newest and smallest range preferred)
 allowed_acs = [
-    'acs2021_1yr',
+    'acs2022_1yr',
     'acs2021_5yr',
 ]
 # When table searches happen without a specified release, use this
@@ -93,6 +93,7 @@ release_to_expand_with = allowed_acs[1]
 
 # Allowed TIGER releases in newest order
 allowed_tiger = [
+    'tiger2022',
     'tiger2021',
     'tiger2020',
 ]
@@ -106,7 +107,7 @@ allowed_searches = [
 
 ACS_NAMES = {
     'acs2021_5yr': {'name': 'ACS 2021 5-year', 'years': '2017-2021'},
-    'acs2021_1yr': {'name': 'ACS 2021 1-year', 'years': '2021'},
+    'acs2022_1yr': {'name': 'ACS 2022 1-year', 'years': '2022'},
 }
 
 PARENT_CHILD_CONTAINMENT = {
