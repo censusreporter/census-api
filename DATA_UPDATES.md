@@ -179,6 +179,7 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
     - `git push dokku`
 
 - Update the Postgres full text index (from the EC2 instance)
+  - review and update the schemas in `full-text-search/metadata_script.sql`; commit any changes
   - `cd /home/ubuntu`
   - `git clone https://github.com/censusreporter/census-api.git`
   - `cd census-api`
