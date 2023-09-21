@@ -187,6 +187,7 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
   - `psql -f /home/ubuntu/census-api/full-text-search/metadata_script.sql`
   - Scrape the topic pages:
         - activate a `census-api` environment
+        - ensure EXTRACTOMATIC_CONFIG_MODULE and DATABASE_URL env vars are set correctly (topic_scraper uses the Flask API)
         - `python -m census_extractomatic.tools.topic_scraper`
   - Update the priority weighting. 
         - activate a `census-api` environment
