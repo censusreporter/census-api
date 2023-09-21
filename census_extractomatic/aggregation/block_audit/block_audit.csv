@@ -36,3 +36,4 @@ user_geodata_id,hash_digest,name,state,place,pop100_agg,pop100_real,hu100_agg,hu
 123,43a475206e7fd6ae95bf1ee400d22390,"Boston, MA City Council Districts",25,07000,674704,675647,301191,301702,7,8
 125,760bf29d05b86877b826dbffb80ff5c7,"Waco, TX Neighborhood Associations",48,76000,132051,138486,55643,58107,73,33
 127,81bf61860eb300ae2acf8ab8ccacbfd6,"Oakland, CA electoral precincts (2022)",06,53000,440646,440646,178469,178469,0,2
+154,4542f663f4e013acb49ef8f1ddde38ac,"St. Louis, MO Wards (2020)",29,65000,301578,301578,173479,173479,0,0

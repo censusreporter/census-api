@@ -469,3 +469,75 @@ b225eff334004a236d9e2c62c0c7fd94,"Oklahoma City, OK Neighborhood Associations",H
 81bf61860eb300ae2acf8ab8ccacbfd6,"Oakland, CA electoral precincts (2022)",P4,dec_pl94_compare_2020_2010,0:00:14.937021
 81bf61860eb300ae2acf8ab8ccacbfd6,"Oakland, CA electoral precincts (2022)",P5,dec2020_pl94,0:00:05.765063
 81bf61860eb300ae2acf8ab8ccacbfd6,"Oakland, CA electoral precincts (2022)",H1,dec_pl94_compare_2020_2010,0:00:15.686546
+4542f663f4e013acb49ef8f1ddde38ac,"St. Louis, MO Wards (2020)",block_assignment,2020,0:00:12.168579
+4542f663f4e013acb49ef8f1ddde38ac,"St. Louis, MO Wards (2020)",block_assignment,2010,0:00:05.830455
+4542f663f4e013acb49ef8f1ddde38ac,"St. Louis, MO Wards (2020)",P1,dec_pl94_compare_2020_2010,0:00:41.648003
+4542f663f4e013acb49ef8f1ddde38ac,"St. Louis, MO Wards (2020)",P2,dec_pl94_compare_2020_2010,0:00:21.494713
+4542f663f4e013acb49ef8f1ddde38ac,"St. Louis, MO Wards (2020)",P3,dec_pl94_compare_2020_2010,0:00:20.879168
+4542f663f4e013acb49ef8f1ddde38ac,"St. Louis, MO Wards (2020)",P4,dec_pl94_compare_2020_2010,0:00:31.097607
+4542f663f4e013acb49ef8f1ddde38ac,"St. Louis, MO Wards (2020)",P5,dec2020_pl94,0:00:09.410205
+4542f663f4e013acb49ef8f1ddde38ac,"St. Louis, MO Wards (2020)",H1,dec_pl94_compare_2020_2010,0:00:29.352197
+eba27f91c2b39fd80bda73a9065a6cb0,New York State Assembly Districts - NYC,block_assignment,2020,0:00:49.304664
+eba27f91c2b39fd80bda73a9065a6cb0,New York State Assembly Districts - NYC,block_assignment,2010,0:00:14.085106
+eba27f91c2b39fd80bda73a9065a6cb0,New York State Assembly Districts - NYC,P1,dec_pl94_compare_2020_2010,0:11:53.016630
+eba27f91c2b39fd80bda73a9065a6cb0,New York State Assembly Districts - NYC,P2,dec_pl94_compare_2020_2010,0:11:25.546736
+eba27f91c2b39fd80bda73a9065a6cb0,New York State Assembly Districts - NYC,P3,dec_pl94_compare_2020_2010,0:12:16.306278
+eba27f91c2b39fd80bda73a9065a6cb0,New York State Assembly Districts - NYC,P4,dec_pl94_compare_2020_2010,0:11:07.729397
+eba27f91c2b39fd80bda73a9065a6cb0,New York State Assembly Districts - NYC,P5,dec2020_pl94,0:05:07.960224
+eba27f91c2b39fd80bda73a9065a6cb0,New York State Assembly Districts - NYC,H1,dec_pl94_compare_2020_2010,0:11:05.730622
+030bd34383afb7781fd9d420143da17b,Henderson,block_assignment,2020,0:00:19.954600
+030bd34383afb7781fd9d420143da17b,Henderson,block_assignment,2010,0:00:14.578548
+030bd34383afb7781fd9d420143da17b,Henderson,P1,dec_pl94_compare_2020_2010,0:00:53.026566
+030bd34383afb7781fd9d420143da17b,Henderson,P2,dec_pl94_compare_2020_2010,0:00:50.863212
+030bd34383afb7781fd9d420143da17b,Henderson,P3,dec_pl94_compare_2020_2010,0:00:52.232298
+030bd34383afb7781fd9d420143da17b,Henderson,P4,dec_pl94_compare_2020_2010,0:00:57.815872
+030bd34383afb7781fd9d420143da17b,Henderson,P5,dec2020_pl94,0:00:29.316009
+030bd34383afb7781fd9d420143da17b,Henderson,H1,dec_pl94_compare_2020_2010,0:00:47.314200
+6f83527dd768678b344024c770961fca,Los Angeles Police Department Reporting Districts,block_assignment,2020,0:00:57.498933
+6f83527dd768678b344024c770961fca,Los Angeles Police Department Reporting Districts,block_assignment,2010,0:00:19.850040
+6f83527dd768678b344024c770961fca,Los Angeles Police Department Reporting Districts,P1,dec_pl94_compare_2020_2010,0:00:43.594075
+6f83527dd768678b344024c770961fca,Los Angeles Police Department Reporting Districts,P2,dec_pl94_compare_2020_2010,0:00:42.766200
+6f83527dd768678b344024c770961fca,Los Angeles Police Department Reporting Districts,P3,dec_pl94_compare_2020_2010,0:00:32.095158
+6f83527dd768678b344024c770961fca,Los Angeles Police Department Reporting Districts,P4,dec_pl94_compare_2020_2010,0:00:32.306280
+6f83527dd768678b344024c770961fca,Los Angeles Police Department Reporting Districts,P5,dec2020_pl94,0:00:16.230867
+6f83527dd768678b344024c770961fca,Los Angeles Police Department Reporting Districts,H1,dec_pl94_compare_2020_2010,0:00:25.335622
+decbd4fc0ac9e2aa7a212e3d4ff92e05,SF neighborhoods,block_assignment,2020,0:00:09.955382
+decbd4fc0ac9e2aa7a212e3d4ff92e05,SF neighborhoods,block_assignment,2010,0:00:06.291766
+decbd4fc0ac9e2aa7a212e3d4ff92e05,SF neighborhoods,P1,dec_pl94_compare_2020_2010,0:00:09.664335
+decbd4fc0ac9e2aa7a212e3d4ff92e05,SF neighborhoods,P2,dec_pl94_compare_2020_2010,0:00:08.909721
+decbd4fc0ac9e2aa7a212e3d4ff92e05,SF neighborhoods,P3,dec_pl94_compare_2020_2010,0:00:08.834351
+decbd4fc0ac9e2aa7a212e3d4ff92e05,SF neighborhoods,P4,dec_pl94_compare_2020_2010,0:00:05.380606
+decbd4fc0ac9e2aa7a212e3d4ff92e05,SF neighborhoods,P5,dec2020_pl94,0:00:03.242341
+decbd4fc0ac9e2aa7a212e3d4ff92e05,SF neighborhoods,H1,dec_pl94_compare_2020_2010,0:00:04.671316
+072d1b13c66162944175f76fd2cb6c61,Los Angeles Police Department Patrol Divisions,block_assignment,2020,0:00:09.066571
+072d1b13c66162944175f76fd2cb6c61,Los Angeles Police Department Patrol Divisions,block_assignment,2010,0:00:09.867796
+072d1b13c66162944175f76fd2cb6c61,Los Angeles Police Department Patrol Divisions,P1,dec_pl94_compare_2020_2010,0:03:32.269866
+072d1b13c66162944175f76fd2cb6c61,Los Angeles Police Department Patrol Divisions,P2,dec_pl94_compare_2020_2010,0:03:31.123069
+072d1b13c66162944175f76fd2cb6c61,Los Angeles Police Department Patrol Divisions,P3,dec_pl94_compare_2020_2010,0:03:08.601197
+072d1b13c66162944175f76fd2cb6c61,Los Angeles Police Department Patrol Divisions,P4,dec_pl94_compare_2020_2010,0:03:33.801390
+072d1b13c66162944175f76fd2cb6c61,Los Angeles Police Department Patrol Divisions,P5,dec2020_pl94,0:01:06.179032
+072d1b13c66162944175f76fd2cb6c61,Los Angeles Police Department Patrol Divisions,H1,dec_pl94_compare_2020_2010,0:02:29.922503
+c6e90116ee8d10ccc66837f107b6381a,"Oakland, CA Neighborhoods by CEDA (2002)",block_assignment,2020,0:00:07.594443
+c6e90116ee8d10ccc66837f107b6381a,"Oakland, CA Neighborhoods by CEDA (2002)",block_assignment,2010,0:00:05.777895
+c6e90116ee8d10ccc66837f107b6381a,"Oakland, CA Neighborhoods by CEDA (2002)",P1,dec_pl94_compare_2020_2010,0:00:09.394721
+c6e90116ee8d10ccc66837f107b6381a,"Oakland, CA Neighborhoods by CEDA (2002)",P2,dec_pl94_compare_2020_2010,0:00:06.381374
+c6e90116ee8d10ccc66837f107b6381a,"Oakland, CA Neighborhoods by CEDA (2002)",P3,dec_pl94_compare_2020_2010,0:00:05.846500
+c6e90116ee8d10ccc66837f107b6381a,"Oakland, CA Neighborhoods by CEDA (2002)",P4,dec_pl94_compare_2020_2010,0:00:07.514627
+c6e90116ee8d10ccc66837f107b6381a,"Oakland, CA Neighborhoods by CEDA (2002)",P5,dec2020_pl94,0:00:02.349539
+c6e90116ee8d10ccc66837f107b6381a,"Oakland, CA Neighborhoods by CEDA (2002)",H1,dec_pl94_compare_2020_2010,0:00:05.159106
+04c9edf07c3d696822484266d9b5abb6,Oakland Neighborhoods 2,block_assignment,2020,0:00:02.879112
+04c9edf07c3d696822484266d9b5abb6,Oakland Neighborhoods 2,block_assignment,2010,0:00:03.712015
+04c9edf07c3d696822484266d9b5abb6,Oakland Neighborhoods 2,P1,dec_pl94_compare_2020_2010,0:00:02.754969
+04c9edf07c3d696822484266d9b5abb6,Oakland Neighborhoods 2,P2,dec_pl94_compare_2020_2010,0:00:02.498692
+04c9edf07c3d696822484266d9b5abb6,Oakland Neighborhoods 2,P3,dec_pl94_compare_2020_2010,0:00:02.596473
+04c9edf07c3d696822484266d9b5abb6,Oakland Neighborhoods 2,P4,dec_pl94_compare_2020_2010,0:00:02.486661
+04c9edf07c3d696822484266d9b5abb6,Oakland Neighborhoods 2,P5,dec2020_pl94,0:00:01.166366
+04c9edf07c3d696822484266d9b5abb6,Oakland Neighborhoods 2,H1,dec_pl94_compare_2020_2010,0:00:01.558971
+dab1cb00cf3de89a5a281821e8bb0172,stl,block_assignment,2020,0:00:06.406918
+dab1cb00cf3de89a5a281821e8bb0172,stl,block_assignment,2010,0:00:04.929671
+dab1cb00cf3de89a5a281821e8bb0172,stl,P1,dec_pl94_compare_2020_2010,0:00:05.611254
+dab1cb00cf3de89a5a281821e8bb0172,stl,P2,dec_pl94_compare_2020_2010,0:00:06.751703
+dab1cb00cf3de89a5a281821e8bb0172,stl,P3,dec_pl94_compare_2020_2010,0:00:08.414935
+dab1cb00cf3de89a5a281821e8bb0172,stl,P4,dec_pl94_compare_2020_2010,0:00:06.612450
+dab1cb00cf3de89a5a281821e8bb0172,stl,P5,dec2020_pl94,0:00:03.621615
+dab1cb00cf3de89a5a281821e8bb0172,stl,H1,dec_pl94_compare_2020_2010,0:00:04.511268
