@@ -55,7 +55,7 @@ In August, 2021, we added a feature to support user-uploaded geographies and dat
 
 If you aren't working on that feature, you can probably ignore the rest; however, if you are, you must have Celery running before maps are uploaded, or they not be completely processed, and there will be no sign of that until you go trying to debug a problem.
 
-To run Celery locally, you must also have Redis running, as Celery uses Redis. Details about installing and running Redis are outside the scope of this documentation. Make sure you add a local environment variable, `REDIS_URL` with the appropriate value; if you're sticking with all defaults, `redis://` should serve.
+To run Celery locally, you must also have Redis running, as Celery uses Redis. Details about installing and running Redis are outside the scope of this documentation. Make sure you add a local environment variable, `REDIS_URL` with the appropriate value; if you're sticking with all defaults, `redis://` should serve.  (In the simplest case, running redis might just require `redis-server`)
 
 
 To run Celery, in the active python environment for this project, run
