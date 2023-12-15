@@ -72,7 +72,7 @@ CREATE TABLE search_metadata AS (
     -- column names. For full detail, refer to the psql docs.
     --
     -- This creates a table with one row for every table in the
-    -- acs2021_5yr schema, with columns table_id, table_title, etc.,
+    -- acs2022_5yr schema, with columns table_id, table_title, etc.,
     -- and document (the tsvector, the most important for search).
     --
     -- From this, we take the columns directly used in search results
@@ -105,7 +105,7 @@ CREATE TABLE search_metadata AS (
                             t.universe,
                             c.column_title
             FROM census_tabulation_metadata t
-            JOIN acs2021_5yr.census_column_metadata c
+            JOIN acs2022_5yr.census_column_metadata c
             ON t.tables_in_one_yr[1] = c.table_id
             ) table_search
         WHERE tabulation_code = table_search.tabulation_code
@@ -182,7 +182,7 @@ UPDATE search_metadata
     SET document = document || to_tsvector('simple', coalesce(st.name, ' '))
     FROM
         tiger2022.state st,
-        acs2021_5yr.geoheader g
+        acs2022_5yr.geoheader g
     WHERE search_metadata.type = 'profile'
       AND search_metadata.text4 = g.geoid
       AND g.stusab = st.stusps;
