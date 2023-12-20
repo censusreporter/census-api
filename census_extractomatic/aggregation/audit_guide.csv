@@ -38,3 +38,5 @@ user_geodata_id,hash_digest,name,state,place
 127,81bf61860eb300ae2acf8ab8ccacbfd6,"Oakland, CA electoral precincts (2022)",06,53000
 154,4542f663f4e013acb49ef8f1ddde38ac,"St. Louis, MO Wards (2020)",29,65000
 157,e63b0b41e0422db9fa2186983cfd91ff,"Miami, FL Neighborhoods",12,45000
+158,07de29ab51c9887b79ad21286ac1618c,"Little Rock, AR Neighborhood Associations",05,41000
+160,f10b8feea4bae060d6bdabcd87ecad44,"Tampa, FL Neighborhood Associations",12,71000
