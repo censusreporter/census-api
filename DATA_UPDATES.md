@@ -1,5 +1,9 @@
 # Adding new data release
 
+## Updates to this document
+
+- **2023-09-17**: Update for table-based ACS releases. Joe made these updates last year for 2021, but Ian is now updating this document during the process for 2022.
+
 ## Update census-table-metadata
 
 1. Makefile
@@ -27,6 +31,7 @@
     - The `ACS_1yr_Seq_Table_Number_Lookup.xls` for 2014 does not reflect the changes in [the new survey](https://www.census.gov/programs-surveys/acs/technical-documentation/table-and-geography-changes/2014/1-year.html), but the [text/CSV version](http://www2.census.gov/programs-surveys/acs/summary_file/2014/documentation/user_tools/ACS_1yr_Seq_Table_Number_Lookup.txt) does so I converted it to an XLS with Excel so that the rest of my existing process would work
     - The 2018 1-yr and 5-yr releases included a `ACS_1yr_Seq_Table_Number_Lookup.csv` and no `.xls` version. I converted it to an XLS with Excel so that the rest of my existing process would work
     - Starting with 2019 1-yr, Census stopped including indent information, so it fetched from the Census API with process_api.py now. No Excel sheets need to be processed.
+    - Starting with 2022 1-yr, we switched to using the table-based release, since Census stopped releasing the sequence-based release. 
 
 6. Generate the 'precomputed' metadata stuff. From census-table-metadata:
     - pipenv install && pipenv shell
@@ -44,27 +49,25 @@
 
 ## Update census-postgres-scripts
 
-(If you're running under embargo, you can create these files but you will have to download the files from the embargo site manually and put them in e.g. /mnt/tmp/acs2013_1yr, then unzip them)
-
-1. make a copy of a 02_download script and modify it for the new release.
-    - Find and replace the year and release (e.g. `acs2014_3yr` -> `acs2015_1yr`)
-2. make a copy of a 03_import script and modify it for the new release:
-    - Find and replace the year and release (e.g. `acs2014_3yr` -> `acs2015_1yr`)
-    - In this file there are some references to the year and release in a different format. Find and replace those, too. (e.g. `20143` -> `20151`)
-    - Check the "Seq Table Number Lookup" .txt file (e.g. [this one for 2015_1yr](http://www2.census.gov/programs-surveys/acs/summary_file/2015/documentation/user_tools/ACS_1yr_Seq_Table_Number_Lookup.txt)) to see what the maximum sequence number is. It's usually the third column and has leading zeroes. Check that the number in the for loop around line 62 matches the max sequence number.
+1. make a copy of a table_based/02_download script and modify it for the new release.
+    - Find and replace the year and release (e.g. `acs2021_1yr` -> `acs2022_1yr`)
+2. make a copy of a table_based/03_import script and modify it for the new release:
+    - Find and replace the year and release (e.g. `acs2021_1yr` -> `acs2022_1yr`)
+    - In this file there are some references to the year and release in a different format. Find and replace those, too. (e.g. `20211` -> `20221`)
 3. commit the update to git
 4. Update the repository on the EC2 instance to bring in the new scripts
 5. from the census-postgres-scripts dir on the EC2 instance, run:
-    - ./02_download_acs_2013_3yr.sh
+    - cd table_based
+    - ./02_download_acs_2022_1yr.sh
 
 If this is a new release year, you'll want to set up the new TIGER geodata scripts, too:
 
-1. Make a copy of a 12_download script and modify it for the new TIGER year
+1. Make a copy of a table_based/12_download script and modify it for the new TIGER year
     - Find and replace the year
-1. Make copies of the 13_import and 13_index scripts and modify them for the new TIGER year
+1. Make copies of the table_based/13_import and table_based/13_index scripts and modify them for the new TIGER year
     - Find and replace the year
     - In the 13_index script, update the join to ACS population estimate to a newer release year
-1. Make a copy of the 14_aiannh script and modify it for the new TIGER year
+1. Make a copy of the table_based/14_aiannh script and modify it for the new TIGER year
     - Find and replace the year
 1. Update and run the geocontainment_scripts/cbsa_containment.py script
     - It should point to the new release year and a new delineation URL
@@ -72,79 +75,52 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
     - (This doesn't exist for 2021?)
 1. Commit the update to git
 1. Update the repository on the EC2 instance to bring in the new scripts
+1. Set the PGHOST, PGPORT, PGUSER, and PGPASSWORD environment variables
 1. from the census-postgres-scripts dir on the EC2 instance, run:
-    - ./12_download_tiger_2018.sh
-    - ./13_import_tiger_2018.sh
-    - psql -d census -U census -f 13_index_tiger_2015.sql
-    - psql -d census -U census -f 14_aiannh_tables_2018.sql
-    - psql -d census -U census -f 15_cbsa_geocontainment_2018.sql
-    - psql -d census -U census -c "drop schema tiger2018 cascade" (delete the old tiger data if the live API isn't using it)
+    - ./12_download_tiger_2022.sh
+    - ./13_import_tiger_2022.sh
+    - psql -d censusreporter -f 13_index_tiger_2022.sql
+    - psql -d censusreporter -f 14_aiannh_tables_2022.sql
+    - psql -d censusreporter -f 15_cbsa_geocontainment_2022.sql
+    - psql -d censusreporter -c "drop schema tiger2021 cascade" (delete the old tiger data if the live API isn't using it)
 1. TIGER errata:
     - ~A dozen of the TIGER 2018 geometries are invalid, so you need to fix them:
-        psql -d census -U census -c "update tiger2018.census_name_lookup set geom=st_makevalid(geom) where not st_isvalid(geom);" ()
+        psql -d censusreporter -c "update tiger2018.census_name_lookup set geom=st_makevalid(geom) where not st_isvalid(geom);" ()
     - The CBSA delineation/containment data in the spreadsheet used above includes a reference to a non-existent CBSA, so the containment needs to be deleted:
         delete from tiger2018.census_geo_containment where child_geoid='31000US42460' and parent_geoid='33000US497';
+    - The TIGER 2022 PLACE theme has two columns that shp2pgsql resolves to `varchar(0)`, which is invalid and will be filtered out.
 1. Update the census-api api.py to add the new release to the `allowed_tiger` variable
 1. Update the static website redirection rules for S3 bucket `embed.censusreporter.com` to add a section for the new TIGER release.
 
 ### Update census-postgres
 
-(This chunk is mostly run on a remote EC2 instance because it involves downloading the raw data dumps from Census)
+(Note that this section is a fairly major rewrite for switching to table-based releases in 2022.)
 
-1. modify meta-scripts/build_sql_files.py:
-    - add a new key in the `config` dict for the new release that looks like one of the other ones
-    - check that the config data is correct by looking at the column names in the e.g. "[ACS_1yr_Seq_Table_Number_lookup.txt](http://www2.census.gov/programs-surveys/acs/summary_file/2015/documentation/user_tools/ACS_1yr_Seq_Table_Number_Lookup.txt)" file
-    - commit the change to Github
-
-- Double-check that the `02_download_acs_2013_3yr.sh` script ran on the EC2 instance:
-  - Make sure you've downloaded the `Sequence_Number_and_Table_Number_Lookup.txt` file in `/mnt/tmp/acs2013_3yr`
-  - Note that the Census sometimes will only release this as an XLS. If so:
-        - Open the `Sequence_Number_and_Table_Number_Lookup.xls` file in Excel and save it as a CSV
-        - Copy it to /mnt/tmp/acs2013_1yr on the EC2 instance you're using to build this
-        - Make sure it's named .txt, not .csv
-  - Make sure you've unzipped /mnt/tmp/acs2013_1yr/All_Geographies
-        - (The 5yr release calls this `geog`, not `All_Geographies`)
-
-- Check out (or pull down the new changes from above if it already exists) the census-postgres repo on the EC2 machine
-
-- using census-postgres as your working dir:
-  - mkdir acs2013_1yr
-  - python meta-scripts/build_sql_files.py --working_dir=acs2013_1yr acs2013_1yr
-
-- copy non-changing sql files from previous release to this one:
-  - cd acs2020_5yr
-  - cp ../acs2019_5yr/create_geoheader.sql \
-         ../acs2019_5yr/create_tmp_geoheader.sql \
-         ../acs2019_5yr/geoheader_comments.sql \
-         ../acs2019_5yr/parse_tmp_geoheader.sql \
-         ../acs2019_5yr/README.md \
-         .
-
-- update copied sql files to point to new release's schema
-  - vi create_geoheader.sql # find/replace 2012 with 2013
-  - vi create_tmp_geoheader.sql
-  - vi geoheader_comments.sql
-  - vi parse_tmp_geoheader.sql
-  - vi README.md
-
-- Since you probably checked out the census-postgres repo with https, you can't commit from the EC2 instance, so copy this data you just created back to your laptop:
-  -
-       ```
-       scp -i ~/.ssh/censusreporter.ec2_key.pem -r \
-        ubuntu@ec2-23-20-252-114.compute-1.amazonaws.com:/home/ubuntu/census-postgres/acs2013_3yr .
-       ```
-  - git add acs2013_3yr
-  - git commit
-  - git push
-  - Once you do this, go back to the EC2 instance and rm the directory you made inside of census-postgres and pull it back down from git so you have a clean repo
+1. Make a new directory for your new release in the census-postgres directory
+    - `mkdir -p acs2022_1yr`
+2. Download the table shells file for your release.
+    - `curl -o acs2022_1yr/ACS20221YR_Table_Shells.txt https://www2.census.gov/programs-surveys/acs/summary_file/2022/table-based-SF/documentation/ACS20221YR_Table_Shells.txt`
+3. Run the `build_table_based_sql.py` script to generate the SQL files for your release.
+    - `python meta-scripts/build_table_based_sql.py acs2022_1yr/ACS20221YR_Table_Shells.txt acs2022_1yr acs2022_1yr`
+4. Copy the `create_geoheader.sql` file from the previous release to the directory for the new release. Edit it to update the year and release.
+    - Make sure you're copying from a release that has the `logrecno` column removed, as the geoheader columns changed as part of the switch to table-based releases.
+    - `cp acs2021_1yr/create_geoheader.sql acs2022_1yr`
+5. Commit the new release directory to git and push it to Github.
+    - `git add acs2022_1yr`
+    - `git commit`
+    - `git push`
+6. Update the census-postgres repo on the remote instance to bring in the new release.
 
 ### Import data to database
 
-- using census-postgres-scripts as your working dir:
-  - Make sure you have [a `.pgpass` file](https://www.postgresql.org/docs/9.1/static/libpq-pgpass.html) with your postgres database credentials in it so you don't have to type your password a dozen times in the import script
-  - Set the PGHOST environment variable: `export PGHOST=censusreporter.redacted.us-east-1.rds.amazonaws.com`
-  - Run `./03_import_acs_2013_1yr.sh`
-  - You'll see a lot of NOTICEs flow by, but it's only important if it's an ERROR
+1. Make sure you ran the `02_download_acs_2022_1yr.sh` script on the remote instance in the steps above.
+2. Adjust the geoids in the downloaded data to match the expected format:
+    - `python3 meta-scripts/fix_geoids.py /home/ubuntu/data/acs2022_1yr/`
+3. Set the `PGURI` environment variable to point to the database you want to import to.
+    - `export PGURI=postgres://postgres:@localhost:8421/censusreporter`
+4. Import the data to the database:
+    - `cd /home/ubuntu/census-postgres-scripts/table_based`
+    - `./03_import_acs_2022_1yr.sh`
 
 ### Update census-table-metadata
 
@@ -152,11 +128,11 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
   - Make sure your the census-table-metadata repo in `/home/ubuntu/census-table-metadata` is up to date
     - `cd /home/ubuntu/census-table-metadata`
     - `git pull`
-  - Open a psql terminal: `psql -U census census` (it should connect using the `PGHOST` envvar from above)
+  - Open a psql terminal: `psql $PGURI` (it should connect using the `PGURI` envvar from above)
     - Copy and execute in the psql terminal the CREATE TABLE and CREATE INDEX's for the new release from `census_metadata.sql`
     - Run the following in the psql terminal (adapted for your release):
-      - `\copy acs2020_5yr.census_table_metadata  FROM '/home/ubuntu/census-table-metadata/precomputed/acs2020_5yr/census_table_metadata.csv' WITH csv ENCODING 'utf8' HEADER`
-      - `\copy acs2020_5yr.census_column_metadata FROM '/home/ubuntu/census-table-metadata/precomputed/acs2020_5yr/census_column_metadata.csv' WITH csv ENCODING 'utf8' HEADER`
+      - `\copy acs2022_1yr.census_table_metadata FROM '/home/ubuntu/census-table-metadata/precomputed/acs2022_1yr/census_table_metadata.csv' WITH csv ENCODING 'utf8' HEADER`
+      - `\copy acs2022_1yr.census_column_metadata FROM '/home/ubuntu/census-table-metadata/precomputed/acs2022_1yr/census_column_metadata.csv' WITH csv ENCODING 'utf8' HEADER`
 
 - Update the unified tabulation metadata (from the census-table-metadata repo)
   - Truncate the existing census_tabulation_metadata on the EC2 instance:
@@ -165,7 +141,7 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
     - `\copy census_tabulation_metadata FROM '/home/ubuntu/census-table-metadata/precomputed/unified_metadata.csv' WITH csv ENCODING 'utf8' HEADER`
 
 - Create a new database dump
-  - `pg_dump -h localhost -U census -n acs2014_1yr | gzip -c > acs2014_1yr_backup.sql.gz`
+  - `pg_dump -n acs2022_1yr | gzip -c > /home/ubuntu/data/acs2022_1yr_backup.sql.gz`
   - Upload it to S3 for safe keeping:
     - `aws s3 cp --region=us-east-1 --acl=public-read /mnt/tmp/acs2015_1yr_backup.sql.gz s3://census-backup/acs/2015/acs2015_1yr/acs2015_1yr_backup.sql.gz`
   - Update [the Tumblr post](http://censusreporter.tumblr.com/post/73727555158/easier-access-to-acs-data) to include the new data dump
