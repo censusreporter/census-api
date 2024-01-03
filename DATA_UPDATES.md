@@ -32,6 +32,8 @@
     - The 2018 1-yr and 5-yr releases included a `ACS_1yr_Seq_Table_Number_Lookup.csv` and no `.xls` version. I converted it to an XLS with Excel so that the rest of my existing process would work
     - Starting with 2019 1-yr, Census stopped including indent information, so it fetched from the Census API with process_api.py now. No Excel sheets need to be processed.
     - Starting with 2022 1-yr, we switched to using the table-based release, since Census stopped releasing the sequence-based release. 
+    - the TIGER2022 release did not update include CBSA, CSA, or METDIV shapefiles for some reason. We skipped them, but that led to data problems. In the future, we should carry forward missing geographies to the next TIGER release unless we have a clear reason not to.
+    - in 2022, some time after our load, Census added 2020 versions of the UAC shapefile, which are the ones we need for ACS2022. We had to go back and fix it later. A naive repeat of our process would probably download both the 2010 and 2020 UAC files, and then would run into trouble because the schemas use slightly different column names.
 
 6. Generate the 'precomputed' metadata stuff. From census-table-metadata:
     - pipenv install && pipenv shell
