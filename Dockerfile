@@ -1,4 +1,4 @@
-FROM python:3.8
+FROM python:3.8-buster
 
 RUN apt-get -qq update && \
     apt-get install -qq -y \
