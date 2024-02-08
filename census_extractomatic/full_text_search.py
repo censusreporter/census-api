@@ -1,4 +1,5 @@
 from math import log10, log
+from sqlalchemy import text
 import re
 
 def do_search(db, q, object_type, limit):
@@ -51,8 +52,8 @@ def do_search(db, q, object_type, limit):
                     ORDER BY relevance DESC
                     LIMIT :limit;"""
 
-    objects = db.execute(query, {"search_term": q, "limit": limit})
-    return [row for row in objects]
+    objects = db.execute(text(query), {"search_term": q, "limit": limit})
+    return [row for row in objects.mappings().all()]
 
 def compute_score(row):
     """ Compute a ranking score in range [0, 1] from a row result.
@@ -81,7 +82,7 @@ def compute_score(row):
     elif object_type == 'table':
         relevance = (log10(row['relevance']) + 9) / 8.0
         TABLE_PRIORITY_RANGE = 100
-        try:            
+        try:
             raw_priority = row['priority'] if row['priority'] else 0
         except KeyError:
             raw_priority = 0
