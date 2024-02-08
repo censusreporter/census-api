@@ -1512,7 +1512,7 @@ def show_specified_data(acs):
 
         valid_table_ids = []
         table_metadata = OrderedDict()
-        for table, columns in groupby(result, lambda x: (x['table_id'], x['table_title'], x['universe'], x['denominator_column_id'])):
+        for table, columns in groupby(result.mappings().all(), lambda x: (x['table_id'], x['table_title'], x['universe'], x['denominator_column_id'])):
             valid_table_ids.append(table[0])
             table_metadata[table[0]] = OrderedDict([
                 ("title", table[1]),
