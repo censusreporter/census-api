@@ -546,7 +546,7 @@ def create_mvt_result(release, sumlevel, tile):
 
     result = db.session.execute(text(mvt_sql), params)
 
-    row = result.mappings().fetchone()
+    row = result.fetchone()
     return row[0].tobytes()
 
 
