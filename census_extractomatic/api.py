@@ -18,7 +18,6 @@ from flask_caching import Cache
 from flask_cors import CORS, cross_origin
 from flask_sqlalchemy import SQLAlchemy
 from itertools import groupby
-from raven.contrib.flask import Sentry
 from werkzeug.exceptions import HTTPException
 import math
 import os
@@ -78,7 +77,6 @@ app.json_encoder = CustomJSONEncoder
 db = SQLAlchemy(app)
 cache = Cache(app)
 cors = CORS(app)
-sentry = Sentry(app)
 
 # Allowed ACS's in "best" order (newest and smallest range preferred)
 allowed_acs = [
