@@ -3,7 +3,6 @@ fabric = "<2"
 
 [packages]
 boto3 = "*"
-simplejson = "*"
 openpyxl = "*"
 psycopg2-binary = "*"
 Flask = "*"
