@@ -454,7 +454,7 @@ def geo_search():
             LIMIT 25;""" % (where)
     result = db.session.execute(text(sql), where_args)
 
-    return jsonify(results=[convert_row(row) for row in result])
+    return jsonify(results=[convert_row(row) for row in result.mappings().all()])
 
 
 def num2deg(xtile, ytile, zoom):
@@ -567,7 +567,7 @@ def create_geojson_result(release, sumlevel, tile):
         )
 
     results = []
-    for row in result:
+    for row in result.mappings().all():
         results.append({
                 "type": "Feature",
                 "properties": {
@@ -730,7 +730,7 @@ def show_specified_geo_data(release):
             FROM %s.census_name_lookup
             WHERE geom is not null and full_geoid IN :geoids;""" % (release,)),
             {'geoids': tuple(geo_ids)}
-        )
+        ).mappings().all()
 
     results = []
     valid_geo_ids = []
