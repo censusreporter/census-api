@@ -11,7 +11,7 @@ logger = logging.getLogger('exporters')
 def get_sql_config(session):
     """Return a tuple of strings: (host, port, user, password, database)"""
     bind = session.get_bind()
-    return (bind.url.host, 
+    return (bind.url.host,
             bind.url.port,
             bind.url.username,
             bind.url.password,

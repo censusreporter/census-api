@@ -158,7 +158,7 @@ WHERE ug.hash_digest=:hash_digest
 ''')
 
 BLOCK_VINTAGE_TABLES = {
-    'dec2010_pl94': 'user_geodata_blocks_2010', 
+    'dec2010_pl94': 'user_geodata_blocks_2010',
     'dec2020_pl94': 'user_geodata_blocks_2020'
 }
 
@@ -196,8 +196,8 @@ def _fieldsFromOGRLayer(layer):
     return fields
 
 
-def save_user_geojson(db, 
-                      geojson_str, 
+def save_user_geojson(db,
+                      geojson_str,
                       hash_digest,
                       dataset_name,
                       name_field,
@@ -216,11 +216,11 @@ def save_user_geojson(db,
     epsg = l.GetSpatialRef().GetAuthorityCode(None)
     (xmin, xmax, ymin, ymax) = l.GetExtent()
     dataset_id = None
-    
+
     fields = _fieldsFromOGRLayer(l)
     with db.engine.begin() as con:
         cur = con.execute(USER_GEODATA_INSERT_SQL,
-                          name=dataset_name, 
+                          name=dataset_name,
                           hash_digest=hash_digest,
                           source_url=source_url,
                           public=share_checked,
@@ -234,7 +234,7 @@ def save_user_geojson(db,
             f = l.GetFeature(i)
             mp = ogr.ForceToMultiPolygon(f.GetGeometryRef())
             properties = dict((fld, f.GetField(i)) for i,fld in enumerate(fields))
-            con.execute(USER_GEODATA_GEOMETRY_INSERT_SQL, 
+            con.execute(USER_GEODATA_GEOMETRY_INSERT_SQL,
                     user_geodata_id=dataset_id,
                     geom_wkt=mp.ExportToWkt(),
                     epsg=epsg,
@@ -305,7 +305,7 @@ def fetch_user_geog_as_geojson(db, hash_digest):
             'cr_geoid': cr_geoid
         }
         if name is not None: base['properties']['name'] = name
-        if original_id is not None: 
+        if original_id is not None:
             base['properties']['original_id'] = original_id
             base['id'] = original_id
         geojson['features'].append(base)
@@ -343,7 +343,7 @@ def fetch_metadata(release=None, table_code=None):
 
 def evaluateUserGeographySQLTemplate(schema, table_code):
     """Schemas and table names can't be handled as bindparams with SQLAlchemy, so
-       this allows us to use a 'select *' syntax for multiple tables. 
+       this allows us to use a 'select *' syntax for multiple tables.
     """
     try:
         blocks_vintage_table = BLOCK_VINTAGE_TABLES[schema]
@@ -369,7 +369,7 @@ def aggregate_decennial(db, hash_digest, release, table_code):
         logger.info(f"pd.read_sql {hash_digest} {release} {table_code} elapsed time {timedelta(seconds=end-start)}")
         df = df.drop('geoid',axis=1) # we don't care about the original blocks after we groupby
         agg_funcs = dict((c,'sum') for c in df.columns[1:])
-        agg_funcs['name'] = 'first'        # these string values are 
+        agg_funcs['name'] = 'first'        # these string values are
         agg_funcs['original_id'] = 'first' # the same for each row aggregated
         agg_funcs['geom'] = 'first'        # by 'user_geodata_geometry_id'
         aggd = df.groupby('user_geodata_geometry_id').agg(agg_funcs)
@@ -400,8 +400,8 @@ def aggregate_decennial_comparison(db, hash_digest, table_code):
     return label_df.join(joined).reset_index()
 
 def dataframe_to_feature_collection(df: pd.DataFrame, geom_col):
-    """Given a Pandas dataframe with one column stringified GeoJSON, return a 
-    dict representing a GeoJSON FeatureCollection, where `geom_col` is parsed and 
+    """Given a Pandas dataframe with one column stringified GeoJSON, return a
+    dict representing a GeoJSON FeatureCollection, where `geom_col` is parsed and
     used for the 'geometry' and the rest of the row is converted to a 'properties' dict."""
     geojson = {
         "type": "FeatureCollection",
@@ -461,7 +461,7 @@ def create_aggregate_download(db, hash_digest, release, table_code):
 
     if 'original_id' in aggregated: # original id is second if its there so insert it first
         metadata['columns']['original_id'] = 'Geographic Identifier'
-        metadata['columns'].move_to_end('original_id', last=False) 
+        metadata['columns'].move_to_end('original_id', last=False)
     if 'name' in aggregated: # name is first if its there
         metadata['columns']['name'] = 'Geography Name'
         metadata['columns'].move_to_end('name', last=False)
@@ -474,7 +474,7 @@ def create_aggregate_download(db, hash_digest, release, table_code):
         metadata['columns']['cr_geoid'] = 'Census Reporter Geography ID'
         metadata['columns'].move_to_end('cr_geoid', last=False)
 
-    # NaN and inf bork JSON and inf looks bad in CSV too. 
+    # NaN and inf bork JSON and inf looks bad in CSV too.
     # Any columns could have NaN, not just pct_chg -- e.g. Atlanta has n'hoods which get no 2010 blocks
     aggregated = aggregated.replace([np.inf, -np.inf, np.nan],'')
 
@@ -485,9 +485,9 @@ def create_aggregate_download(db, hash_digest, release, table_code):
     return tmp
 
 def write_compound_zipfile(hash_digest, release, table_code, df, metadata):
-    """Given a dataframe with a 'geom' column, 
+    """Given a dataframe with a 'geom' column,
     create a ZipFile with the data from that dataframe
-    in both CSV and GeoJSON, returning a semi-persistent 
+    in both CSV and GeoJSON, returning a semi-persistent
     temporary file.
     """
     with NamedTemporaryFile('wb',suffix='.zip',delete=False) as tmp:
@@ -504,8 +504,8 @@ def move_file_to_s3(local_filename, hash_digest, destination_filename):
     """
     s3_client = boto3.client('s3')
     try:
-        response = s3_client.upload_file(local_filename, 
-            "files.censusreporter.org", 
+        response = s3_client.upload_file(local_filename,
+            "files.censusreporter.org",
             f"aggregation/{hash_digest}/{destination_filename}",
             ExtraArgs={'ACL': 'public-read'})
 
