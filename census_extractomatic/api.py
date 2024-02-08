@@ -546,7 +546,7 @@ def create_mvt_result(release, sumlevel, tile):
 
     result = db.session.execute(text(mvt_sql), params)
 
-    row = result.fetchone()
+    row = result.mappings().fetchone()
     return row[0].tobytes()
 
 
@@ -620,7 +620,7 @@ def geo_lookup(release, geoid):
                 {'geoid': geoid}
             )
 
-        result = result.fetchone()
+        result = result.mappings().fetchone()
 
         if not result:
             abort(404, 'Unknown GeoID')
@@ -933,7 +933,7 @@ def tabulation_details(tabulation_id):
         {'tabulation': tabulation_id}
     )
 
-    row = result.fetchone()
+    row = result.mappings().fetchone()
 
     if not row:
         abort(404, "Tabulation %s not found." % tabulation_id)
@@ -1045,7 +1045,7 @@ def table_details(table_id):
                WHERE table_id=:table_id"""),
             {'table_id': table_id}
         )
-        row = result.fetchone()
+        row = result.mappings().fetchone()
 
         if not row:
             abort(404, "Table %s not found in release %s. Try specifying another release." % (table_id.upper(), release))
@@ -1115,7 +1115,7 @@ def table_details_with_release(release, table_id):
                    WHERE table_id=:table_id"""),
                 {'table_id': table_id}
             )
-            row = result.fetchone()
+            row = result.mappings().fetchone()
 
             if not row:
                 continue
