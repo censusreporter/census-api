@@ -914,8 +914,8 @@ def table_search():
         )
         data.extend([format_table_search_result(column, 'column') for column in result.mappings().all()])
 
-    text = json.dumps(data)
-    resp = make_response(text)
+    serialized_json = json.dumps(data)
+    resp = make_response(serialized_json)
     resp.headers.set('Content-Type', 'application/json')
     return resp
 
@@ -1014,8 +1014,8 @@ def search_tabulations():
     for tabulation in result.mappings().all():
         data.append(dict(tabulation))
 
-    text = json.dumps(data)
-    resp = make_response(text)
+    serialized_json = json.dumps(data)
+    resp = make_response(serialized_json)
     resp.headers.set('Content-Type', 'application/json')
 
     return resp
