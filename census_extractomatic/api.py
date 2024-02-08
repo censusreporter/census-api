@@ -1372,7 +1372,7 @@ def get_child_geoids_by_prefix(release, parent_geoid, child_summary_level):
            FROM geoheader
            WHERE geoid LIKE :geoid_prefix
              AND name NOT LIKE :not_name
-           ORDER BY geoid""",
+           ORDER BY geoid"""),
         {'geoid_prefix': child_geoid_prefix, 'not_name': '%%not defined%%'}
     )
     return result.fetchall()
