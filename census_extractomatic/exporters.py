@@ -147,8 +147,8 @@ def create_excel_download(session, data, table_metadata, valid_geo_ids, file_ide
 
 
 def create_ogr_download(session, data, table_metadata, valid_geo_ids, file_ident, out_filename, format):
-    import ogr
-    import osr
+    from osgeo import ogr
+    from osgeo import osr
     format_info = supported_formats[format]
     driver_name = format_info['driver']
     ogr.UseExceptions()

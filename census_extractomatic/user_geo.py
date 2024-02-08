@@ -15,7 +15,7 @@ import zipfile
 import pandas as pd
 import numpy as np
 
-import ogr
+from osgeo import ogr
 
 from celery import Celery
 import os
