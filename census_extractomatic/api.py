@@ -681,7 +681,7 @@ def geo_parent(release, geoid):
                    ORDER BY sumlevel DESC""" % (release,)),
                 {'geoids': tuple(parent_geoids)}
             )
-            parent_list = dict([build_item(p) for p in result])
+            parent_list = dict([build_item(p) for p in result.mappings().all()])
 
             for parent in parents:
                 parent.update(parent_list.get(parent['geoid'], {}))
@@ -832,7 +832,7 @@ def table_search():
                    WHERE lower(table_id) like lower(:table_id)"""),
                 {'table_id': '{}%'.format(q)}
             )
-            for row in result:
+            for row in result.mappings().all():
                 if row['table_id'] not in ids_found:
                     data.append(format_table_search_result(row, 'table'))
                     ids_found.add(row['table_id'])
@@ -885,7 +885,7 @@ def table_search():
            ORDER BY tab.weight DESC""" % (table_where)),
         table_where_args
     )
-    for tabulation in result:
+    for tabulation in result.mappings().all():
         tabulation = dict(tabulation)
         for tables_for_release_col in ('tables_in_one_yr', 'tables_in_three_yr', 'tables_in_five_yr'):
             if tabulation[tables_for_release_col]:
@@ -912,7 +912,7 @@ def table_search():
                ORDER BY char_length(tab.table_id), tab.table_id""" % (column_where)),
             column_where_args
         )
-        data.extend([format_table_search_result(column, 'column') for column in result])
+        data.extend([format_table_search_result(column, 'column') for column in result.mappings().all()])
 
     text = json.dumps(data)
     resp = make_response(text)
@@ -1011,7 +1011,7 @@ def search_tabulations():
 
     data = []
 
-    for tabulation in result:
+    for tabulation in result.mappings().all():
         data.append(dict(tabulation))
 
     text = json.dumps(data)
@@ -1068,7 +1068,7 @@ def table_details(table_id):
         )
 
         rows = []
-        for row in result:
+        for row in result.mappings().all():
             rows.append((row['column_id'], dict(
                 column_title=row['column_title'],
                 indent=row['indent'],
@@ -1139,7 +1139,7 @@ def table_details_with_release(release, table_id):
             )
 
             rows = []
-            for row in result:
+            for row in result.mappings().all():
                 rows.append((row['column_id'], dict(
                     column_title=row['column_title'],
                     indent=row['indent'],
@@ -1327,7 +1327,7 @@ def get_child_geoids_by_coverage(release, parent_geoid, child_summary_level):
 
     rowdicts = []
     seen_geoids = set()
-    for row in result:
+    for row in result.mappings().all():
         if not row['geoid'] in seen_geoids:
             rowdicts.append(row)
             seen_geoids.add(row['geoid'])
@@ -1337,7 +1337,6 @@ def get_child_geoids_by_coverage(release, parent_geoid, child_summary_level):
 
 def get_child_geoids_by_gis(release, parent_geoid, child_summary_level):
     parent_sumlevel = parent_geoid[0:3]
-    child_geoids = []
     result = db.session.execute(text(
         """SELECT child.full_geoid
            FROM tiger2022.census_name_lookup parent
@@ -1345,7 +1344,7 @@ def get_child_geoids_by_gis(release, parent_geoid, child_summary_level):
            WHERE parent.full_geoid=:parent_geoid AND parent.sumlevel=:parent_sumlevel"""),
         {'child_sumlevel': child_summary_level, 'parent_geoid': parent_geoid, 'parent_sumlevel': parent_sumlevel}
     )
-    child_geoids = [r['full_geoid'] for r in result]
+    child_geoids = [r['full_geoid'] for r in result.mappings().all()]
 
     if child_geoids:
         # Use the "worst"/biggest ACS to find all child geoids
@@ -1357,7 +1356,7 @@ def get_child_geoids_by_gis(release, parent_geoid, child_summary_level):
                ORDER BY name"""),
             {'child_geoids': tuple(child_geoids)}
         )
-        return result.fetchall()
+        return result.mappings().fetchall()
     else:
         return []
 
@@ -1412,7 +1411,7 @@ def expand_geoids(geoid_list, release):
             WHERE geoid IN :geoids;"""),
             {'geoids': tuple(explicit_geoids)}
         )
-        valid_geo_ids.update(geo['geoid'] for geo in result)
+        valid_geo_ids.update(geo['geoid'] for geo in result.mappings().all())
 
     invalid_geo_ids = expanded_geoids.union(explicit_geoids) - valid_geo_ids
     if invalid_geo_ids:
@@ -1483,7 +1482,7 @@ def show_specified_data(acs):
     )
 
     geo_metadata = OrderedDict()
-    for geo in result:
+    for geo in result.mappings().all():
         geo_metadata[geo['full_geoid']] = {
             'name': geo['display_name'],
         }
@@ -1546,7 +1545,7 @@ def show_specified_data(acs):
         data = OrderedDict()
 
         if result.rowcount != len(valid_geo_ids):
-            returned_geo_ids = set([row['geoid'] for row in result])
+            returned_geo_ids = set([row['geoid'] for row in result.mappings().all()])
             app.logger.info(
                 "show_specified_data: The %s release doesn't include GeoID(s) %s. for table(s) %s"
                 % (get_acs_name(release_to_use),
@@ -1554,7 +1553,7 @@ def show_specified_data(acs):
                 ','.join(valid_table_ids)))
             continue
 
-        for row in result:
+        for row in result.mappings().all():
             row = dict(row)
             geoid = row.pop('geoid')
             data_for_geoid = OrderedDict()
@@ -1667,7 +1666,7 @@ def download_specified_data(acs):
     )
 
     geo_metadata = OrderedDict()
-    for geo in result:
+    for geo in result.mappings().all():
         geo_metadata[geo['full_geoid']] = {
             "name": geo['display_name'],
         }
@@ -1693,7 +1692,7 @@ def download_specified_data(acs):
 
         valid_table_ids = []
         table_metadata = OrderedDict()
-        for table, columns in groupby(result, lambda x: (x['table_id'], x['table_title'], x['universe'], x['denominator_column_id'])):
+        for table, columns in groupby(result.mappings().all(), lambda x: (x['table_id'], x['table_title'], x['universe'], x['denominator_column_id'])):
             valid_table_ids.append(table[0])
             table_metadata[table[0]] = OrderedDict([
                 ("title", table[1]),
@@ -1726,10 +1725,10 @@ def download_specified_data(acs):
         data = OrderedDict()
 
         if result.rowcount != len(valid_geo_ids):
-            returned_geo_ids = set([row['geoid'] for row in result])
+            returned_geo_ids = set([row['geoid'] for row in result.mappings().all()])
             raise ShowDataException("The %s release doesn't include GeoID(s) %s." % (get_acs_name(release_to_use), ','.join(set(valid_geo_ids) - returned_geo_ids)))
 
-        for row in result.fetchall():
+        for row in result.mappings().all():
             row = dict(row)
             geoid = row.pop('geoid')
             data_for_geoid = OrderedDict()
@@ -1920,7 +1919,7 @@ def data_compare_geographies_within_parent(acs, table_id):
         result = db.session.execute(text("SELECT * FROM %s_moe WHERE geoid IN :geo_ids" % (validated_table_id)), {'geo_ids': tuple(child_geoids)})
 
         # grab one row at a time
-        for record in result:
+        for record in result.mappings().all():
             child_geoid = record.pop('geoid')
 
             child_data = OrderedDict()
