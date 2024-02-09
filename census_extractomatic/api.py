@@ -417,7 +417,7 @@ def convert_row(row):
     'sumlevs': {'valid': StringList(item_validator=OneOf(SUMLEV_NAMES))},
     'geom': {'valid': Bool()}
 })
-@cross_origin(origin='*')
+@cross_origin(origins='*')
 def geo_search():
     lat = request.qwargs.lat
     lon = request.qwargs.lon
@@ -471,7 +471,7 @@ def num2deg(xtile, ytile, zoom):
 # Example: /1.0/geo/tiger2014/tiles/160/10/261/373.geojson
 # Example: /1.0/geo/tiger2013/tiles/160/10/261/373.geojson
 @app.route("/1.0/geo/<release>/tiles/<sumlevel>/<int:zoom>/<int:x>/<int:y>.<extension>")
-@cross_origin(origin='*')
+@cross_origin(origins='*')
 def geo_tiles(release, sumlevel, zoom, x, y, extension):
     if release == 'latest':
         release = allowed_tiger[0]
@@ -590,7 +590,7 @@ def create_geojson_result(release, sumlevel, tile):
 @qwarg_validate({
     'geom': {'valid': Bool(), 'default': False}
 })
-@cross_origin(origin='*')
+@cross_origin(origins='*')
 def geo_lookup(release, geoid):
     if release == 'latest':
         release = allowed_tiger[0]
@@ -647,7 +647,7 @@ def geo_lookup(release, geoid):
 # Example: /1.0/geo/tiger2014/04000US53/parents
 # Example: /1.0/geo/tiger2013/04000US53/parents
 @app.route("/1.0/geo/<release>/<geoid>/parents")
-@cross_origin(origin='*')
+@cross_origin(origins='*')
 def geo_parent(release, geoid):
     if release == 'latest':
         release = allowed_tiger[0]
@@ -706,7 +706,7 @@ def geo_parent(release, geoid):
 @qwarg_validate({
     'geo_ids': {'valid': StringList(item_validator=Regex(expandable_geoid_re)), 'required': True},
 })
-@cross_origin(origin='*')
+@cross_origin(origins='*')
 def show_specified_geo_data(release):
     if release == 'latest':
         release = allowed_tiger[0]
@@ -803,7 +803,7 @@ def format_table_search_result(obj, obj_type):
     'q': {'valid': NonemptyString()},
     'topics': {'valid': StringList()}
 })
-@cross_origin(origin='*')
+@cross_origin(origins='*')
 def table_search():
     # allow choice of release, default to allowed_acs[0]
     acs = request.qwargs.acs
@@ -924,7 +924,7 @@ def table_search():
 
 # Example: /1.0/tabulation/01001
 @app.route("/1.0/tabulation/<tabulation_id>")
-@cross_origin(origin='*')
+@cross_origin(origins='*')
 def tabulation_details(tabulation_id):
     if not tabulation_id.isdigit():
         abort(404, "Invalid tabulation ID")
@@ -964,7 +964,7 @@ def tabulation_details(tabulation_id):
     'codes': {'valid': StringList()},
     'q': {'valid': NonemptyString()}
 })
-@cross_origin(origin='*')
+@cross_origin(origins='*')
 def search_tabulations():
 
     prefix = request.qwargs.prefix
@@ -1028,7 +1028,7 @@ def search_tabulations():
 @qwarg_validate({
     'acs': {'valid': OneOf(allowed_acs), 'default': default_table_search_release}
 })
-@cross_origin(origin='*')
+@cross_origin(origins='*')
 def table_details(table_id):
     release = request.qwargs.acs
 
@@ -1092,7 +1092,7 @@ def table_details(table_id):
 
 # Example: /2.0/table/latest/B28001
 @app.route("/2.0/table/<release>/<table_id>")
-@cross_origin(origin='*')
+@cross_origin(origins='*')
 def table_details_with_release(release, table_id):
     if release in allowed_acs:
         acs_to_try = [release]
@@ -1171,7 +1171,7 @@ def table_details_with_release(release, table_id):
     'within': {'valid': Regex(table_re), 'required': True},
     'topics': {'valid': StringList()}
 })
-@cross_origin(origin='*')
+@cross_origin(origins='*')
 def table_geo_comparison_rowcount(table_id):
     years = request.qwargs.year.split(',')
     child_summary_level = request.qwargs.sumlevel
@@ -1260,7 +1260,7 @@ FTS_URL_BUILDERS = {
     'type': {'valid': OneOf(allowed_searches), 'default': allowed_searches[3]},
     'limit': {'valid': IntegerRange(1, 1000), 'default': 10},
 })
-@cross_origin(origin='*')
+@cross_origin(origins='*')
 def full_text_search():
 
     q = request.qwargs.q
@@ -1434,7 +1434,7 @@ class ShowDataException(Exception):
     'table_ids': {'valid': StringList(item_validator=Regex(table_re)), 'required': True},
     'geo_ids': {'valid': StringList(item_validator=Regex(expandable_geoid_re)), 'required': True},
 })
-@cross_origin(origin='*')
+@cross_origin(origins='*')
 def show_specified_data(acs):
     if acs in allowed_acs:
         acs_to_try = [acs]
@@ -1623,7 +1623,7 @@ def show_specified_data(acs):
     'geo_ids': {'valid': StringList(item_validator=Regex(expandable_geoid_re)), 'required': True},
     'format': {'valid': OneOf(supported_formats), 'required': True},
 })
-@cross_origin(origin='*')
+@cross_origin(origins='*')
 def download_specified_data(acs):
     if acs in allowed_acs:
         acs_to_try = [acs]
@@ -1795,7 +1795,7 @@ def download_specified_data(acs):
     'sumlevel': {'valid': OneOf(SUMLEV_NAMES), 'required': True},
     'geom': {'valid': Bool(), 'default': False}
 })
-@cross_origin(origin='*')
+@cross_origin(origins='*')
 def data_compare_geographies_within_parent(acs, table_id):
     # make sure we support the requested ACS release
     if acs not in allowed_acs:
@@ -1983,7 +1983,7 @@ def index():
 
 # Begin User Geography aggregation routes
 @app.route("/1.0/user_geo/import",methods=['POST'])
-@cross_origin(origin='*')
+@cross_origin(origins='*')
 def import_geography():
     start = datetime.now()
     result = {
@@ -2036,7 +2036,7 @@ def import_geography():
 
 # Begin User Geography aggregation routes
 @app.route("/1.0/user_geo/list")
-@cross_origin(origin='*')
+@cross_origin(origins='*')
 def fetch_user_geographies():
 
     result = {
@@ -2056,7 +2056,7 @@ def fetch_user_geographies():
     return jsonify(result)
 
 @app.route('/1.0/user_geo/<string:hash_digest>')
-@cross_origin(origin='*')
+@cross_origin(origins='*')
 def fetch_user_geo(hash_digest):
     result = fetch_user_geodata(db, hash_digest)
     if result is None:
@@ -2069,7 +2069,7 @@ def fetch_user_geo(hash_digest):
     return jsonify(result)
 
 @app.route('/1.0/user_geo/<string:hash_digest>.geojson')
-@cross_origin(origin='*')
+@cross_origin(origins='*')
 def fetch_user_geojson(hash_digest):
     result = fetch_user_geog_as_geojson(db, hash_digest)
     if result is None:
@@ -2080,7 +2080,7 @@ def fetch_user_geojson(hash_digest):
 AGGREGATION_S3_ROOT = 'https://s3.amazonaws.com/files.censusreporter.org/aggregation'
 
 @app.route('/1.0/user_geo/<string:hash_digest>/blocks/<string:year>')
-@cross_origin(origin='*')
+@cross_origin(origins='*')
 def fetch_user_blocks_by_year(hash_digest, year):
 
     # this is entangled with the S3 upload in user_geo, so if the name or S3 prefix change,
@@ -2108,7 +2108,7 @@ def url_exists(url):
         return False
 
 @app.route('/1.0/aggregate/<string:hash_digest>/<string:release>/<string:table_code>',methods=['GET'])
-@cross_origin(origin='*')
+@cross_origin(origins='*')
 def aggregate(hash_digest, release, table_code):
 
     if table_code.lower() not in ['p1', 'p2', 'p3', 'p4', 'p5', 'h1']:
