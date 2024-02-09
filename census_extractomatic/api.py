@@ -208,7 +208,7 @@ table_re = re.compile(r"^[BC]\d{5,6}(?:[A-Z]{1,3})?$")
 @app.errorhandler(400)
 @app.errorhandler(404)
 @app.errorhandler(500)
-@cross_origin(origin='*')
+@cross_origin(origins='*')
 def jsonify_error_handler(error):
     if isinstance(error, ClientRequestValidationException):
         resp = jsonify(error=error.description, errors=error.errors)
