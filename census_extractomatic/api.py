@@ -341,7 +341,7 @@ def compute_profile_item_levels(geoid):
             """),
             {'geoid': geoid},
         )
-        for row in result:
+        for row in result.mappings().all():
             parent_sumlevel_name = SUMLEV_NAMES.get(row['parent_geoid'][:3])['name']
 
             levels.append({
