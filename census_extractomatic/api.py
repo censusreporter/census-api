@@ -56,6 +56,9 @@ from census_extractomatic.exporters import supported_formats
 
 from timeit import default_timer as timer
 
+import newrelic.agent
+newrelic.agent.initialize('newrelic.ini')
+
 app = Flask(__name__)
 app.config.from_object(os.environ.get('EXTRACTOMATIC_CONFIG_MODULE', 'census_extractomatic.config.Development'))
 
