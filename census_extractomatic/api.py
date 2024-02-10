@@ -1316,7 +1316,7 @@ def get_all_child_geoids(release, child_summary_level):
         {'sumlev': int(child_summary_level)}
     )
 
-    return result.fetchall()
+    return result.mappings().fetchall()
 
 
 def get_child_geoids_by_coverage(release, parent_geoid, child_summary_level):
@@ -1380,7 +1380,7 @@ def get_child_geoids_by_prefix(release, parent_geoid, child_summary_level):
            ORDER BY geoid"""),
         {'geoid_prefix': child_geoid_prefix, 'not_name': '%%not defined%%'}
     )
-    return result.fetchall()
+    return result.mappings().fetchall()
 
 
 def expand_geoids(geoid_list, release):
