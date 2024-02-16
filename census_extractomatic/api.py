@@ -1742,7 +1742,7 @@ def download_specified_data(acs):
 
         for row in result.mappings().all():
             row = dict(row)
-            app.logger.info(f"download_specified_data: row: {row}")
+            app.logger.error(f"download_specified_data: row: {row}")
             geoid = row.pop('geoid')
             data_for_geoid = OrderedDict()
 
