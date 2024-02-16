@@ -1,9 +1,7 @@
 from openpyxl.styles import Alignment, Font
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import text
 import logging
 import openpyxl
-import six.moves.urllib as urllib
 
 logger = logging.getLogger('exporters')
 
@@ -62,11 +60,11 @@ def create_excel_download(session, data, table_metadata, valid_geo_ids, file_ide
 
         # this SQL echoed in OGR export but no geom so copying instead of factoring out
         # plus different binding when using SQLAlchemy
-        result = session.execute(
+        result = session.execute(text(
             """SELECT full_geoid,display_name
-                     FROM tiger2020.census_name_lookup
+                     FROM tiger2022.census_name_lookup
                      WHERE full_geoid IN :geoids
-                     ORDER BY full_geoid""",
+                     ORDER BY full_geoid"""),
             {'geoids': tuple(valid_geo_ids)}
         )
 
@@ -179,7 +177,7 @@ def create_ogr_download(session, data, table_metadata, valid_geo_ids, file_ident
 
     # this SQL echoed in Excel export but no geom so copying instead of factoring out
     sql = """SELECT geom,full_geoid,display_name
-             FROM tiger2020.census_name_lookup
+             FROM tiger2022.census_name_lookup
              WHERE full_geoid IN (%s)
              ORDER BY full_geoid""" % ', '.join("'%s'" % g for g in valid_geo_ids)
     in_layer = conn.ExecuteSQL(sql)
