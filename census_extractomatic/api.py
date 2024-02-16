@@ -1761,7 +1761,6 @@ def download_specified_data(acs):
                 data_for_geoid[table_id] = table_for_geoid
 
             data[geoid] = data_for_geoid
-            app.logger.error(f"download_specified_data: row {geoid}: {data_for_geoid}")
 
         temp_path = tempfile.mkdtemp()
         file_ident = "%s_%s_%s" % (acs, next(iter(valid_table_ids)), next(iter(valid_geo_ids)))
