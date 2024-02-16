@@ -90,9 +90,11 @@ def create_excel_download(session, data, table_metadata, valid_geo_ids, file_ide
                         base_estimate = data[geoid][table_id]['estimate'][denominator_column_id]
 
                         for column_id, column_info in table['columns'].items():
-                            if base_estimate and column_id in table_estimates and column_id in table_errors:
-                                col_values.append(table_estimates[column_id] / base_estimate)
-                                col_errors.append(table_errors[column_id] / base_estimate)
+                            column_estimate_value = table_estimates.get(column_id)
+                            column_error_value = table_errors.get(column_id)
+                            if base_estimate and column_estimate_value is not None and column_error_value is not None:
+                                col_values.append(column_estimate_value / base_estimate)
+                                col_errors.append(column_error_value / base_estimate)
                             else:
                                 any_zero_denominators = True
                                 col_values.append('*')
