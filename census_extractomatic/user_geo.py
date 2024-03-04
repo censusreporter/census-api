@@ -248,18 +248,19 @@ def save_user_geojson(db,
     return dataset_id
 
 def list_user_geographies(db):
-    cur = db.engine.execute('select *, st_asGeoJSON(bbox) bbox_json from aggregation.user_geodata where public = true order by name')
-    results = []
-    for row in cur:
-        d = dict(row)
-        bbox_json = d.pop('bbox_json')
-        # parse JSON string and get rid of binary bbox
-        if bbox_json:
-            d['bbox'] = json.loads(bbox_json)
-        else:
-            del d['bbox']
-        results.append(d)
-    return results
+    with db.engine.begin() as con:
+        cur = con.execute(text('select *, st_asGeoJSON(bbox) bbox_json from aggregation.user_geodata where public = true order by name'))
+        results = []
+        for row in cur.mappings():
+            d = dict(row)
+            bbox_json = d.pop('bbox_json')
+            # parse JSON string and get rid of binary bbox
+            if bbox_json:
+                d['bbox'] = json.loads(bbox_json)
+            else:
+                del d['bbox']
+            results.append(d)
+        return results
 
 def join_user_to_census(db, user_geodata_id):
     """Waffling a little on structure but this provides a single transaction-protected function which computes block joins
