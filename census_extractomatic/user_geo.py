@@ -180,7 +180,9 @@ WHERE ug.hash_digest = :hash_digest
 
 def fetch_user_geodata(db, hash_digest):
     with db.engine.begin() as con:
-        cur = con.execute(USER_GEODATA_SELECT_BY_HASH_DIGEST,hash_digest=hash_digest)
+        cur = con.execute(USER_GEODATA_SELECT_BY_HASH_DIGEST,parameters={
+                              'hash_digest': hash_digest
+                          })
         keys = list(cur._metadata.keys)
         row = cur.first()
         if row:
@@ -294,23 +296,27 @@ def _blankFeatureCollection():
 
 def fetch_user_geog_as_geojson(db, hash_digest):
     geojson = _blankFeatureCollection()
-    cur = db.engine.execute(USER_GEOMETRY_SELECT_WITH_GEOM_BY_HASH_DIGEST,hash_digest=hash_digest)
-    if cur.rowcount == 0:
-        raise ValueError(f"Invalid geography ID {hash_digest}")
-    for cr_geoid, name, original_id, geojson_str in cur:
-        base = {
-            'type': 'Feature'
-        }
-        base['geometry'] = json.loads(geojson_str)
-        base['properties'] = {
-            'cr_geoid': cr_geoid
-        }
-        if name is not None: base['properties']['name'] = name
-        if original_id is not None:
-            base['properties']['original_id'] = original_id
-            base['id'] = original_id
-        geojson['features'].append(base)
-    return geojson
+    with db.engine.begin() as con:
+        cur = con.execute(USER_GEOMETRY_SELECT_WITH_GEOM_BY_HASH_DIGEST,
+                          parameters={
+                              'hash_digest': hash_digest
+                          })
+        if cur.rowcount == 0:
+            raise ValueError(f"Invalid geography ID {hash_digest}")
+        for cr_geoid, name, original_id, geojson_str in cur:
+            base = {
+                'type': 'Feature'
+            }
+            base['geometry'] = json.loads(geojson_str)
+            base['properties'] = {
+                'cr_geoid': cr_geoid
+            }
+            if name is not None: base['properties']['name'] = name
+            if original_id is not None:
+                base['properties']['original_id'] = original_id
+                base['id'] = original_id
+            geojson['features'].append(base)
+        return geojson
 
 USER_BLOCKS_BY_HASH_DIGEST_SQL = {
     '2020': USER_GEOMETRY_SELECT_2020_BLOCKS_WITH_GEOM_BY_HASH_DIGEST,
