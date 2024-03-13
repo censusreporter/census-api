@@ -488,7 +488,7 @@ def geo_tiles(release, sumlevel, zoom, x, y, extension):
 
     if extension == 'geojson':
         result_func = create_geojson_result
-        content_type = 'application/json'
+        content_type = 'application/json; charset=utf-8'
     elif extension == 'mvt':
         result_func = create_mvt_result
         content_type = 'application/vnd.mapbox-vector-tile'
@@ -646,7 +646,7 @@ def geo_lookup(release, geoid):
     # Cache the result for 1 day
     resp.cache_control.max_age = 86400
     resp.cache_control.public = True
-    resp.content_type = 'application/json'
+    resp.content_type = 'application/json; charset=utf-8'
 
     return resp
 
@@ -704,7 +704,7 @@ def geo_parent(release, geoid):
     # Cache the result for 1 day
     resp.cache_control.max_age = 86400
     resp.cache_control.public = True
-    resp.content_type = 'application/json'
+    resp.content_type = 'application/json; charset=utf-8'
 
     return resp
 
