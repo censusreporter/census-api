@@ -458,8 +458,8 @@ def geo_search():
     result = db.session.execute(text(sql), where_args)
 
     resp = jsonify(results=[convert_row(row) for row in result.mappings().all()])
-    # Cache the response for 1 day
-    resp.cache_control.max_age = 86400
+    # Cache the result for 6 months
+    resp.cache_control.max_age = 86400 * 180
     resp.cache_control.public = True
     return resp
 
@@ -508,8 +508,9 @@ def geo_tiles(release, sumlevel, zoom, x, y, extension):
         except Exception as e:
             app.logger.warn('Skipping cache set for {} because {}'.format(cache_key, e.args))
 
+    # Cache the result for 6 months
     resp.cache_control.public = True
-    resp.cache_control.max_age = 86400 * 7  # 1 week
+    resp.cache_control.max_age = 86400 * 180
     resp.content_type = content_type
     return resp
 
@@ -643,8 +644,8 @@ def geo_lookup(release, geoid):
         resp = make_response(result)
         cache.set(cache_key, result)
 
-    # Cache the result for 1 day
-    resp.cache_control.max_age = 86400
+    # Cache the result for 6 months
+    resp.cache_control.max_age = 86400 * 180
     resp.cache_control.public = True
     resp.content_type = 'application/json; charset=utf-8'
 
@@ -701,8 +702,8 @@ def geo_parent(release, geoid):
         resp = make_response(result)
         cache.set(cache_key, result)
 
-    # Cache the result for 1 day
-    resp.cache_control.max_age = 86400
+    # Cache the result for 6 months
+    resp.cache_control.max_age = 86400 * 180
     resp.cache_control.public = True
     resp.content_type = 'application/json; charset=utf-8'
 
@@ -773,8 +774,8 @@ def show_specified_geo_data(release):
     }
 
     resp = jsonify(**resp_data)
-    # Cache the response for 1 day
-    resp.cache_control.max_age = 86400
+    # Cache the result for 6 months
+    resp.cache_control.max_age = 86400 * 180
     resp.cache_control.public = True
     return resp
 
@@ -1638,8 +1639,8 @@ def show_specified_data(acs):
                 }
             }
             resp = jsonify(**resp_data)
-            # cache the response for 1 day
-            resp.cache_control.max_age = 86400
+            # Cache the result for 6 months
+            resp.cache_control.max_age = 86400 * 180
             resp.cache_control.public = True
             return resp
         else:
