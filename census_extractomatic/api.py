@@ -457,7 +457,11 @@ def geo_search():
             LIMIT 25;""" % (where)
     result = db.session.execute(text(sql), where_args)
 
-    return jsonify(results=[convert_row(row) for row in result.mappings().all()])
+    resp = jsonify(results=[convert_row(row) for row in result.mappings().all()])
+    # Cache the result for 6 months
+    resp.cache_control.max_age = 86400 * 180
+    resp.cache_control.public = True
+    return resp
 
 
 def num2deg(xtile, ytile, zoom):
@@ -484,7 +488,7 @@ def geo_tiles(release, sumlevel, zoom, x, y, extension):
 
     if extension == 'geojson':
         result_func = create_geojson_result
-        content_type = 'application/json'
+        content_type = 'application/json; charset=utf-8'
     elif extension == 'mvt':
         result_func = create_mvt_result
         content_type = 'application/vnd.mapbox-vector-tile'
@@ -504,8 +508,10 @@ def geo_tiles(release, sumlevel, zoom, x, y, extension):
         except Exception as e:
             app.logger.warn('Skipping cache set for {} because {}'.format(cache_key, e.args))
 
-    resp.headers.set('Content-Type', content_type)
-    resp.headers.set('Cache-Control', 'public,max-age=86400')  # 1 day
+    # Cache the result for 6 months
+    resp.cache_control.public = True
+    resp.cache_control.max_age = 86400 * 180
+    resp.content_type = content_type
     return resp
 
 def compute_envelope(zoom, x, y):
@@ -638,8 +644,10 @@ def geo_lookup(release, geoid):
         resp = make_response(result)
         cache.set(cache_key, result)
 
-    resp.headers.set('Content-Type', 'application/json')
-    resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600 * 4))
+    # Cache the result for 6 months
+    resp.cache_control.max_age = 86400 * 180
+    resp.cache_control.public = True
+    resp.content_type = 'application/json; charset=utf-8'
 
     return resp
 
@@ -694,8 +702,10 @@ def geo_parent(release, geoid):
         resp = make_response(result)
         cache.set(cache_key, result)
 
-    resp.headers.set('Content-Type', 'application/json')
-    resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600 * 4))
+    # Cache the result for 6 months
+    resp.cache_control.max_age = 86400 * 180
+    resp.cache_control.public = True
+    resp.content_type = 'application/json; charset=utf-8'
 
     return resp
 
@@ -763,7 +773,11 @@ def show_specified_geo_data(release):
         'features': results
     }
 
-    return jsonify(**resp_data)
+    resp = jsonify(**resp_data)
+    # Cache the result for 6 months
+    resp.cache_control.max_age = 86400 * 180
+    resp.cache_control.public = True
+    return resp
 
 
 #
@@ -954,7 +968,11 @@ def tabulation_details(tabulation_id):
 
     row.pop('weight', None)
 
-    return jsonify(**row)
+    resp = jsonify(**row)
+    # Cache the response for 1 day
+    resp.cache_control.max_age = 86400
+    resp.cache_control.public = True
+    return resp
 
 # Example: /1.0/tabulations/?topics=comma,separated,string
 # Example: /1.0/tabulations/?prefix=digits
@@ -1224,7 +1242,11 @@ def table_geo_comparison_rowcount(table_id):
 
         data[acs] = release
 
-    return jsonify(**data)
+    resp = jsonify(**data)
+    # Cache the response for 1 day
+    resp.cache_control.max_age = 86400
+    resp.cache_control.public = True
+    return resp
 
 
 def build_profile_url(row):
@@ -1616,7 +1638,11 @@ def show_specified_data(acs):
                     'name': ACS_NAMES[release_to_use]['name']
                 }
             }
-            return jsonify(**resp_data)
+            resp = jsonify(**resp_data)
+            # Cache the result for 6 months
+            resp.cache_control.max_age = 86400 * 180
+            resp.cache_control.public = True
+            return resp
         else:
             missing_geos = valid_geo_ids.difference(valid_geos_for_release)
             app.logger.debug(f"[release {release_to_use}] [table {','.join(valid_table_ids)}] missing data for [{','.join(missing_geos)}]")
@@ -1971,7 +1997,16 @@ def data_compare_geographies_within_parent(acs, table_id):
     else:
         comparison['results'] = 0
 
-    return jsonify(comparison=comparison, table=table, parent_geography=parent_geography, child_geographies=child_geographies)
+    resp = jsonify(
+        comparison=comparison,
+        table=table,
+        parent_geography=parent_geography,
+        child_geographies=child_geographies,
+    )
+    # cache the response for 1 day
+    resp.cache_control.max_age = 86400
+    resp.cache_control.public = True
+    return resp
 
 
 @app.route('/healthcheck')
