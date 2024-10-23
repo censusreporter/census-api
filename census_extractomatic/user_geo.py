@@ -180,9 +180,8 @@ WHERE ug.hash_digest = :hash_digest
 
 def fetch_user_geodata(db, hash_digest):
     with db.engine.begin() as con:
-        cur = con.execute(USER_GEODATA_SELECT_BY_HASH_DIGEST,parameters={
-                              'hash_digest': hash_digest
-                          })
+        cur = con.execute(USER_GEODATA_SELECT_BY_HASH_DIGEST,
+                          dict(hash_digest=hash_digest))
         keys = list(cur._metadata.keys)
         row = cur.first()
         if row:
@@ -222,7 +221,7 @@ def save_user_geojson(db,
     fields = _fieldsFromOGRLayer(l)
     with db.engine.begin() as con:
         cur = con.execute(USER_GEODATA_INSERT_SQL,
-                          name=dataset_name,
+                          dict(name=dataset_name,
                           hash_digest=hash_digest,
                           source_url=source_url,
                           public=share_checked,
@@ -230,19 +229,22 @@ def save_user_geojson(db,
                           xmin=xmin,
                           ymin=ymin,
                           xmax=xmax,
-                          ymax=ymax)
+                          ymax=ymax))
         dataset_id = cur.fetchall()[0][0]
         for i in range(0,l.GetFeatureCount()):
             f = l.GetFeature(i)
+            if not f:
+                logger.warning(f"save_user_geojson: {dataset_name} idx {i} is null, skipping")
+                continue
             mp = ogr.ForceToMultiPolygon(f.GetGeometryRef())
             properties = dict((fld, f.GetField(i)) for i,fld in enumerate(fields))
-            con.execute(USER_GEODATA_GEOMETRY_INSERT_SQL,
+            con.execute(USER_GEODATA_GEOMETRY_INSERT_SQL,dict(
                     user_geodata_id=dataset_id,
                     geom_wkt=mp.ExportToWkt(),
                     epsg=epsg,
                     name=properties.get(name_field),
                     original_id=properties.get(id_field),
-                    properties=json.dumps(properties))
+                    properties=json.dumps(properties)))
 
     if dataset_id is not None:
         join_user_geo_to_blocks_task.delay(dataset_id)
@@ -272,21 +274,24 @@ def join_user_to_census(db, user_geodata_id):
     # first set the status in its own transaction so that it serves as a sign that the work is happening.
     # we may want to check the status to make sure it isn't already processing to avoid overlapping jobs
     # although the delete statements should mean that isn't a terrible problem, just a longer CPU load
-    db.engine.execute(text("UPDATE aggregation.user_geodata SET status = 'PROCESSING' where user_geodata_id = :geodata_id"),geodata_id=user_geodata_id)
+    with db.engine.begin() as con:
+        con.execute(text("UPDATE aggregation.user_geodata SET status = 'PROCESSING' where user_geodata_id = :geodata_id"),dict(geodata_id=user_geodata_id))
+        con.commit()
     with db.engine.begin() as con:
         con.execute(text("""
         DELETE FROM aggregation.user_geodata_blocks_2010 
         WHERE user_geodata_geometry_id in 
         (SELECT user_geodata_geometry_id FROM aggregation.user_geodata_geometry
-         WHERE user_geodata_id=:geodata_id)"""),geodata_id=user_geodata_id)
+         WHERE user_geodata_id=:geodata_id)"""),dict(geodata_id=user_geodata_id))
         con.execute(text("""
         DELETE FROM aggregation.user_geodata_blocks_2020 
         WHERE user_geodata_geometry_id in 
         (SELECT user_geodata_geometry_id FROM aggregation.user_geodata_geometry
-         WHERE user_geodata_id=:geodata_id)"""),geodata_id=user_geodata_id)
-        con.execute(AGGREGATE_BLOCKS_2010_SQL,geodata_id=user_geodata_id)
-        con.execute(AGGREGATE_BLOCKS_2020_SQL,geodata_id=user_geodata_id)
-        db.engine.execute(text("UPDATE aggregation.user_geodata SET status = 'READY' where user_geodata_id = :geodata_id"),geodata_id=user_geodata_id)
+         WHERE user_geodata_id=:geodata_id)"""),dict(geodata_id=user_geodata_id))
+        con.execute(AGGREGATE_BLOCKS_2010_SQL,dict(geodata_id=user_geodata_id))
+        con.execute(AGGREGATE_BLOCKS_2020_SQL,dict(geodata_id=user_geodata_id))
+        con.execute(text("UPDATE aggregation.user_geodata SET status = 'READY' where user_geodata_id = :geodata_id"),dict(geodata_id=user_geodata_id))
+        con.commit()
 
 def _blankFeatureCollection():
     return {
@@ -298,9 +303,7 @@ def fetch_user_geog_as_geojson(db, hash_digest):
     geojson = _blankFeatureCollection()
     with db.engine.begin() as con:
         cur = con.execute(USER_GEOMETRY_SELECT_WITH_GEOM_BY_HASH_DIGEST,
-                          parameters={
-                              'hash_digest': hash_digest
-                          })
+                          dict(hash_digest=hash_digest))
         if cur.rowcount == 0:
             raise ValueError(f"Invalid geography ID {hash_digest}")
         for cr_geoid, name, original_id, geojson_str in cur:

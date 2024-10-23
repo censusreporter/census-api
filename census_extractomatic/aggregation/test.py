@@ -18,7 +18,7 @@ from timeit import default_timer as timer
 from datetime import timedelta
 
 import os
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 import csv
 from pathlib import Path
 
@@ -32,7 +32,8 @@ def main():
     if os.path.isfile(LOGFILE_PATH):
         for row in csv.DictReader(open(LOGFILE_PATH)):
             done.add(row['hash_digest'])
-    datasets = list(engine.execute("select hash_digest, name from aggregation.user_geodata where status = 'READY'"))
+    with engine.connect() as conn:        
+        datasets = list(conn.execute(text("select hash_digest, name from aggregation.user_geodata where status = 'READY'")))
     with open(LOGFILE_PATH,"a+") as f:
         w = csv.DictWriter(f, ['hash_digest','name','table','release', 'elapsed_secs'])
         if len(done) == 0:
