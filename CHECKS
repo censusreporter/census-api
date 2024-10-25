@@ -1,1 +1,4 @@
+WAIT=10     # Wait 10 seconds
+# TIMEOUT=60  # Timeout after a minute
+ATTEMPTS=5  # attempt checks 5 times
 /healthcheck    OK
