@@ -17,4 +17,6 @@ RUN CPLUS_INCLUDE_PATH=/usr/include/gdal \
 
 ADD . .
 
-CMD NEW_RELIC_CONFIG_FILE=newrelic.ini newrelic-admin run-program gunicorn --workers 3 --bind 0.0.0.0:$PORT --statsd-host telegraf.web:8125 --statsd-prefix censusapi census_extractomatic.wsgi
+EXPOSE 5000
+
+CMD NEW_RELIC_CONFIG_FILE=newrelic.ini newrelic-admin run-program gunicorn --workers 3 --bind 0.0.0.0:5000 --statsd-host telegraf.web:8125 --statsd-prefix censusapi census_extractomatic.wsgi
