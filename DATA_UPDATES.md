@@ -92,7 +92,7 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
         delete from tiger2018.census_geo_containment where child_geoid='31000US42460' and parent_geoid='33000US497';
     - The TIGER 2022 PLACE theme has two columns that shp2pgsql resolves to `varchar(0)`, which is invalid and will be filtered out.
 1. Update the census-api api.py to add the new release to the `allowed_tiger` variable
-1. Update the static website redirection rules for S3 bucket `embed.censusreporter.com` to add a section for the new TIGER release.
+1. (not needed with switch to Cloudflare in 2024!) Update the static website redirection rules for S3 bucket `embed.censusreporter.com` to add a section for the new TIGER release.
 
 ### Update census-postgres
 
@@ -133,8 +133,8 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
   - Open a psql terminal: `psql $PGURI` (it should connect using the `PGURI` envvar from above)
     - Copy and execute in the psql terminal the CREATE TABLE and CREATE INDEX's for the new release from `census_metadata.sql`
     - Run the following in the psql terminal (adapted for your release):
-      - `\copy acs2022_1yr.census_table_metadata FROM '/home/ubuntu/census-table-metadata/precomputed/acs2022_1yr/census_table_metadata.csv' WITH csv ENCODING 'utf8' HEADER`
-      - `\copy acs2022_1yr.census_column_metadata FROM '/home/ubuntu/census-table-metadata/precomputed/acs2022_1yr/census_column_metadata.csv' WITH csv ENCODING 'utf8' HEADER`
+      - `\copy acs2023_1yr.census_table_metadata FROM '/home/ubuntu/census-table-metadata/precomputed/acs2023_1yr/census_table_metadata.csv' WITH csv ENCODING 'utf8' HEADER`
+      - `\copy acs2023_1yr.census_column_metadata FROM '/home/ubuntu/census-table-metadata/precomputed/acs2023_1yr/census_column_metadata.csv' WITH csv ENCODING 'utf8' HEADER`
 
 - Update the unified tabulation metadata (from the census-table-metadata repo)
   - Truncate the existing census_tabulation_metadata on the EC2 instance:
@@ -143,9 +143,9 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
     - `\copy census_tabulation_metadata FROM '/home/ubuntu/census-table-metadata/precomputed/unified_metadata.csv' WITH csv ENCODING 'utf8' HEADER`
 
 - Create a new database dump
-  - `pg_dump -n acs2022_1yr | gzip -c > /home/ubuntu/data/acs2022_1yr_backup.sql.gz`
+  - `pg_dump -n acs2023_1yr | gzip -c > /home/ubuntu/data/acs2023_1yr_backup.sql.gz`
   - Upload it to S3 for safe keeping:
-    - `aws s3 cp --region=us-east-1 --acl=public-read /mnt/tmp/acs2015_1yr_backup.sql.gz s3://census-backup/acs/2015/acs2015_1yr/acs2015_1yr_backup.sql.gz`
+    - `aws s3 cp --region=us-east-1 --acl=public-read /home/ubuntu/data/acs2023_1yr_backup.sql.gz s3://census-backup/acs/2023/acs2023_1yr/acs2023_1yr_backup.sql.gz`
   - Update [the Tumblr post](http://censusreporter.tumblr.com/post/73727555158/easier-access-to-acs-data) to include the new data dump
 
 - Update the census-api `api.py` file to include the new release that's now in the database
