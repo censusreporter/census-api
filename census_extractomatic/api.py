@@ -72,7 +72,7 @@ cors = CORS(app)
 # Allowed ACS's in "best" order (newest and smallest range preferred)
 allowed_acs = [
     'acs2023_1yr',
-    'acs2022_5yr',
+    'acs2023_5yr',
 ]
 # When table searches happen without a specified release, use this
 # release to do the table search.
@@ -82,7 +82,6 @@ release_to_expand_with = allowed_acs[1]
 
 # Allowed TIGER releases. If your database has multiple years, put the newest at the top.
 allowed_tiger = [
-    'tiger2023',
     'tiger2023',
 ]
 
@@ -94,7 +93,7 @@ allowed_searches = [
 ]
 
 ACS_NAMES = {
-    'acs2022_5yr': {'name': 'ACS 2022 5-year', 'years': '2018-2022'},
+    'acs2023_5yr': {'name': 'ACS 2023 5-year', 'years': '2019-2023'},
     'acs2023_1yr': {'name': 'ACS 2023 1-year', 'years': '2023'},
 }
 
