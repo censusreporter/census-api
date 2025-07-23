@@ -18,9 +18,9 @@ The easiest way to get a PostgreSQL database like ours up and running is to set 
 Access to your local database is configured in [`census_extractomatic/config.py`](https://github.com/censusreporter/census-api/blob/master/census_extractomatic/config.py#L16) If you change this, please be careful not to include those changes in any pull requests.
 
 
-Python1
+Python
 ------
-Here's what you need to know to get a local version of the Census Reporter API up and running. These instructions assume you're using <a href="http://virtualenv.readthedocs.org/en/latest/">virtualenv</a> and <a href="http://virtualenvwrapper.readthedocs.org/en/latest/">virtualenvwrapper</a> to manage your development environments.
+Here's what you need to know to get a local version of the Census Reporter API up and running. These instructions assume you're using <a href="https://pipenv.pypa.io/en/latest/index.html">pipenv</a> to manage your development environments.
 
 First, clone this repository to your machine and move into your new project directory:
 
@@ -29,13 +29,7 @@ First, clone this repository to your machine and move into your new project dire
 
 Create the virtual environment for your local project, activate it and install the required libraries:
 
-    >> mkvirtualenv census-api --no-site-packages
-    >> workon census-api
-    >> pip install -r requirements.txt
-
-If you've upgraded XCode on OS X Mavericks, you may well see some compilation errors here. If so, try this:
-
-    >> ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future pip install -r requirements.txt
+    >> pipenv install
 
 
 Running
@@ -44,7 +38,7 @@ Make sure the database is running.
 
 Then from the root of your local copy of the repository, run
 
-    >> flask run
+    >> pipenv run flask run
 
 This starts Flask running locally, on port 5000. If everything is configured correctly, you should be able to load a URL like `http://localhost:5000/1.0/latest/16000US1714000/profile` and see JSON data. If not, [file an issue in this repository](https://github.com/censusreporter/census-api/issues) and we'll try to help you and improve this document.
 
