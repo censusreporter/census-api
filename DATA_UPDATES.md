@@ -3,6 +3,7 @@
 ## Updates to this document
 
 - **2023-09-17**: Update for table-based ACS releases. Joe made these updates last year for 2021, but Ian is now updating this document during the process for 2022.
+- **2026-01-31**: We switched to updating once per year, and ACS 5-year was late for various reasons.
 
 ## Update census-table-metadata
 
@@ -31,20 +32,19 @@
     - The `ACS_1yr_Seq_Table_Number_Lookup.xls` for 2014 does not reflect the changes in [the new survey](https://www.census.gov/programs-surveys/acs/technical-documentation/table-and-geography-changes/2014/1-year.html), but the [text/CSV version](http://www2.census.gov/programs-surveys/acs/summary_file/2014/documentation/user_tools/ACS_1yr_Seq_Table_Number_Lookup.txt) does so I converted it to an XLS with Excel so that the rest of my existing process would work
     - The 2018 1-yr and 5-yr releases included a `ACS_1yr_Seq_Table_Number_Lookup.csv` and no `.xls` version. I converted it to an XLS with Excel so that the rest of my existing process would work
     - Starting with 2019 1-yr, Census stopped including indent information, so it fetched from the Census API with process_api.py now. No Excel sheets need to be processed.
-    - Starting with 2022 1-yr, we switched to using the table-based release, since Census stopped releasing the sequence-based release. 
+    - Starting with 2022 1-yr, we switched to using the table-based release, since Census stopped releasing the sequence-based release.
     - the TIGER2022 release did not update include CBSA, CSA, or METDIV shapefiles for some reason. We skipped them, but that led to data problems. In the future, we should carry forward missing geographies to the next TIGER release unless we have a clear reason not to.
     - in 2022, some time after our load, Census added 2020 versions of the UAC shapefile, which are the ones we need for ACS2022. We had to go back and fix it later. A naive repeat of our process would probably download both the 2010 and 2020 UAC files, and then would run into trouble because the schemas use slightly different column names.
 
 6. Generate the 'precomputed' metadata stuff. From census-table-metadata:
-    - pipenv install && pipenv shell
-    - make
-    - git add precomputed/acs2018_1yr
+    - uv run --with=unicodecsv --with=xlrd --with=requests make precomputed/acs2024_5yr/census_table_metadata.csv
+    - git add precomputed/acs2024_5yr
     - git commit
     - git push
 
 7. Update the `unified_metadata.csv`:
     - Update the `releases_to_analyze` variable in `analyze_metadata.py` to include the new release
-    - python analyze_metadata.py
+    - uv run analyze_metadata.py
     - git add precomputed/unified_metadata.csv
     - git commit
     - git push
@@ -118,6 +118,7 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
 1. Make sure you ran the `02_download_acs_2022_1yr.sh` script on the remote instance in the steps above.
 2. Adjust the geoids in the downloaded data to match the expected format:
     - `python3 meta-scripts/fix_geoids.py /home/ubuntu/data/acs2022_1yr/`
+    - ! (The import scripts seem to run this already, so don't need to run it separately)
 3. Set the `PGURI` environment variable to point to the database you want to import to.
     - `export PGURI=postgres://postgres:@localhost:8421/censusreporter`
 4. Import the data to the database:
@@ -167,7 +168,7 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
         - activate a `census-api` environment
         - ensure EXTRACTOMATIC_CONFIG_MODULE and DATABASE_URL env vars are set correctly (topic_scraper uses the Flask API)
         - `python -m census_extractomatic.tools.topic_scraper`
-  - Update the priority weighting. 
+  - Update the priority weighting.
         - activate a `census-api` environment
         - `python -m census_extractomatic.tools.update_table_priorities FILES` (where FILES is a list or glob of gzip'd Census Reporter access logs as found on dokku at `/var/log/nginx/censusreporter-access*gz`)
 
