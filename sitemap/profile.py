@@ -5,6 +5,7 @@ import re
 import os.path
 
 EXCLUDED_SUMMARY_LEVELS = ['190'] # if they don't work, put 'em here
+TIGER_SCHEMA = "tiger2024"
 
 def write_profile_sitemaps(output_dir,db_connect_string='postgresql://census:censuspassword@localhost:5432/census'):
     ''' Builds sitemap XML files for all summary levels. Each XML file contains pages for one
@@ -90,7 +91,7 @@ def query_all_levels(db_conn):
     '''
 
     with db_conn.cursor() as cur:
-        q = "SELECT DISTINCT sumlevel FROM tiger2020.census_name_lookup order by sumlevel;"
+        q = f"SELECT DISTINCT sumlevel FROM {TIGER_SCHEMA}.census_name_lookup order by sumlevel;"
         cur.execute(q)
         results = cur.fetchall()
         # Format of results is [('000',), ('001',), ...]
@@ -111,7 +112,7 @@ def query_one_level(level, db_conn):
     '''
 
     with db_conn.cursor() as cur:
-        q = "SELECT display_name, full_geoid from tiger2020.census_name_lookup where sumlevel = '%s' order by full_geoid" % (level)
+        q = f"SELECT display_name, full_geoid from {TIGER_SCHEMA}.census_name_lookup where sumlevel = '%s' order by full_geoid" % (level)
         cur.execute(q)
         results = cur.fetchall()
 
