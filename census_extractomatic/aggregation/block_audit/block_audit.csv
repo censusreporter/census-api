@@ -40,3 +40,4 @@ user_geodata_id,hash_digest,name,state,place,pop100_agg,pop100_real,hu100_agg,hu
 157,e63b0b41e0422db9fa2186983cfd91ff,"Miami, FL Neighborhoods",12,45000,442240,442241,212145,212146,1,11
 158,07de29ab51c9887b79ad21286ac1618c,"Little Rock, AR Neighborhood Associations",05,41000,189394,244159,92641,120446,548,187
 160,f10b8feea4bae060d6bdabcd87ecad44,"Tampa, FL Neighborhood Associations",12,71000,391146,390935,173582,173381,8,12
+193,a1b1a0bd05d1062e1d870191579ee31d,"Cincinnati, OH Community Council Boundaries",39,15000,309363,309317,158775,158773,3,11

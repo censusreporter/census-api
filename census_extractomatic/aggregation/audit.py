@@ -19,6 +19,8 @@ import csv
 from pathlib import Path
 
 def place_blocks2020(db,state,place):
+    """Select all of the blocks associated with the given state and place,
+    whether or not they were linked by Census Reporter to the user geography under audit."""
     sql = text("""select g.geoid, g.hu100::integer, g.pop100::integer, g.state || g.place fips, b.geom
     from dec2020_pl94.geoheader g,
     blocks.tabblock20 b
@@ -27,6 +29,7 @@ def place_blocks2020(db,state,place):
     return gpd.read_postgis(sql,db)
 
 def cr_blocks2020(db,hash_digest):
+    """Select the data provided in the official block geoheaders and the offical geometry for any blocks which Census Reporter assigned to the user geography identified by `hash_digest`"""
     SQL = """
     select g.geoid, g.hu100::integer, g.pop100::integer, g.state || g.place fips, b.geom
     from dec2020_pl94.geoheader g,
