@@ -420,14 +420,24 @@ if __name__ == "__main__":
     # connection = psycopg2.connect("")
     # cur = connection.cursor()
 
-    app = Flask(__name__)
-    app.config.from_object(os.environ.get('EXTRACTOMATIC_CONFIG_MODULE', 'census_extractomatic.config.Development'))
-    db = SQLAlchemy(app)
 
-    remove_old_topics(db.engine)
-    print("Removed old topics entries from search_metadata.")
-    add_topics_to_table(topics, db.engine)
-    add_glossary_to_table(glossary, db.engine)
-    print("Added new topics entries to search_metadata.")
+    # app = Flask(__name__)
+    # app.config.from_object(os.environ.get('EXTRACTOMATIC_CONFIG_MODULE', 'census_extractomatic.config.Development'))
+    # db = SQLAlchemy(app)
+    from ..api import app, db
+    with app.app_context():
+        # Get a raw connection and cursor from SQLAlchemy engine
+        connection = db.engine.raw_connection()
+        cur = connection.cursor()
 
-    db.close_all_sessions()
+        remove_old_topics(cur)
+        print("Removed old topics entries from search_metadata.")
+        add_topics_to_table(topics, cur)
+        add_glossary_to_table(glossary, cur)
+        print("Added new topics entries to search_metadata.")
+
+        # Commit and close the connection
+        connection.commit()
+        cur.close()
+        connection.close()
+        db.session.close_all_sessions()

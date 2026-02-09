@@ -9,7 +9,8 @@ try:
 except ImportError:
     # Python 2
     from urlparse import urlparse, parse_qs
-from ..api import db
+from sqlalchemy import text
+from ..api import app, db
 
 
 log_rx = re.compile(
@@ -108,16 +109,17 @@ def calculate():
 
 
 def populate():
-    query = """select text1,text5 from search_metadata where type='table'"""
-    for row in db.session.execute(query):
-        tabulation = row[0]
-        tables = row[1].split()
-        value = sum([ normalized_counts.get(t, 0) for t in tables ])
-        print('Updating tabulation: %s, text6=%s' % (tabulation, value))
-        db.session.execute(
-            """UPDATE search_metadata set text6=:value where text1=:tabulation""",
-            { 'value': value, 'tabulation': tabulation })
-        db.session.commit()
+    with app.app_context():
+        query = text("""select text1,text5 from search_metadata where type='table'""")
+        for row in db.session.execute(query):
+            tabulation = row[0]
+            tables = row[1].split()
+            value = sum([ normalized_counts.get(t, 0) for t in tables ])
+            print('Updating tabulation: %s, text6=%s' % (tabulation, value))
+            db.session.execute(
+                text("""UPDATE search_metadata set text6=:value where text1=:tabulation"""),
+                { 'value': value, 'tabulation': tabulation })
+            db.session.commit()
 
 
 def main(log_files):
