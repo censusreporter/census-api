@@ -73,8 +73,6 @@ cors = CORS(app)
 allowed_acs = [
     'acs2024_1yr',
     'acs2024_5yr',
-    'acs2023_1yr',
-    'acs2023_5yr',
 ]
 # When table searches happen without a specified release, use this
 # release to do the table search.
