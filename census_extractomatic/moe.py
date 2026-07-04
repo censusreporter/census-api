@@ -8,22 +8,34 @@ Using American Community Survey Data: What All Data Users Need to Know".
 import math
 
 
-def aggregate_count(estimates, moes):
+def aggregate_count(estimates, moes, weights=None):
     """Aggregate (sum) a set of count estimates and propagate their MoE.
 
-    estimate = sum(estimates)
-    moe      = sqrt(sum(moe_i ** 2))
+    Unweighted (whole-geography):
+        estimate = sum(estimates)
+        moe      = sqrt(sum(moe_i ** 2))
+
+    Weighted (overlap apportionment), when ``weights`` is given:
+        estimate = sum(w_i * est_i)
+        moe      = sqrt(sum((w_i * moe_i) ** 2))
+    Scaling an estimate by a constant scales its MoE by the same constant, so the
+    MoE math stays valid; the modelling caveat (does the weight really reflect
+    how the variable is distributed?) lives with the caller.
 
     Census zero-estimate rule: when one or more components have an estimate of
-    zero, only the single largest MoE among those zero-estimate components is
-    kept (the rest are dropped) so the aggregate MoE is not overstated.
+    zero, only the single largest (scaled) MoE among those zero-estimate
+    components is kept so the aggregate MoE is not overstated.
 
     Returns a (estimate, moe) tuple.
     """
-    total = sum(estimates)
+    if weights is None:
+        weights = [1] * len(estimates)
 
-    nonzero_moes = [m for e, m in zip(estimates, moes) if e != 0]
-    zero_moes = [m for e, m in zip(estimates, moes) if e == 0]
+    total = sum(w * e for w, e in zip(weights, estimates))
+
+    scaled_moes = [w * m for w, m in zip(weights, moes)]
+    nonzero_moes = [sm for e, sm in zip(estimates, scaled_moes) if e != 0]
+    zero_moes = [sm for e, sm in zip(estimates, scaled_moes) if e == 0]
     kept_moes = list(nonzero_moes)
     if zero_moes:
         kept_moes.append(max(zero_moes))

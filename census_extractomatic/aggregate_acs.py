@@ -52,8 +52,13 @@ def select_components(rows, threshold=0.0):
     return components
 
 
-def aggregate_tables(components, metadata):
+def aggregate_tables(components, metadata, weights=None):
     """Aggregate ACS tables across a list of component geographies.
+
+    When ``weights`` is given (a list parallel to ``components``), each
+    geography's contribution is apportioned by its weight (overlap fraction).
+    Weights stay aligned with the components that actually contribute to a given
+    column, so a component skipped for missing data also drops its weight.
 
     ``components`` is a list (one entry per component geography) shaped like the
     per-geography portion of the ``/1.0/data/show`` response::
@@ -72,6 +77,9 @@ def aggregate_tables(components, metadata):
     columns (medians, means, per-capita, index) are never summed; they are listed
     in ``suppressed`` instead.
     """
+    if weights is None:
+        weights = [1] * len(components)
+
     result = {}
     for table_id, table_meta in metadata.items():
         table_title = table_meta.get("title")
@@ -90,7 +98,8 @@ def aggregate_tables(components, metadata):
 
             col_estimates = []
             col_moes = []
-            for component in components:
+            col_weights = []
+            for component, weight in zip(components, weights):
                 table_data = component.get(table_id)
                 if not table_data:
                     continue
@@ -102,8 +111,9 @@ def aggregate_tables(components, metadata):
                     continue
                 col_estimates.append(est_value)
                 col_moes.append(moe_value)
+                col_weights.append(weight)
 
-            est, moe = aggregate_count(col_estimates, col_moes)
+            est, moe = aggregate_count(col_estimates, col_moes, weights=col_weights)
             estimates[column_id] = est
             errors[column_id] = moe
 

@@ -53,6 +53,31 @@ def test_aggregate_count_all_zero_estimates():
     assert moe == 12
 
 
+def test_aggregate_count_with_weights():
+    """Weighted (apportioned) sum: estimate = sum(w_i * est_i),
+    moe = sqrt(sum((w_i * moe_i)^2)).
+
+    estimates [100, 200], moes [20, 30], weights [0.5, 1.0]
+      estimate = 50 + 200 = 250
+      moe = sqrt((0.5*20)^2 + (1.0*30)^2) = sqrt(100 + 900) = sqrt(1000)
+    """
+    est, moe = aggregate_count([100, 200], [20, 30], weights=[0.5, 1.0])
+    assert math.isclose(est, 250.0)
+    assert math.isclose(moe, math.sqrt(1000))
+
+
+def test_aggregate_count_with_weights_applies_zero_rule_on_scaled_moes():
+    """The zero-estimate rule keeps only the largest SCALED moe among zero cells.
+
+    estimates [0, 0, 25], moes [8, 12, 40], weights [0.5, 1.0, 0.5]
+      scaled zero moes: 4, 12 -> keep 12; nonzero scaled moe: 20
+      estimate = 12.5; moe = sqrt(20^2 + 12^2) = sqrt(544)
+    """
+    est, moe = aggregate_count([0, 0, 25], [8, 12, 40], weights=[0.5, 1.0, 0.5])
+    assert math.isclose(est, 12.5)
+    assert math.isclose(moe, math.sqrt(544))
+
+
 def test_derived_proportion():
     """Proportion p = X/Y where the numerator X is a subset of denominator Y.
 

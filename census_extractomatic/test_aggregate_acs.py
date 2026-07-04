@@ -100,6 +100,33 @@ def _rows():
     ]
 
 
+def test_aggregate_tables_with_weights():
+    """Per-component weights apportion each geography's contribution."""
+    result = aggregate_tables(_two_components(), _COUNT_META, weights=[0.5, 1.0])
+    b = result["B01001"]
+    # B01001001 estimates [100, 200] weighted 0.5/1.0 -> 250
+    assert math.isclose(b["estimate"]["B01001001"], 250.0)
+    assert math.isclose(b["error"]["B01001001"], math.sqrt((0.5 * 20) ** 2 + (1.0 * 30) ** 2))
+
+
+def test_aggregate_tables_weights_align_after_skipping_none():
+    """A skipped (None) component drops its weight too, so weights stay aligned
+    with the components that actually contribute to each column."""
+    components = [
+        {"B01001": {"estimate": {"B01001001": 100}, "error": {"B01001001": 20}}},
+        {"B01001": {"estimate": {"B01001001": None}, "error": {"B01001001": None}}},
+    ]
+    metadata = {
+        "B01001": {"title": "Sex by Age", "denominator_column_id": "B01001001",
+                   "columns": {"B01001001": {"name": "Total"}}}
+    }
+    result = aggregate_tables(components, metadata, weights=[0.5, 1.0])
+    b = result["B01001"]
+    # Only the first component contributes: 0.5 * 100 = 50, moe 0.5 * 20 = 10
+    assert math.isclose(b["estimate"]["B01001001"], 50.0)
+    assert math.isclose(b["error"]["B01001001"], 10.0)
+
+
 def test_aggregate_tables_skips_none_valued_components():
     """A component with a None estimate/MoE for a column (release has no value)
     is left out of that column's aggregate rather than crashing the sum."""
