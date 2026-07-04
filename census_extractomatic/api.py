@@ -50,6 +50,10 @@ from .user_geo import (
     fetch_user_geog_as_geojson,
     create_aggregate_download,
 )
+from census_extractomatic.aggregate_acs import (
+    select_components,
+    aggregate_tables,
+)
 from census_extractomatic.full_text_search import perform_full_text_search
 
 from census_extractomatic.exporters import supported_formats
@@ -1649,6 +1653,191 @@ def show_specified_data(acs):
             app.logger.debug(f"[release {release_to_use}] [table {','.join(valid_table_ids)}] missing data for [{','.join(missing_geos)}]")
 
     return abort(400, "None of the releases had the requested geo_ids and table_ids")
+
+
+# --- Arbitrary-geometry ACS aggregation -------------------------------------
+# Combine ACS estimates (and propagate margins of error) across the census
+# geographies of a chosen summary level that overlap a user-supplied polygon.
+# See census_extractomatic/aggregate_acs.py and moe.py for the aggregation math.
+
+# Fraction of a source geography's own area that must fall inside the shape
+# is computed here; the planar (degree) area is fine because only the RATIO is
+# used, and the threshold is an approximate inclusion knob.
+AGGREGATE_INTERSECT_SQL = """
+SELECT nl.full_geoid,
+       nl.display_name,
+       ST_Area(ST_Intersection(nl.geom, poly.g)) / NULLIF(ST_Area(nl.geom), 0) AS area_frac
+  FROM {tiger}.census_name_lookup nl,
+       (SELECT ST_SetSRID(ST_GeomFromGeoJSON(:geojson), 4326) AS g) poly
+ WHERE nl.sumlevel = :sumlevel
+   AND ST_Intersects(nl.geom, poly.g)
+"""
+
+TABLE_METADATA_QUERY = """
+SELECT tab.table_id, tab.table_title, tab.universe, tab.denominator_column_id,
+       col.column_id, col.column_title, col.indent
+  FROM census_column_metadata col
+  LEFT JOIN census_table_metadata tab USING (table_id)
+ WHERE table_id IN :table_ids
+ ORDER BY column_id;
+"""
+
+
+def _geometry_from_request(payload):
+    """Pull a single GeoJSON geometry (Polygon/MultiPolygon) out of the request
+    body, unwrapping a Feature if necessary. Returns a JSON string suitable for
+    ST_GeomFromGeoJSON, or None if nothing usable was supplied."""
+    geom = payload.get('geometry')
+    if not geom or not isinstance(geom, dict):
+        return None
+    gtype = geom.get('type')
+    if gtype == 'Feature':
+        geom = geom.get('geometry')
+        if not isinstance(geom, dict):
+            return None
+        gtype = geom.get('type')
+    if gtype not in ('Polygon', 'MultiPolygon'):
+        # FeatureCollections must be dissolved to a single geometry client-side.
+        return None
+    return json.dumps(geom)
+
+
+def _fetch_acs_table_data(release, table_ids, geo_ids):
+    """For a single ACS release, fetch table metadata and per-geography
+    estimate/error data for the given geoids. Returns (table_metadata, data)
+    where data[geoid][table_id] = {"estimate": {...}, "error": {...}}.
+
+    Mirrors the fetch performed by show_specified_data for one release; kept
+    separate to avoid disturbing that endpoint's multi-release fallback logic.
+    """
+    db.session.execute(text("SET search_path=:acs, public;"), {'acs': release})
+
+    result = db.session.execute(text(TABLE_METADATA_QUERY),
+                                {'table_ids': tuple(table_ids)})
+    table_metadata = OrderedDict()
+    for table, columns in groupby(
+            result.mappings().all(),
+            lambda x: (x['table_id'], x['table_title'], x['universe'], x['denominator_column_id'])):
+        table_metadata[table[0]] = OrderedDict([
+            ("title", table[1]),
+            ("universe", table[2]),
+            ("denominator_column_id", table[3]),
+            ("columns", OrderedDict([
+                (column['column_id'], OrderedDict([
+                    ("name", column['column_title']),
+                    ("indent", column['indent']),
+                ])) for column in columns
+            ])),
+        ])
+
+    valid_table_ids = list(table_metadata.keys())
+    invalid_table_ids = set(table_ids) - set(valid_table_ids)
+    if invalid_table_ids:
+        abort(404, "The %s release doesn't include table(s) %s."
+              % (get_acs_name(release), ','.join(sorted(invalid_table_ids))))
+
+    from_stmt = '%s_moe' % valid_table_ids[0]
+    for table_id in valid_table_ids[1:]:
+        from_stmt += ' JOIN %s_moe USING (geoid)' % table_id
+    sql = 'SELECT * FROM %s WHERE geoid IN :geoids;' % from_stmt
+
+    result = db.session.execute(text(sql), {'geoids': tuple(geo_ids)})
+    data = OrderedDict()
+    for row in result.mappings().all():
+        row = dict(row)
+        geoid = row.pop('geoid')
+        data_for_geoid = OrderedDict()
+        # Estimate columns and their paired _moe columns arrive adjacent once
+        # sorted; a shared iterator lets us pull each moe with next().
+        cols_iter = iter(sorted(row.items(), key=lambda tup: tup[0]))
+        for table_id, data_iter in groupby(cols_iter, lambda x: x[0][:-3].upper()):
+            table_for_geoid = OrderedDict()
+            table_for_geoid['estimate'] = OrderedDict()
+            table_for_geoid['error'] = OrderedDict()
+            for (col_name, value) in data_iter:
+                col_name = col_name.upper()
+                (_moe_name, moe_value) = next(cols_iter)
+                table_for_geoid['estimate'][col_name] = value
+                table_for_geoid['error'][col_name] = moe_value
+            data_for_geoid[table_id] = table_for_geoid
+        data[geoid] = data_for_geoid
+
+    return table_metadata, data
+
+
+# Example: POST /1.0/aggregate/acs/acs2024_5yr
+#   body: {"geometry": {...GeoJSON Polygon...}, "table_ids": ["B01001"],
+#          "sumlevel": "140", "threshold": 0.0}
+@app.route("/1.0/aggregate/acs/<release>", methods=['POST', 'OPTIONS'])
+@cross_origin(origins='*')
+def aggregate_acs_geometry(release):
+    if release == 'latest':
+        release = allowed_acs[0]
+    if release not in allowed_acs:
+        abort(404, "The %s release isn't supported." % get_acs_name(release))
+
+    payload = request.get_json(force=True, silent=True) or {}
+
+    geojson_str = _geometry_from_request(payload)
+    if geojson_str is None:
+        abort(400, "A GeoJSON Polygon or MultiPolygon 'geometry' is required.")
+
+    table_ids = payload.get('table_ids') or []
+    if not table_ids or not all(table_re.match(t) for t in table_ids):
+        abort(400, "One or more valid 'table_ids' are required.")
+
+    sumlevel = str(payload.get('sumlevel', '')).strip()
+    if sumlevel not in SUMLEV_NAMES:
+        abort(400, "A valid 'sumlevel' is required (e.g. 140 for tracts).")
+
+    try:
+        threshold = float(payload.get('threshold', 0.0))
+    except (TypeError, ValueError):
+        abort(400, "'threshold' must be a number between 0 and 1.")
+    if not (0.0 <= threshold <= 1.0):
+        abort(400, "'threshold' must be between 0 and 1.")
+
+    tiger = allowed_tiger[0]
+    rows = db.session.execute(
+        text(AGGREGATE_INTERSECT_SQL.format(tiger=tiger)),
+        {'geojson': geojson_str, 'sumlevel': sumlevel}
+    ).mappings().all()
+
+    components = select_components(rows, threshold)
+    if not components:
+        abort(404, "No %s geographies met the threshold inside the given geometry."
+              % SUMLEV_NAMES[sumlevel]['name'])
+
+    max_geoids = current_app.config.get('MAX_GEOIDS_TO_SHOW', 1000)
+    if len(components) > max_geoids:
+        abort(400, "The geometry covers %s geographies at this level; the maximum "
+              "is %s. Use a coarser summary level or a smaller area."
+              % (len(components), max_geoids))
+
+    geo_ids = [c['geoid'] for c in components]
+    table_metadata, data = _fetch_acs_table_data(release, table_ids, geo_ids)
+
+    component_data = [data[g] for g in geo_ids if g in data]
+    aggregated = aggregate_tables(component_data, table_metadata)
+
+    # Flatten column metadata so the client can label columns and indent them.
+    column_meta = OrderedDict()
+    for table in table_metadata.values():
+        for column_id, col in table['columns'].items():
+            column_meta[column_id] = col
+
+    resp = jsonify(
+        release=release,
+        release_name=ACS_NAMES.get(release, {}).get('name', release),
+        sumlevel=sumlevel,
+        threshold=threshold,
+        components=components,
+        tables=aggregated,
+        column_meta=column_meta,
+    )
+    resp.cache_control.max_age = 15
+    resp.cache_control.public = True
+    return resp
 
 
 # Example: /1.0/data/download/acs2012_5yr?format=shp&table_ids=B01001,B01003&geo_ids=04000US55,04000US56
