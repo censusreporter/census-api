@@ -1821,14 +1821,16 @@ def aggregate_acs_geometry(release):
     geo_ids = [c['geoid'] for c in components]
     table_metadata, data = _fetch_acs_table_data(release, table_ids, geo_ids)
 
-    # Keep component data and weights aligned to the same geoid order.
-    kept = [c for c in components if c['geoid'] in data]
-    component_data = [data[c['geoid']] for c in kept]
-    if weighting == 'area':
-        weights = [c['area_frac'] for c in kept]
-    else:
-        weights = None
-    aggregated = aggregate_tables(component_data, table_metadata, weights=weights)
+    # Bundle each geography's data with its own weight so they can't desync.
+    component_data = []
+    for c in components:
+        if c['geoid'] not in data:
+            continue
+        entry = {'data': data[c['geoid']]}
+        if weighting == 'area':
+            entry['weight'] = c['area_frac']
+        component_data.append(entry)
+    aggregated = aggregate_tables(component_data, table_metadata)
 
     # Flatten column metadata so the client can label columns and indent them.
     column_meta = OrderedDict()
