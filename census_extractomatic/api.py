@@ -1797,6 +1797,10 @@ def aggregate_acs_geometry(release):
     if not (0.0 <= threshold <= 1.0):
         abort(400, "'threshold' must be between 0 and 1.")
 
+    weighting = str(payload.get('weighting', 'none')).lower()
+    if weighting not in ('none', 'area'):
+        abort(400, "'weighting' must be 'none' or 'area'.")
+
     tiger = allowed_tiger[0]
     rows = db.session.execute(
         text(AGGREGATE_INTERSECT_SQL.format(tiger=tiger)),
@@ -1817,7 +1821,15 @@ def aggregate_acs_geometry(release):
     geo_ids = [c['geoid'] for c in components]
     table_metadata, data = _fetch_acs_table_data(release, table_ids, geo_ids)
 
-    component_data = [data[g] for g in geo_ids if g in data]
+    # Bundle each geography's data with its own weight so they can't desync.
+    component_data = []
+    for c in components:
+        if c['geoid'] not in data:
+            continue
+        entry = {'data': data[c['geoid']]}
+        if weighting == 'area':
+            entry['weight'] = c['area_frac']
+        component_data.append(entry)
     aggregated = aggregate_tables(component_data, table_metadata)
 
     # Flatten column metadata so the client can label columns and indent them.
@@ -1831,6 +1843,7 @@ def aggregate_acs_geometry(release):
         release_name=ACS_NAMES.get(release, {}).get('name', release),
         sumlevel=sumlevel,
         threshold=threshold,
+        weighting=weighting,
         components=components,
         tables=aggregated,
         column_meta=column_meta,

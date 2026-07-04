@@ -55,10 +55,16 @@ def select_components(rows, threshold=0.0):
 def aggregate_tables(components, metadata):
     """Aggregate ACS tables across a list of component geographies.
 
-    ``components`` is a list (one entry per component geography) shaped like the
-    per-geography portion of the ``/1.0/data/show`` response::
+    Each component carries its own optional ``weight`` alongside its data, so the
+    weight can never drift out of alignment with the geography it belongs to::
 
-        {table_id: {"estimate": {col: value}, "error": {col: value}}}
+        {"weight": 0.37,  # optional; defaults to 1 (whole-geography)
+         "data": {table_id: {"estimate": {col: value}, "error": {col: value}}}}
+
+    The ``data`` portion is shaped like the per-geography portion of the
+    ``/1.0/data/show`` response. When a weight is given, that geography's
+    contribution is apportioned by it (overlap fraction); a component skipped for
+    missing data naturally drops its weight along with it.
 
     ``metadata`` maps table_id -> {"title", "denominator_column_id", "columns":
     {col: {"name": column_title}}}.
@@ -90,8 +96,9 @@ def aggregate_tables(components, metadata):
 
             col_estimates = []
             col_moes = []
+            col_weights = []
             for component in components:
-                table_data = component.get(table_id)
+                table_data = component["data"].get(table_id)
                 if not table_data:
                     continue
                 est_value = table_data["estimate"][column_id]
@@ -102,8 +109,9 @@ def aggregate_tables(components, metadata):
                     continue
                 col_estimates.append(est_value)
                 col_moes.append(moe_value)
+                col_weights.append(component.get("weight", 1))
 
-            est, moe = aggregate_count(col_estimates, col_moes)
+            est, moe = aggregate_count(col_estimates, col_moes, weights=col_weights)
             estimates[column_id] = est
             errors[column_id] = moe
 

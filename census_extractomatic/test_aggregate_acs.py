@@ -34,12 +34,20 @@ def test_aggregate_word_is_not_suppressed():
     assert suppression_reason("Aggregate Household Income", "Aggregate household income") is None
 
 
-def _two_components():
+def _component(data, weight=None):
+    """Build a component; weight is optional and defaults to 1 when omitted."""
+    c = {"data": data}
+    if weight is not None:
+        c["weight"] = weight
+    return c
+
+
+def _two_components(weights=(None, None)):
     return [
-        {"B01001": {"estimate": {"B01001001": 100, "B01001002": 40},
-                    "error": {"B01001001": 20, "B01001002": 10}}},
-        {"B01001": {"estimate": {"B01001001": 200, "B01001002": 0},
-                    "error": {"B01001001": 30, "B01001002": 8}}},
+        _component({"B01001": {"estimate": {"B01001001": 100, "B01001002": 40},
+                               "error": {"B01001001": 20, "B01001002": 10}}}, weights[0]),
+        _component({"B01001": {"estimate": {"B01001001": 200, "B01001002": 0},
+                               "error": {"B01001001": 30, "B01001002": 8}}}, weights[1]),
     ]
 
 
@@ -73,8 +81,8 @@ def test_aggregate_tables_applies_zero_estimate_rule_per_column():
 
 def test_aggregate_tables_suppresses_median_column():
     components = [
-        {"B19013": {"estimate": {"B19013001": 55000}, "error": {"B19013001": 2500}}},
-        {"B19013": {"estimate": {"B19013001": 61000}, "error": {"B19013001": 3100}}},
+        _component({"B19013": {"estimate": {"B19013001": 55000}, "error": {"B19013001": 2500}}}),
+        _component({"B19013": {"estimate": {"B19013001": 61000}, "error": {"B19013001": 3100}}}),
     ]
     metadata = {
         "B19013": {
@@ -100,12 +108,39 @@ def _rows():
     ]
 
 
+def test_aggregate_tables_with_weights():
+    """Each component's own weight apportions its contribution."""
+    result = aggregate_tables(_two_components(weights=(0.5, 1.0)), _COUNT_META)
+    b = result["B01001"]
+    # B01001001 estimates [100, 200] weighted 0.5/1.0 -> 250
+    assert math.isclose(b["estimate"]["B01001001"], 250.0)
+    assert math.isclose(b["error"]["B01001001"], math.sqrt((0.5 * 20) ** 2 + (1.0 * 30) ** 2))
+
+
+def test_aggregate_tables_weights_align_after_skipping_none():
+    """A skipped (None) component drops its weight too, because the weight lives
+    with the component that actually contributes to each column."""
+    components = [
+        _component({"B01001": {"estimate": {"B01001001": 100}, "error": {"B01001001": 20}}}, 0.5),
+        _component({"B01001": {"estimate": {"B01001001": None}, "error": {"B01001001": None}}}, 1.0),
+    ]
+    metadata = {
+        "B01001": {"title": "Sex by Age", "denominator_column_id": "B01001001",
+                   "columns": {"B01001001": {"name": "Total"}}}
+    }
+    result = aggregate_tables(components, metadata)
+    b = result["B01001"]
+    # Only the first component contributes: 0.5 * 100 = 50, moe 0.5 * 20 = 10
+    assert math.isclose(b["estimate"]["B01001001"], 50.0)
+    assert math.isclose(b["error"]["B01001001"], 10.0)
+
+
 def test_aggregate_tables_skips_none_valued_components():
     """A component with a None estimate/MoE for a column (release has no value)
     is left out of that column's aggregate rather than crashing the sum."""
     components = [
-        {"B01001": {"estimate": {"B01001001": 100}, "error": {"B01001001": 20}}},
-        {"B01001": {"estimate": {"B01001001": None}, "error": {"B01001001": None}}},
+        _component({"B01001": {"estimate": {"B01001001": 100}, "error": {"B01001001": 20}}}),
+        _component({"B01001": {"estimate": {"B01001001": None}, "error": {"B01001001": None}}}),
     ]
     metadata = {
         "B01001": {"title": "Sex by Age", "denominator_column_id": "B01001001",
