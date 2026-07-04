@@ -1820,6 +1820,12 @@ def aggregate_acs_geometry(release):
     component_data = [data[g] for g in geo_ids if g in data]
     aggregated = aggregate_tables(component_data, table_metadata)
 
+    # Flatten column metadata so the client can label columns and indent them.
+    column_meta = OrderedDict()
+    for table in table_metadata.values():
+        for column_id, col in table['columns'].items():
+            column_meta[column_id] = col
+
     resp = jsonify(
         release=release,
         release_name=ACS_NAMES.get(release, {}).get('name', release),
@@ -1827,6 +1833,7 @@ def aggregate_acs_geometry(release):
         threshold=threshold,
         components=components,
         tables=aggregated,
+        column_meta=column_meta,
     )
     resp.cache_control.max_age = 15
     resp.cache_control.public = True
