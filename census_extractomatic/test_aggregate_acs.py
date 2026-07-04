@@ -3,7 +3,11 @@
 over a set of component geographies."""
 import math
 
-from census_extractomatic.aggregate_acs import suppression_reason, aggregate_tables
+from census_extractomatic.aggregate_acs import (
+    suppression_reason,
+    aggregate_tables,
+    select_components,
+)
 
 
 def test_median_column_is_suppressed():
@@ -86,3 +90,44 @@ def test_aggregate_tables_suppresses_median_column():
     # ...and must be reported as suppressed with a reason.
     suppressed_ids = [s["column_id"] for s in b["suppressed"]]
     assert "B19013001" in suppressed_ids
+
+
+def _rows():
+    return [
+        {"full_geoid": "14000US36061000100", "display_name": "Tract A", "area_frac": 1.0},
+        {"full_geoid": "14000US36061000200", "display_name": "Tract B", "area_frac": 0.02},
+        {"full_geoid": "14000US36061000300", "display_name": "Tract C", "area_frac": 0.6},
+    ]
+
+
+def test_aggregate_tables_skips_none_valued_components():
+    """A component with a None estimate/MoE for a column (release has no value)
+    is left out of that column's aggregate rather than crashing the sum."""
+    components = [
+        {"B01001": {"estimate": {"B01001001": 100}, "error": {"B01001001": 20}}},
+        {"B01001": {"estimate": {"B01001001": None}, "error": {"B01001001": None}}},
+    ]
+    metadata = {
+        "B01001": {"title": "Sex by Age", "denominator_column_id": "B01001001",
+                   "columns": {"B01001001": {"name": "Total"}}}
+    }
+    result = aggregate_tables(components, metadata)
+    b = result["B01001"]
+    assert b["estimate"]["B01001001"] == 100
+    assert math.isclose(b["error"]["B01001001"], 20.0)
+
+
+def test_select_components_threshold_zero_keeps_all_intersecting():
+    comps = select_components(_rows(), threshold=0.0)
+    assert [c["geoid"] for c in comps] == [
+        "14000US36061000100", "14000US36061000200", "14000US36061000300"
+    ]
+    assert comps[0]["name"] == "Tract A"
+    assert comps[0]["area_frac"] == 1.0
+
+
+def test_select_components_threshold_filters_below_cutoff():
+    comps = select_components(_rows(), threshold=0.5)
+    assert [c["geoid"] for c in comps] == [
+        "14000US36061000100", "14000US36061000300"
+    ]

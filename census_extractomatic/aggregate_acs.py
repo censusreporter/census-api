@@ -30,6 +30,28 @@ def suppression_reason(table_title, column_title):
     return None
 
 
+def select_components(rows, threshold=0.0):
+    """Filter spatial-intersection rows down to the component geographies that
+    should be included in the aggregate.
+
+    ``rows`` are mappings with ``full_geoid``, ``display_name`` and
+    ``area_frac`` (the fraction of the geography's own area inside the shape).
+    A geography is included when ``area_frac >= threshold``. With the default
+    threshold of 0.0, every geography the shape intersects is kept.
+
+    Returns a list of {"geoid", "name", "area_frac"} dicts, order preserved.
+    """
+    components = []
+    for row in rows:
+        if row["area_frac"] >= threshold:
+            components.append({
+                "geoid": row["full_geoid"],
+                "name": row["display_name"],
+                "area_frac": row["area_frac"],
+            })
+    return components
+
+
 def aggregate_tables(components, metadata):
     """Aggregate ACS tables across a list of component geographies.
 
@@ -72,8 +94,14 @@ def aggregate_tables(components, metadata):
                 table_data = component.get(table_id)
                 if not table_data:
                     continue
-                col_estimates.append(table_data["estimate"][column_id])
-                col_moes.append(table_data["error"][column_id])
+                est_value = table_data["estimate"][column_id]
+                moe_value = table_data["error"][column_id]
+                # A release may have no value for a column in a given geography;
+                # leave that component out of this column rather than crash.
+                if est_value is None or moe_value is None:
+                    continue
+                col_estimates.append(est_value)
+                col_moes.append(moe_value)
 
             est, moe = aggregate_count(col_estimates, col_moes)
             estimates[column_id] = est
