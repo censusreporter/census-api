@@ -157,6 +157,16 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
   - Push to the `dokku.censusreporter.org` remote
     - `git push dokku`
 
+- Purge the Cloudflare cache for the `censusreporter.org` zone
+  - Most API responses are cached at the edge for a year (see `IMMUTABLE_CACHE_SECONDS` in
+    `api.py`), on the assumption that the underlying data never changes except through this
+    release process. This is the point where that assumption stops holding for URLs that
+    resolve `latest`/`default_table_search_release` (and any old cached responses for the
+    release you just replaced in `allowed_releases`), so purge now.
+  - Cloudflare dashboard: Caching -> Configuration -> Purge Cache -> Purge Everything (Pro plan
+    doesn't support tag-based purging, so this is simplest and safest rather than trying to
+    enumerate every affected URL)
+
 - Update the Postgres full text index (from the EC2 instance)
   - review and update the schemas in `full-text-search/metadata_script.sql`; commit any changes
   - `cd /home/ubuntu`
