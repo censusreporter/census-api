@@ -1,6 +1,3 @@
-[dev-packages]
-fabric = "<2"
-
 [packages]
 boto3 = "*"
 openpyxl = "*"
