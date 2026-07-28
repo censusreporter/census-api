@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "050b123ecc6bbee9657aa1bbd48131665f4cd77832828eb19efede987deb1f13"
+            "sha256": "84603cf811310f292c4254ae59cd49696c164fae58a6c3f3207fc17e05106f9b"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -42,20 +42,20 @@
         },
         "boto3": {
             "hashes": [
-                "sha256:115ed9cac409d9b57e2437b52fdb4286660d12a2bd44a0f48d530e68623d09a7",
-                "sha256:549c95e45f9b04cf0c69727632dbdda23b84dcd3d0ed7981c6aaff72ef9cb5af"
+                "sha256:12871fb50c383f1b9aa4ed6dd386ba689062baef730552e79d5a9cd782b53058",
+                "sha256:ce1a20cbcfaa1d0b3c8f568e2b6c7fbd34b842ea00e729d49a4b4de522828db9"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.10'",
-            "version": "==1.43.57"
+            "version": "==1.43.58"
         },
         "botocore": {
             "hashes": [
-                "sha256:001a5653bebc03b862bde2da63bad4adb0b30072a3f247aba4daae5aa097b546",
-                "sha256:319c6d79f66c3f3f2b538f7dcdc90e410a15a7bfced1db06479134947e629482"
+                "sha256:e110ca53f65c128fe98df4d6d36a459b1db17c6114671c8a18becf151bf20909",
+                "sha256:f516159f0732da8249206163ccea3bd1f82ad2a9d184fe6ed447e1abdba4330e"
             ],
             "markers": "python_version >= '3.10'",
-            "version": "==1.43.57"
+            "version": "==1.43.58"
         },
         "cachelib": {
             "hashes": [
@@ -765,12 +765,12 @@
         },
         "redis": {
             "hashes": [
-                "sha256:47daa35a058c23468d6437f17a8c76882cb316b838ef763036af99b96cedd743",
-                "sha256:afc5a7a2f5a084f5b1880dec548dd45be17db7e43c82a30d84f952aefb05cfb0"
+                "sha256:f6c997521fedbae53387307c5d0bf784d9acc28d9f1d058abeac566ec4dbed72",
+                "sha256:f8ea06b7482a668c6475ae202ed8d9bcaa409f6e87fb77ed1043d912afd62e24"
             ],
             "index": "pypi",
-            "markers": "python_version >= '3.10'",
-            "version": "==8.0.1"
+            "markers": "python_version >= '3.8'",
+            "version": "==5.1.1"
         },
         "requests": {
             "hashes": [
