@@ -73,6 +73,12 @@ db = SQLAlchemy(app)
 cache = Cache(app)
 cors = CORS(app)
 
+# ACS/TIGER/table-metadata responses only change on a yearly reprocess, so it's safe to
+# tell caches (including Cloudflare) to hold them for a year. The Cloudflare cache is
+# purged as part of the release process (see DATA_UPDATES.md) whenever the underlying
+# data actually changes, including for URLs that resolve the "latest" release.
+IMMUTABLE_CACHE_SECONDS = 365 * 24 * 60 * 60
+
 # Allowed ACS's in "best" order (newest and smallest range preferred)
 allowed_acs = [
     'acs2024_1yr',
@@ -463,9 +469,9 @@ def geo_search():
     result = db.session.execute(text(sql), where_args)
 
     resp = jsonify(results=[convert_row(row) for row in result.mappings().all()])
-    # Cache the result for 6 months
-    resp.cache_control.max_age = 86400 * 180
+    resp.cache_control.max_age = IMMUTABLE_CACHE_SECONDS
     resp.cache_control.public = True
+    resp.cache_control.immutable = True
     return resp
 
 
@@ -513,9 +519,9 @@ def geo_tiles(release, sumlevel, zoom, x, y, extension):
         except Exception as e:
             app.logger.warn('Skipping cache set for {} because {}'.format(cache_key, e.args))
 
-    # Cache the result for 6 months
     resp.cache_control.public = True
-    resp.cache_control.max_age = 86400 * 180
+    resp.cache_control.max_age = IMMUTABLE_CACHE_SECONDS
+    resp.cache_control.immutable = True
     resp.content_type = content_type
     return resp
 
@@ -649,9 +655,9 @@ def geo_lookup(release, geoid):
         resp = make_response(result)
         cache.set(cache_key, result)
 
-    # Cache the result for 6 months
-    resp.cache_control.max_age = 86400 * 180
+    resp.cache_control.max_age = IMMUTABLE_CACHE_SECONDS
     resp.cache_control.public = True
+    resp.cache_control.immutable = True
     resp.content_type = 'application/json; charset=utf-8'
 
     return resp
@@ -707,9 +713,9 @@ def geo_parent(release, geoid):
         resp = make_response(result)
         cache.set(cache_key, result)
 
-    # Cache the result for 6 months
-    resp.cache_control.max_age = 86400 * 180
+    resp.cache_control.max_age = IMMUTABLE_CACHE_SECONDS
     resp.cache_control.public = True
+    resp.cache_control.immutable = True
     resp.content_type = 'application/json; charset=utf-8'
 
     return resp
@@ -779,9 +785,9 @@ def show_specified_geo_data(release):
     }
 
     resp = jsonify(**resp_data)
-    # Cache the result for 6 months
-    resp.cache_control.max_age = 86400 * 180
+    resp.cache_control.max_age = IMMUTABLE_CACHE_SECONDS
     resp.cache_control.public = True
+    resp.cache_control.immutable = True
     return resp
 
 
@@ -867,7 +873,12 @@ def table_search():
                 table_id_acs = None
         if data:
             data.sort(key=lambda x: x['unique_key'])
-            return json.dumps(data)
+            resp = make_response(json.dumps(data))
+            resp.headers.set('Content-Type', 'application/json')
+            resp.cache_control.max_age = IMMUTABLE_CACHE_SECONDS
+            resp.cache_control.public = True
+            resp.cache_control.immutable = True
+            return resp
 
     db.session.execute(text("SET search_path=:acs, public;"), {'acs': acs})
     table_where_parts = []
@@ -942,6 +953,9 @@ def table_search():
     serialized_json = json.dumps(data)
     resp = make_response(serialized_json)
     resp.headers.set('Content-Type', 'application/json')
+    resp.cache_control.max_age = IMMUTABLE_CACHE_SECONDS
+    resp.cache_control.public = True
+    resp.cache_control.immutable = True
     return resp
 
 # Example: /1.0/tabulation/01001
@@ -974,9 +988,9 @@ def tabulation_details(tabulation_id):
     row.pop('weight', None)
 
     resp = jsonify(**row)
-    # Cache the response for 1 day
-    resp.cache_control.max_age = 86400
+    resp.cache_control.max_age = IMMUTABLE_CACHE_SECONDS
     resp.cache_control.public = True
+    resp.cache_control.immutable = True
     return resp
 
 # Example: /1.0/tabulations/?topics=comma,separated,string
@@ -1046,6 +1060,9 @@ def search_tabulations():
     serialized_json = json.dumps(data)
     resp = make_response(serialized_json)
     resp.headers.set('Content-Type', 'application/json')
+    resp.cache_control.max_age = IMMUTABLE_CACHE_SECONDS
+    resp.cache_control.public = True
+    resp.cache_control.immutable = True
 
     return resp
 
@@ -1111,7 +1128,7 @@ def table_details(table_id):
         cache.set(cache_key, result)
 
     resp.headers.set('Content-Type', 'application/json')
-    resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600 * 4))
+    resp.headers.set('Cache-Control', f'public, max-age={IMMUTABLE_CACHE_SECONDS}, immutable')
 
     return resp
 
@@ -1182,7 +1199,7 @@ def table_details_with_release(release, table_id):
             cache.set(cache_key, result)
 
         resp.headers.set('Content-Type', 'application/json')
-        resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600 * 4))
+        resp.headers.set('Cache-Control', f'public, max-age={IMMUTABLE_CACHE_SECONDS}, immutable')
 
         return resp
 
@@ -1248,9 +1265,9 @@ def table_geo_comparison_rowcount(table_id):
         data[acs] = release
 
     resp = jsonify(**data)
-    # Cache the response for 1 day
-    resp.cache_control.max_age = 86400
+    resp.cache_control.max_age = IMMUTABLE_CACHE_SECONDS
     resp.cache_control.public = True
+    resp.cache_control.immutable = True
     return resp
 
 
@@ -1644,9 +1661,9 @@ def show_specified_data(acs):
                 }
             }
             resp = jsonify(**resp_data)
-            # Cache the result for 6 months
-            resp.cache_control.max_age = 86400 * 180
+            resp.cache_control.max_age = IMMUTABLE_CACHE_SECONDS
             resp.cache_control.public = True
+            resp.cache_control.immutable = True
             return resp
         else:
             missing_geos = valid_geo_ids.difference(valid_geos_for_release)
@@ -2206,9 +2223,9 @@ def data_compare_geographies_within_parent(acs, table_id):
         parent_geography=parent_geography,
         child_geographies=child_geographies,
     )
-    # cache the response for 1 day
-    resp.cache_control.max_age = 86400
+    resp.cache_control.max_age = IMMUTABLE_CACHE_SECONDS
     resp.cache_control.public = True
+    resp.cache_control.immutable = True
     return resp
 
 
