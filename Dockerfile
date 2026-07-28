@@ -1,4 +1,4 @@
-FROM python:3.11
+FROM python:3.11-trixie
 
 RUN apt-get -qq update && \
     apt-get install -qq -y \
