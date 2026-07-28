@@ -1,0 +1,28 @@
+name: Test
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pipenv
+        run: pip install pipenv
+
+      - name: Export locked dependencies (excluding gdal, which needs a matching system libgdal)
+        run: pipenv requirements | grep -v -e '^-i' -e '^gdal' > requirements-ci.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-ci.txt pytest
+
+      - name: Run tests
+        run: pytest census_extractomatic/test_aggregate_acs.py census_extractomatic/test_moe.py census_extractomatic/test_redis_compat.py -v
