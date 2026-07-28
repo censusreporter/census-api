@@ -12,7 +12,12 @@ SQLAlchemy = "2.0.36"
 flask-sqlalchemy = "3.1.1"
 flask-cors = "*"
 flask-caching = "*"
-redis = "*"
+# Pinned: the deployed Redis server is v5.0.7 (pre-6.0), which doesn't support
+# the HELLO command or ACL-style `AUTH user pass`. redis-py >= 6 tries HELLO
+# by default when a username is present in REDIS_URL (ours has one) and fails
+# outright rather than falling back. Don't unpin this without also upgrading
+# the Redis server.
+redis = "==5.1.1"
 gunicorn = "*"
 celery = "*"
 pandas = "*"
