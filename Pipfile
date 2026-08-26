@@ -27,7 +27,6 @@ pandas = "*"
 # in that image and update this pin to match, or the build will fail.
 gdal = "==3.10.3"
 requests = "*"
-newrelic = "==9.6.0"
 
 [requires]
 python_version = "3.11"

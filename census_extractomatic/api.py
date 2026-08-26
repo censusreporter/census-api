@@ -60,9 +60,6 @@ from census_extractomatic.exporters import supported_formats
 
 from timeit import default_timer as timer
 
-import newrelic.agent
-newrelic.agent.initialize('newrelic.ini')
-
 app = Flask(__name__)
 app.config.from_object(os.environ.get('EXTRACTOMATIC_CONFIG_MODULE', 'census_extractomatic.config.Development'))
 
@@ -734,9 +731,6 @@ def show_specified_geo_data(release):
     if release not in allowed_tiger:
         abort(404, "Unknown TIGER release")
     geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids, release_to_expand_with)
-
-    newrelic.agent.add_custom_attribute('cr.geo_ids', request.args.get('geo_ids'))
-    newrelic.agent.add_custom_attribute('cr.release', release)
 
     if not geo_ids:
         abort(404, 'None of the geo_ids specified were valid: %s' % ', '.join(geo_ids))
@@ -1490,10 +1484,6 @@ def show_specified_data(acs):
     else:
         abort(404, 'The %s release isn\'t supported.' % get_acs_name(acs))
 
-    newrelic.agent.add_custom_attribute('cr.geo_ids', request.args.get('geo_ids'))
-    newrelic.agent.add_custom_attribute('cr.table_ids', request.args.get('table_ids'))
-    newrelic.agent.add_custom_attribute('cr.release', acs)
-
     # look for the releases that have the requested geoids
     releases_to_use = []
     expand_errors = []
@@ -1594,8 +1584,6 @@ def show_specified_data(acs):
             from_stmt += ' '.join(['JOIN %s_moe USING (geoid)' % (table_id) for table_id in valid_table_ids[1:]])
 
         sql = 'SELECT * FROM %s WHERE geoid IN :geoids;' % (from_stmt,)
-
-        newrelic.agent.add_custom_parameter('cr.queried_geo_ids', ','.join(valid_geo_ids))
 
         result = db.session.execute(text(sql), {'geoids': tuple(valid_geo_ids)})
         data = OrderedDict()
