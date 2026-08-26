@@ -41,6 +41,24 @@ def join_user_geo_to_blocks_task(user_geodata_id):
 
 COMPARISON_RELEASE_CODE = 'dec_pl94_compare_2020_2010'
 
+# aggregate_decennial() pulls one row (with full geometry) per matching census block into
+# memory via pandas, and the comparison release does this twice (2010 and 2020) and holds
+# both dataframes at once. A user geography over this many blocks (e.g. a state's worth of
+# counties, ~300k+ blocks) can balloon a single worker to multiple GB and take down the box.
+# See the 2026-08-26 census-api memory incident.
+MAX_SYNC_AGGREGATION_BLOCKS = 150_000
+
+
+class GeographyTooLargeError(Exception):
+    """Raised when a user geography has too many blocks to aggregate synchronously."""
+    def __init__(self, block_count, limit):
+        self.block_count = block_count
+        self.limit = limit
+        super().__init__(
+            f"This geography has {block_count} census blocks, which is too many to "
+            f"aggregate on demand (limit {limit}). Contact us if you need this download."
+        )
+
 USER_GEODATA_INSERT_SQL = text("""
 INSERT INTO aggregation.user_geodata (name, hash_digest, source_url, public, fields, bbox)
 VALUES (:name, :hash_digest, :source_url, :public, :fields, ST_MakeEnvelope(:xmin, :ymin, :xmax, :ymax, 4326))
@@ -351,6 +369,27 @@ def fetch_metadata(release=None, table_code=None):
     return None
 
 
+def count_blocks_for_hash(db, hash_digest, release):
+    """Count the census blocks a user geography (identified by hash_digest) joins to
+    for the given release, without pulling any row data or geometry.
+    """
+    try:
+        blocks_vintage_table = BLOCK_VINTAGE_TABLES[release]
+    except KeyError:
+        raise ValueError(f"No blocks vintage identified for given schema {release}")
+    sql = text(f"""
+        SELECT count(*)
+        FROM aggregation.user_geodata ug,
+             aggregation.user_geodata_geometry ugg,
+             aggregation.{blocks_vintage_table} ugb
+        WHERE ug.hash_digest = :hash_digest
+          AND ug.user_geodata_id = ugg.user_geodata_id
+          AND ugg.user_geodata_geometry_id = ugb.user_geodata_geometry_id
+    """)
+    with db.engine.begin() as con:
+        return con.execute(sql, dict(hash_digest=hash_digest)).scalar()
+
+
 def evaluateUserGeographySQLTemplate(schema, table_code):
     """Schemas and table names can't be handled as bindparams with SQLAlchemy, so
        this allows us to use a 'select *' syntax for multiple tables.
@@ -370,6 +409,9 @@ def aggregate_decennial(db, hash_digest, release, table_code):
     """
 
     if fetch_metadata(release=release, table_code=table_code):
+        block_count = count_blocks_for_hash(db, hash_digest, release)
+        if block_count > MAX_SYNC_AGGREGATION_BLOCKS:
+            raise GeographyTooLargeError(block_count, MAX_SYNC_AGGREGATION_BLOCKS)
         sql = evaluateUserGeographySQLTemplate(release, table_code)
         query = text(sql).bindparams(hash_digest=hash_digest)
         logger.info(f'aggregate_decennial: starting timer {hash_digest} {release} {table_code}')
