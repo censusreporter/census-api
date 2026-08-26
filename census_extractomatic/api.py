@@ -41,6 +41,7 @@ from .validation import (
 )
 from .user_geo import (
     COMPARISON_RELEASE_CODE,
+    GeographyTooLargeError,
     build_filename,
     create_block_xref_download,
     fetch_user_geodata,
@@ -2383,10 +2384,23 @@ def aggregate(hash_digest, release, table_code):
     if url_exists(precomputed_url):
         return redirect(precomputed_url)
 
-    start = timer()
-    zf = create_aggregate_download(db, hash_digest, release, table_code)
-    end = timer()
-    return send_file(zf.name, 'application/zip', download_name=zipfile_name)
+    # Building this is expensive (full-geometry block-level query, held in memory), so
+    # only let one worker build a given (hash, release, table) at a time. Concurrent
+    # requests/retries for the same download get a 409 instead of piling on redundant work.
+    lock_key = f'aggregate-lock:{hash_digest}:{release}:{table_code}'
+    if not cache.add(lock_key, 1, timeout=300):
+        return jsonify(error="This geography is already being aggregated, please retry in a moment."), 409
+
+    try:
+        start = timer()
+        try:
+            zf = create_aggregate_download(db, hash_digest, release, table_code)
+        except GeographyTooLargeError as e:
+            return jsonify(error=str(e)), 413
+        end = timer()
+        return send_file(zf.name, 'application/zip', download_name=zipfile_name)
+    finally:
+        cache.delete(lock_key)
 
 
 if __name__ == "__main__":
