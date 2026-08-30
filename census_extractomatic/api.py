@@ -106,6 +106,13 @@ ACS_NAMES = {
     'acs2024_1yr': {'name': 'ACS 2024 1-year', 'years': '2024'},
 }
 
+# Hard ceiling on how many child geoids a single `sumlevel|parent_geoid` expansion
+# (e.g. `101|01000US`, all ~8M US census blocks) is allowed to pull from the DB before
+# the request-level MAX_GEOIDS_TO_SHOW/MAX_GEOIDS_TO_DOWNLOAD check downstream ever runs.
+# Well above those defaults (1000/3000) to allow legitimate multi-group requests to
+# still hit that check normally, but far below "every geoid in the country".
+MAX_CHILD_GEOIDS_PER_EXPANSION = 50_000
+
 PARENT_CHILD_CONTAINMENT = {
     '040': ['050', '060', '101', '140', '150', '160', '500', '610', '620', '950', '960', '970'],
     '050': ['060', '101', '140', '150'],
@@ -1351,8 +1358,9 @@ def get_all_child_geoids(release, child_summary_level):
         """SELECT geoid,name
            FROM geoheader
            WHERE sumlevel=:sumlev AND component='00' AND geoid NOT IN ('04000US72')
-           ORDER BY name"""),
-        {'sumlev': int(child_summary_level)}
+           ORDER BY name
+           LIMIT :limit"""),
+        {'sumlev': int(child_summary_level), 'limit': MAX_CHILD_GEOIDS_PER_EXPANSION}
     )
 
     return result.mappings().fetchall()
@@ -1366,8 +1374,9 @@ def get_child_geoids_by_coverage(release, parent_geoid, child_summary_level):
            FROM tiger2024.census_geo_containment, geoheader
            WHERE geoheader.geoid = census_geo_containment.child_geoid
              AND census_geo_containment.parent_geoid = :parent_geoid
-             AND census_geo_containment.child_geoid LIKE :child_geoids"""),
-        {'parent_geoid': parent_geoid, 'child_geoids': child_summary_level + '%'}
+             AND census_geo_containment.child_geoid LIKE :child_geoids
+           LIMIT :limit"""),
+        {'parent_geoid': parent_geoid, 'child_geoids': child_summary_level + '%', 'limit': MAX_CHILD_GEOIDS_PER_EXPANSION}
     )
 
     rowdicts = []
@@ -1386,8 +1395,9 @@ def get_child_geoids_by_gis(release, parent_geoid, child_summary_level):
         """SELECT child.full_geoid
            FROM tiger2024.census_name_lookup parent
            JOIN tiger2024.census_name_lookup child ON ST_Intersects(parent.geom, child.geom) AND child.sumlevel=:child_sumlevel
-           WHERE parent.full_geoid=:parent_geoid AND parent.sumlevel=:parent_sumlevel"""),
-        {'child_sumlevel': child_summary_level, 'parent_geoid': parent_geoid, 'parent_sumlevel': parent_sumlevel}
+           WHERE parent.full_geoid=:parent_geoid AND parent.sumlevel=:parent_sumlevel
+           LIMIT :limit"""),
+        {'child_sumlevel': child_summary_level, 'parent_geoid': parent_geoid, 'parent_sumlevel': parent_sumlevel, 'limit': MAX_CHILD_GEOIDS_PER_EXPANSION}
     )
     child_geoids = [r['full_geoid'] for r in result.mappings().all()]
 
@@ -1416,8 +1426,9 @@ def get_child_geoids_by_prefix(release, parent_geoid, child_summary_level):
            FROM geoheader
            WHERE geoid LIKE :geoid_prefix
              AND name NOT LIKE :not_name
-           ORDER BY geoid"""),
-        {'geoid_prefix': child_geoid_prefix, 'not_name': '%%not defined%%'}
+           ORDER BY geoid
+           LIMIT :limit"""),
+        {'geoid_prefix': child_geoid_prefix, 'not_name': '%%not defined%%', 'limit': MAX_CHILD_GEOIDS_PER_EXPANSION}
     )
     return result.mappings().fetchall()
 
@@ -2343,13 +2354,25 @@ def fetch_user_blocks_by_year(hash_digest, year):
     if url_exists(precomputed_url):
         return redirect(precomputed_url)
 
+    # Same reasoning as aggregate(): this pulls one row per matching census block
+    # (with full geometry) into memory, so only one worker builds a given
+    # (hash, year) at a time.
+    lock_key = f'user-geo-blocks-lock:{hash_digest}:{year}'
+    if not cache.add(lock_key, 1, timeout=300):
+        return jsonify(error="This geography is already being built, please retry in a moment."), 409
+
     try:
-        start = timer()
-        zf = create_block_xref_download(db, hash_digest, year)
-        end = timer()
+        try:
+            start = timer()
+            zf = create_block_xref_download(db, hash_digest, year)
+            end = timer()
+        except GeographyTooLargeError as e:
+            return jsonify(error=str(e)), 413
         return send_file(zf.name, 'application/zip', download_name=zipfile_name)
     except ValueError:
         abort(404)
+    finally:
+        cache.delete(lock_key)
 
 
 def url_exists(url):

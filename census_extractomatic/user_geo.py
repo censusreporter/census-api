@@ -479,6 +479,9 @@ def create_block_xref_download(db, hash_digest, year):
         sql = USER_BLOCKS_BY_HASH_DIGEST_SQL[str(year)]
     except KeyError:
         raise ValueError(f"Invalid year {year}")
+    block_count = count_blocks_for_hash(db, hash_digest, f'dec{year}_pl94')
+    if block_count > MAX_SYNC_AGGREGATION_BLOCKS:
+        raise GeographyTooLargeError(block_count, MAX_SYNC_AGGREGATION_BLOCKS)
     df = pd.read_sql(sql.bindparams(hash_digest=hash_digest),db.engine)
     user_geo_name = str(df['upload_name'].unique().squeeze())
     df = df.drop('upload_name', axis=1)
