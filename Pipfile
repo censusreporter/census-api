@@ -19,13 +19,7 @@ redis = "*"
 gunicorn = "*"
 celery = "*"
 pandas = "*"
-# Different GDAL (C) versions on Dokku and local dev
-# mean unfortunate monkeying around with this.
-# For now needs to be 3.6.2 for Dokku
-# (as installed by apt-get install gdal-bin on a python:3.11 container)
 gdal = "==3.6.2"
-# but 3.0.4 for Joe
-#gdal = "==3.0.4"
 requests = "*"
 newrelic = "==9.6.0"
 
