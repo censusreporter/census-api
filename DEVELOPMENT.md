@@ -31,6 +31,29 @@ Create the virtual environment for your local project, activate it and install t
 
     >> pipenv install
 
+### GDAL on Apple Silicon
+Because of issues with the architecture of the default installed GDAL library, for Joe, just running `pipenv install` didn't work. 
+
+Ultimately, this did:
+
+```sh
+GDAL_CONFIG=/opt/homebrew/opt/gdal/bin/gdal-config \
+ARCHFLAGS="-arch arm64" \
+pipenv run pip install --no-cache-dir --force-reinstall --no-build-isolation \
+    gdal==$(/opt/homebrew/opt/gdal/bin/gdal-config --version)
+```
+
+The Python `gdal` package must match the Homebrew GDAL version, because it links against a versioned
+library (e.g. `libgdal.38.dylib` for 3.12, `libgdal.39.dylib` for 3.13). If `from osgeo import gdal` fails with
+`No module named '_gdal'` or `Library not loaded: .../libgdal.NN.dylib`, Homebrew upgraded GDAL. Rerun the
+command above.
+
+To prevent that, pin it: `brew pin gdal` (and `brew unpin gdal` when you choose to upgrade).
+
+Note that the Pipfile pins `gdal==3.6.2` to match the Dokku container (Debian's `gdal-bin`), so `pipenv install`/`pipenv sync`
+on a Mac will try to build 3.6.2 and fail against Homebrew's GDAL. After a sync, rerun the command above.
+
+
 
 Running
 =======

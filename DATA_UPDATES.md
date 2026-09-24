@@ -124,6 +124,21 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
 4. Import the data to the database:
     - `cd /home/ubuntu/census-postgres-scripts/table_based`
     - `./03_import_acs_2022_1yr.sh`
+5. Verify that no jam (sentinel) values were loaded.
+    - The import script runs `meta-scripts/fix_jam_values.py` at the end, but **check the result** — this has bitten us before.
+      In Feb 2026 `acs2024_1yr` was loaded while `-666666666` was still missing from the preprocessing list, and the sentinels sat in
+      134 tables (mostly medians and race iterations) until they were found in Sept 2026. The API serves them straight through.
+      The site's grid view happens to hide them (`valFmt` in app.js returns '' for any negative), but they still reach data
+      downloads, API consumers, and the map/distribution scales, which are built from raw values and get badly skewed.
+      Only 1-year geographies are affected; smaller places fall back to the 5-year release.
+    - Re-run it any time; it only updates rows that still hold a jam value:
+      `python3 /home/ubuntu/census-postgres/meta-scripts/fix_jam_values.py acs2024_1yr` (needs `PGURI`)
+    - To confirm a release is clean, count remaining values below the threshold. Any nonzero result means something got through:
+      ```sql
+      -- run per table, or script it over information_schema like fix_jam_values.py does
+      SELECT count(*) FROM acs2022_1yr.b19013e_moe WHERE b19013e001 < -100000000;
+      ```
+    - Note that the values are stored in REAL columns, so `-666666666` reads back as `-666666688`. Compare against a threshold, not an exact value.
 
 ### Update census-table-metadata
 
