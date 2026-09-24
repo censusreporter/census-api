@@ -41,6 +41,7 @@ from .validation import (
 )
 from .user_geo import (
     COMPARISON_RELEASE_CODE,
+    GeographyTooLargeError,
     build_filename,
     create_block_xref_download,
     fetch_user_geodata,
@@ -50,14 +51,15 @@ from .user_geo import (
     fetch_user_geog_as_geojson,
     create_aggregate_download,
 )
+from census_extractomatic.aggregate_acs import (
+    select_components,
+    aggregate_tables,
+)
 from census_extractomatic.full_text_search import perform_full_text_search
 
 from census_extractomatic.exporters import supported_formats
 
 from timeit import default_timer as timer
-
-import newrelic.agent
-newrelic.agent.initialize('newrelic.ini')
 
 app = Flask(__name__)
 app.config.from_object(os.environ.get('EXTRACTOMATIC_CONFIG_MODULE', 'census_extractomatic.config.Development'))
@@ -68,6 +70,12 @@ app.logger.handlers.extend(gunicorn_error_logger.handlers)
 db = SQLAlchemy(app)
 cache = Cache(app)
 cors = CORS(app)
+
+# ACS/TIGER/table-metadata responses only change on a yearly reprocess, so it's safe to
+# tell caches (including Cloudflare) to hold them for a year. The Cloudflare cache is
+# purged as part of the release process (see DATA_UPDATES.md) whenever the underlying
+# data actually changes, including for URLs that resolve the "latest" release.
+IMMUTABLE_CACHE_SECONDS = 365 * 24 * 60 * 60
 
 # Allowed ACS's in "best" order (newest and smallest range preferred)
 allowed_acs = [
@@ -97,6 +105,13 @@ ACS_NAMES = {
     'acs2024_5yr': {'name': 'ACS 2024 5-year', 'years': '2020-2024'},
     'acs2024_1yr': {'name': 'ACS 2024 1-year', 'years': '2024'},
 }
+
+# Hard ceiling on how many child geoids a single `sumlevel|parent_geoid` expansion
+# (e.g. `101|01000US`, all ~8M US census blocks) is allowed to pull from the DB before
+# the request-level MAX_GEOIDS_TO_SHOW/MAX_GEOIDS_TO_DOWNLOAD check downstream ever runs.
+# Well above those defaults (1000/3000) to allow legitimate multi-group requests to
+# still hit that check normally, but far below "every geoid in the country".
+MAX_CHILD_GEOIDS_PER_EXPANSION = 50_000
 
 PARENT_CHILD_CONTAINMENT = {
     '040': ['050', '060', '101', '140', '150', '160', '500', '610', '620', '950', '960', '970'],
@@ -459,9 +474,9 @@ def geo_search():
     result = db.session.execute(text(sql), where_args)
 
     resp = jsonify(results=[convert_row(row) for row in result.mappings().all()])
-    # Cache the result for 6 months
-    resp.cache_control.max_age = 86400 * 180
+    resp.cache_control.max_age = IMMUTABLE_CACHE_SECONDS
     resp.cache_control.public = True
+    resp.cache_control.immutable = True
     return resp
 
 
@@ -509,9 +524,9 @@ def geo_tiles(release, sumlevel, zoom, x, y, extension):
         except Exception as e:
             app.logger.warn('Skipping cache set for {} because {}'.format(cache_key, e.args))
 
-    # Cache the result for 6 months
     resp.cache_control.public = True
-    resp.cache_control.max_age = 86400 * 180
+    resp.cache_control.max_age = IMMUTABLE_CACHE_SECONDS
+    resp.cache_control.immutable = True
     resp.content_type = content_type
     return resp
 
@@ -645,9 +660,9 @@ def geo_lookup(release, geoid):
         resp = make_response(result)
         cache.set(cache_key, result)
 
-    # Cache the result for 6 months
-    resp.cache_control.max_age = 86400 * 180
+    resp.cache_control.max_age = IMMUTABLE_CACHE_SECONDS
     resp.cache_control.public = True
+    resp.cache_control.immutable = True
     resp.content_type = 'application/json; charset=utf-8'
 
     return resp
@@ -703,9 +718,9 @@ def geo_parent(release, geoid):
         resp = make_response(result)
         cache.set(cache_key, result)
 
-    # Cache the result for 6 months
-    resp.cache_control.max_age = 86400 * 180
+    resp.cache_control.max_age = IMMUTABLE_CACHE_SECONDS
     resp.cache_control.public = True
+    resp.cache_control.immutable = True
     resp.content_type = 'application/json; charset=utf-8'
 
     return resp
@@ -724,9 +739,6 @@ def show_specified_geo_data(release):
     if release not in allowed_tiger:
         abort(404, "Unknown TIGER release")
     geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids, release_to_expand_with)
-
-    newrelic.agent.add_custom_attribute('cr.geo_ids', request.args.get('geo_ids'))
-    newrelic.agent.add_custom_attribute('cr.release', release)
 
     if not geo_ids:
         abort(404, 'None of the geo_ids specified were valid: %s' % ', '.join(geo_ids))
@@ -775,9 +787,9 @@ def show_specified_geo_data(release):
     }
 
     resp = jsonify(**resp_data)
-    # Cache the result for 6 months
-    resp.cache_control.max_age = 86400 * 180
+    resp.cache_control.max_age = IMMUTABLE_CACHE_SECONDS
     resp.cache_control.public = True
+    resp.cache_control.immutable = True
     return resp
 
 
@@ -863,7 +875,12 @@ def table_search():
                 table_id_acs = None
         if data:
             data.sort(key=lambda x: x['unique_key'])
-            return json.dumps(data)
+            resp = make_response(json.dumps(data))
+            resp.headers.set('Content-Type', 'application/json')
+            resp.cache_control.max_age = IMMUTABLE_CACHE_SECONDS
+            resp.cache_control.public = True
+            resp.cache_control.immutable = True
+            return resp
 
     db.session.execute(text("SET search_path=:acs, public;"), {'acs': acs})
     table_where_parts = []
@@ -938,6 +955,9 @@ def table_search():
     serialized_json = json.dumps(data)
     resp = make_response(serialized_json)
     resp.headers.set('Content-Type', 'application/json')
+    resp.cache_control.max_age = IMMUTABLE_CACHE_SECONDS
+    resp.cache_control.public = True
+    resp.cache_control.immutable = True
     return resp
 
 # Example: /1.0/tabulation/01001
@@ -970,9 +990,9 @@ def tabulation_details(tabulation_id):
     row.pop('weight', None)
 
     resp = jsonify(**row)
-    # Cache the response for 1 day
-    resp.cache_control.max_age = 86400
+    resp.cache_control.max_age = IMMUTABLE_CACHE_SECONDS
     resp.cache_control.public = True
+    resp.cache_control.immutable = True
     return resp
 
 # Example: /1.0/tabulations/?topics=comma,separated,string
@@ -1042,6 +1062,9 @@ def search_tabulations():
     serialized_json = json.dumps(data)
     resp = make_response(serialized_json)
     resp.headers.set('Content-Type', 'application/json')
+    resp.cache_control.max_age = IMMUTABLE_CACHE_SECONDS
+    resp.cache_control.public = True
+    resp.cache_control.immutable = True
 
     return resp
 
@@ -1107,7 +1130,7 @@ def table_details(table_id):
         cache.set(cache_key, result)
 
     resp.headers.set('Content-Type', 'application/json')
-    resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600 * 4))
+    resp.headers.set('Cache-Control', f'public, max-age={IMMUTABLE_CACHE_SECONDS}, immutable')
 
     return resp
 
@@ -1178,7 +1201,7 @@ def table_details_with_release(release, table_id):
             cache.set(cache_key, result)
 
         resp.headers.set('Content-Type', 'application/json')
-        resp.headers.set('Cache-Control', 'public,max-age=%d' % int(3600 * 4))
+        resp.headers.set('Cache-Control', f'public, max-age={IMMUTABLE_CACHE_SECONDS}, immutable')
 
         return resp
 
@@ -1244,9 +1267,9 @@ def table_geo_comparison_rowcount(table_id):
         data[acs] = release
 
     resp = jsonify(**data)
-    # Cache the response for 1 day
-    resp.cache_control.max_age = 86400
+    resp.cache_control.max_age = IMMUTABLE_CACHE_SECONDS
     resp.cache_control.public = True
+    resp.cache_control.immutable = True
     return resp
 
 
@@ -1335,8 +1358,9 @@ def get_all_child_geoids(release, child_summary_level):
         """SELECT geoid,name
            FROM geoheader
            WHERE sumlevel=:sumlev AND component='00' AND geoid NOT IN ('04000US72')
-           ORDER BY name"""),
-        {'sumlev': int(child_summary_level)}
+           ORDER BY name
+           LIMIT :limit"""),
+        {'sumlev': int(child_summary_level), 'limit': MAX_CHILD_GEOIDS_PER_EXPANSION}
     )
 
     return result.mappings().fetchall()
@@ -1350,8 +1374,9 @@ def get_child_geoids_by_coverage(release, parent_geoid, child_summary_level):
            FROM tiger2024.census_geo_containment, geoheader
            WHERE geoheader.geoid = census_geo_containment.child_geoid
              AND census_geo_containment.parent_geoid = :parent_geoid
-             AND census_geo_containment.child_geoid LIKE :child_geoids"""),
-        {'parent_geoid': parent_geoid, 'child_geoids': child_summary_level + '%'}
+             AND census_geo_containment.child_geoid LIKE :child_geoids
+           LIMIT :limit"""),
+        {'parent_geoid': parent_geoid, 'child_geoids': child_summary_level + '%', 'limit': MAX_CHILD_GEOIDS_PER_EXPANSION}
     )
 
     rowdicts = []
@@ -1370,8 +1395,9 @@ def get_child_geoids_by_gis(release, parent_geoid, child_summary_level):
         """SELECT child.full_geoid
            FROM tiger2024.census_name_lookup parent
            JOIN tiger2024.census_name_lookup child ON ST_Intersects(parent.geom, child.geom) AND child.sumlevel=:child_sumlevel
-           WHERE parent.full_geoid=:parent_geoid AND parent.sumlevel=:parent_sumlevel"""),
-        {'child_sumlevel': child_summary_level, 'parent_geoid': parent_geoid, 'parent_sumlevel': parent_sumlevel}
+           WHERE parent.full_geoid=:parent_geoid AND parent.sumlevel=:parent_sumlevel
+           LIMIT :limit"""),
+        {'child_sumlevel': child_summary_level, 'parent_geoid': parent_geoid, 'parent_sumlevel': parent_sumlevel, 'limit': MAX_CHILD_GEOIDS_PER_EXPANSION}
     )
     child_geoids = [r['full_geoid'] for r in result.mappings().all()]
 
@@ -1400,8 +1426,9 @@ def get_child_geoids_by_prefix(release, parent_geoid, child_summary_level):
            FROM geoheader
            WHERE geoid LIKE :geoid_prefix
              AND name NOT LIKE :not_name
-           ORDER BY geoid"""),
-        {'geoid_prefix': child_geoid_prefix, 'not_name': '%%not defined%%'}
+           ORDER BY geoid
+           LIMIT :limit"""),
+        {'geoid_prefix': child_geoid_prefix, 'not_name': '%%not defined%%', 'limit': MAX_CHILD_GEOIDS_PER_EXPANSION}
     )
     return result.mappings().fetchall()
 
@@ -1468,10 +1495,6 @@ def show_specified_data(acs):
         acs_to_try = allowed_acs
     else:
         abort(404, 'The %s release isn\'t supported.' % get_acs_name(acs))
-
-    newrelic.agent.add_custom_attribute('cr.geo_ids', request.args.get('geo_ids'))
-    newrelic.agent.add_custom_attribute('cr.table_ids', request.args.get('table_ids'))
-    newrelic.agent.add_custom_attribute('cr.release', acs)
 
     # look for the releases that have the requested geoids
     releases_to_use = []
@@ -1574,8 +1597,6 @@ def show_specified_data(acs):
 
         sql = 'SELECT * FROM %s WHERE geoid IN :geoids;' % (from_stmt,)
 
-        newrelic.agent.add_custom_parameter('cr.queried_geo_ids', ','.join(valid_geo_ids))
-
         result = db.session.execute(text(sql), {'geoids': tuple(valid_geo_ids)})
         data = OrderedDict()
 
@@ -1640,15 +1661,213 @@ def show_specified_data(acs):
                 }
             }
             resp = jsonify(**resp_data)
-            # Cache the result for 6 months
-            resp.cache_control.max_age = 86400 * 180
+            resp.cache_control.max_age = IMMUTABLE_CACHE_SECONDS
             resp.cache_control.public = True
+            resp.cache_control.immutable = True
             return resp
         else:
             missing_geos = valid_geo_ids.difference(valid_geos_for_release)
             app.logger.debug(f"[release {release_to_use}] [table {','.join(valid_table_ids)}] missing data for [{','.join(missing_geos)}]")
 
     return abort(400, "None of the releases had the requested geo_ids and table_ids")
+
+
+# --- Arbitrary-geometry ACS aggregation -------------------------------------
+# Combine ACS estimates (and propagate margins of error) across the census
+# geographies of a chosen summary level that overlap a user-supplied polygon.
+# See census_extractomatic/aggregate_acs.py and moe.py for the aggregation math.
+
+# Fraction of a source geography's own area that must fall inside the shape
+# is computed here; the planar (degree) area is fine because only the RATIO is
+# used, and the threshold is an approximate inclusion knob.
+AGGREGATE_INTERSECT_SQL = """
+SELECT nl.full_geoid,
+       nl.display_name,
+       ST_Area(ST_Intersection(nl.geom, poly.g)) / NULLIF(ST_Area(nl.geom), 0) AS area_frac
+  FROM {tiger}.census_name_lookup nl,
+       (SELECT ST_SetSRID(ST_GeomFromGeoJSON(:geojson), 4326) AS g) poly
+ WHERE nl.sumlevel = :sumlevel
+   AND ST_Intersects(nl.geom, poly.g)
+"""
+
+TABLE_METADATA_QUERY = """
+SELECT tab.table_id, tab.table_title, tab.universe, tab.denominator_column_id,
+       col.column_id, col.column_title, col.indent
+  FROM census_column_metadata col
+  LEFT JOIN census_table_metadata tab USING (table_id)
+ WHERE table_id IN :table_ids
+ ORDER BY column_id;
+"""
+
+
+def _geometry_from_request(payload):
+    """Pull a single GeoJSON geometry (Polygon/MultiPolygon) out of the request
+    body, unwrapping a Feature if necessary. Returns a JSON string suitable for
+    ST_GeomFromGeoJSON, or None if nothing usable was supplied."""
+    geom = payload.get('geometry')
+    if not geom or not isinstance(geom, dict):
+        return None
+    gtype = geom.get('type')
+    if gtype == 'Feature':
+        geom = geom.get('geometry')
+        if not isinstance(geom, dict):
+            return None
+        gtype = geom.get('type')
+    if gtype not in ('Polygon', 'MultiPolygon'):
+        # FeatureCollections must be dissolved to a single geometry client-side.
+        return None
+    return json.dumps(geom)
+
+
+def _fetch_acs_table_data(release, table_ids, geo_ids):
+    """For a single ACS release, fetch table metadata and per-geography
+    estimate/error data for the given geoids. Returns (table_metadata, data)
+    where data[geoid][table_id] = {"estimate": {...}, "error": {...}}.
+
+    Mirrors the fetch performed by show_specified_data for one release; kept
+    separate to avoid disturbing that endpoint's multi-release fallback logic.
+    """
+    db.session.execute(text("SET search_path=:acs, public;"), {'acs': release})
+
+    result = db.session.execute(text(TABLE_METADATA_QUERY),
+                                {'table_ids': tuple(table_ids)})
+    table_metadata = OrderedDict()
+    for table, columns in groupby(
+            result.mappings().all(),
+            lambda x: (x['table_id'], x['table_title'], x['universe'], x['denominator_column_id'])):
+        table_metadata[table[0]] = OrderedDict([
+            ("title", table[1]),
+            ("universe", table[2]),
+            ("denominator_column_id", table[3]),
+            ("columns", OrderedDict([
+                (column['column_id'], OrderedDict([
+                    ("name", column['column_title']),
+                    ("indent", column['indent']),
+                ])) for column in columns
+            ])),
+        ])
+
+    valid_table_ids = list(table_metadata.keys())
+    invalid_table_ids = set(table_ids) - set(valid_table_ids)
+    if invalid_table_ids:
+        abort(404, "The %s release doesn't include table(s) %s."
+              % (get_acs_name(release), ','.join(sorted(invalid_table_ids))))
+
+    from_stmt = '%s_moe' % valid_table_ids[0]
+    for table_id in valid_table_ids[1:]:
+        from_stmt += ' JOIN %s_moe USING (geoid)' % table_id
+    sql = 'SELECT * FROM %s WHERE geoid IN :geoids;' % from_stmt
+
+    result = db.session.execute(text(sql), {'geoids': tuple(geo_ids)})
+    data = OrderedDict()
+    for row in result.mappings().all():
+        row = dict(row)
+        geoid = row.pop('geoid')
+        data_for_geoid = OrderedDict()
+        # Estimate columns and their paired _moe columns arrive adjacent once
+        # sorted; a shared iterator lets us pull each moe with next().
+        cols_iter = iter(sorted(row.items(), key=lambda tup: tup[0]))
+        for table_id, data_iter in groupby(cols_iter, lambda x: x[0][:-3].upper()):
+            table_for_geoid = OrderedDict()
+            table_for_geoid['estimate'] = OrderedDict()
+            table_for_geoid['error'] = OrderedDict()
+            for (col_name, value) in data_iter:
+                col_name = col_name.upper()
+                (_moe_name, moe_value) = next(cols_iter)
+                table_for_geoid['estimate'][col_name] = value
+                table_for_geoid['error'][col_name] = moe_value
+            data_for_geoid[table_id] = table_for_geoid
+        data[geoid] = data_for_geoid
+
+    return table_metadata, data
+
+
+# Example: POST /1.0/aggregate/acs/acs2024_5yr
+#   body: {"geometry": {...GeoJSON Polygon...}, "table_ids": ["B01001"],
+#          "sumlevel": "140", "threshold": 0.0}
+@app.route("/1.0/aggregate/acs/<release>", methods=['POST', 'OPTIONS'])
+@cross_origin(origins='*')
+def aggregate_acs_geometry(release):
+    if release == 'latest':
+        release = allowed_acs[0]
+    if release not in allowed_acs:
+        abort(404, "The %s release isn't supported." % get_acs_name(release))
+
+    payload = request.get_json(force=True, silent=True) or {}
+
+    geojson_str = _geometry_from_request(payload)
+    if geojson_str is None:
+        abort(400, "A GeoJSON Polygon or MultiPolygon 'geometry' is required.")
+
+    table_ids = payload.get('table_ids') or []
+    if not table_ids or not all(table_re.match(t) for t in table_ids):
+        abort(400, "One or more valid 'table_ids' are required.")
+
+    sumlevel = str(payload.get('sumlevel', '')).strip()
+    if sumlevel not in SUMLEV_NAMES:
+        abort(400, "A valid 'sumlevel' is required (e.g. 140 for tracts).")
+
+    try:
+        threshold = float(payload.get('threshold', 0.0))
+    except (TypeError, ValueError):
+        abort(400, "'threshold' must be a number between 0 and 1.")
+    if not (0.0 <= threshold <= 1.0):
+        abort(400, "'threshold' must be between 0 and 1.")
+
+    weighting = str(payload.get('weighting', 'none')).lower()
+    if weighting not in ('none', 'area'):
+        abort(400, "'weighting' must be 'none' or 'area'.")
+
+    tiger = allowed_tiger[0]
+    rows = db.session.execute(
+        text(AGGREGATE_INTERSECT_SQL.format(tiger=tiger)),
+        {'geojson': geojson_str, 'sumlevel': sumlevel}
+    ).mappings().all()
+
+    components = select_components(rows, threshold)
+    if not components:
+        abort(404, "No %s geographies met the threshold inside the given geometry."
+              % SUMLEV_NAMES[sumlevel]['name'])
+
+    max_geoids = current_app.config.get('MAX_GEOIDS_TO_SHOW', 1000)
+    if len(components) > max_geoids:
+        abort(400, "The geometry covers %s geographies at this level; the maximum "
+              "is %s. Use a coarser summary level or a smaller area."
+              % (len(components), max_geoids))
+
+    geo_ids = [c['geoid'] for c in components]
+    table_metadata, data = _fetch_acs_table_data(release, table_ids, geo_ids)
+
+    # Bundle each geography's data with its own weight so they can't desync.
+    component_data = []
+    for c in components:
+        if c['geoid'] not in data:
+            continue
+        entry = {'data': data[c['geoid']]}
+        if weighting == 'area':
+            entry['weight'] = c['area_frac']
+        component_data.append(entry)
+    aggregated = aggregate_tables(component_data, table_metadata)
+
+    # Flatten column metadata so the client can label columns and indent them.
+    column_meta = OrderedDict()
+    for table in table_metadata.values():
+        for column_id, col in table['columns'].items():
+            column_meta[column_id] = col
+
+    resp = jsonify(
+        release=release,
+        release_name=ACS_NAMES.get(release, {}).get('name', release),
+        sumlevel=sumlevel,
+        threshold=threshold,
+        weighting=weighting,
+        components=components,
+        tables=aggregated,
+        column_meta=column_meta,
+    )
+    resp.cache_control.max_age = 15
+    resp.cache_control.public = True
+    return resp
 
 
 # Example: /1.0/data/download/acs2012_5yr?format=shp&table_ids=B01001,B01003&geo_ids=04000US55,04000US56
@@ -2004,9 +2223,9 @@ def data_compare_geographies_within_parent(acs, table_id):
         parent_geography=parent_geography,
         child_geographies=child_geographies,
     )
-    # cache the response for 1 day
-    resp.cache_control.max_age = 86400
+    resp.cache_control.max_age = IMMUTABLE_CACHE_SECONDS
     resp.cache_control.public = True
+    resp.cache_control.immutable = True
     return resp
 
 
@@ -2135,13 +2354,25 @@ def fetch_user_blocks_by_year(hash_digest, year):
     if url_exists(precomputed_url):
         return redirect(precomputed_url)
 
+    # Same reasoning as aggregate(): this pulls one row per matching census block
+    # (with full geometry) into memory, so only one worker builds a given
+    # (hash, year) at a time.
+    lock_key = f'user-geo-blocks-lock:{hash_digest}:{year}'
+    if not cache.add(lock_key, 1, timeout=300):
+        return jsonify(error="This geography is already being built, please retry in a moment."), 409
+
     try:
-        start = timer()
-        zf = create_block_xref_download(db, hash_digest, year)
-        end = timer()
+        try:
+            start = timer()
+            zf = create_block_xref_download(db, hash_digest, year)
+            end = timer()
+        except GeographyTooLargeError as e:
+            return jsonify(error=str(e)), 413
         return send_file(zf.name, 'application/zip', download_name=zipfile_name)
     except ValueError:
         abort(404)
+    finally:
+        cache.delete(lock_key)
 
 
 def url_exists(url):
@@ -2176,10 +2407,23 @@ def aggregate(hash_digest, release, table_code):
     if url_exists(precomputed_url):
         return redirect(precomputed_url)
 
-    start = timer()
-    zf = create_aggregate_download(db, hash_digest, release, table_code)
-    end = timer()
-    return send_file(zf.name, 'application/zip', download_name=zipfile_name)
+    # Building this is expensive (full-geometry block-level query, held in memory), so
+    # only let one worker build a given (hash, release, table) at a time. Concurrent
+    # requests/retries for the same download get a 409 instead of piling on redundant work.
+    lock_key = f'aggregate-lock:{hash_digest}:{release}:{table_code}'
+    if not cache.add(lock_key, 1, timeout=300):
+        return jsonify(error="This geography is already being aggregated, please retry in a moment."), 409
+
+    try:
+        start = timer()
+        try:
+            zf = create_aggregate_download(db, hash_digest, release, table_code)
+        except GeographyTooLargeError as e:
+            return jsonify(error=str(e)), 413
+        end = timer()
+        return send_file(zf.name, 'application/zip', download_name=zipfile_name)
+    finally:
+        cache.delete(lock_key)
 
 
 if __name__ == "__main__":

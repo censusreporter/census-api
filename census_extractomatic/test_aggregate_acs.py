@@ -1,0 +1,168 @@
+"""Unit tests for the DB-independent ACS aggregation orchestration
+(census_extractomatic.aggregate_acs): column suppression and table aggregation
+over a set of component geographies."""
+import math
+
+from census_extractomatic.aggregate_acs import (
+    suppression_reason,
+    aggregate_tables,
+    select_components,
+)
+
+
+def test_median_column_is_suppressed():
+    reason = suppression_reason(
+        table_title="Median Household Income in the Past 12 Months",
+        column_title="Median household income in the past 12 months",
+    )
+    assert reason is not None
+    assert "median" in reason.lower()
+
+
+def test_mean_and_per_capita_and_gini_are_suppressed():
+    assert suppression_reason("Mean Travel Time to Work", "Mean travel time") is not None
+    assert suppression_reason("Per Capita Income", "Per capita income") is not None
+    assert suppression_reason("Gini Index of Income Inequality", "Gini index") is not None
+
+
+def test_plain_count_column_is_not_suppressed():
+    assert suppression_reason("Sex by Age", "Male: 5 to 9 years") is None
+
+
+def test_aggregate_word_is_not_suppressed():
+    """'Aggregate' totals (e.g. Aggregate Household Income) ARE summable."""
+    assert suppression_reason("Aggregate Household Income", "Aggregate household income") is None
+
+
+def _component(data, weight=None):
+    """Build a component; weight is optional and defaults to 1 when omitted."""
+    c = {"data": data}
+    if weight is not None:
+        c["weight"] = weight
+    return c
+
+
+def _two_components(weights=(None, None)):
+    return [
+        _component({"B01001": {"estimate": {"B01001001": 100, "B01001002": 40},
+                               "error": {"B01001001": 20, "B01001002": 10}}}, weights[0]),
+        _component({"B01001": {"estimate": {"B01001001": 200, "B01001002": 0},
+                               "error": {"B01001001": 30, "B01001002": 8}}}, weights[1]),
+    ]
+
+
+_COUNT_META = {
+    "B01001": {
+        "title": "Sex by Age",
+        "denominator_column_id": "B01001001",
+        "columns": {
+            "B01001001": {"name": "Total"},
+            "B01001002": {"name": "Male"},
+        },
+    }
+}
+
+
+def test_aggregate_tables_sums_counts_and_propagates_moe():
+    result = aggregate_tables(_two_components(), _COUNT_META)
+    b = result["B01001"]
+    assert b["estimate"]["B01001001"] == 300
+    assert math.isclose(b["error"]["B01001001"], math.sqrt(20**2 + 30**2))
+
+
+def test_aggregate_tables_applies_zero_estimate_rule_per_column():
+    """B01001002 has estimates [40, 0]; the zero component keeps only its own
+    (single) MoE, giving sqrt(10^2 + 8^2)."""
+    result = aggregate_tables(_two_components(), _COUNT_META)
+    b = result["B01001"]
+    assert b["estimate"]["B01001002"] == 40
+    assert math.isclose(b["error"]["B01001002"], math.sqrt(10**2 + 8**2))
+
+
+def test_aggregate_tables_suppresses_median_column():
+    components = [
+        _component({"B19013": {"estimate": {"B19013001": 55000}, "error": {"B19013001": 2500}}}),
+        _component({"B19013": {"estimate": {"B19013001": 61000}, "error": {"B19013001": 3100}}}),
+    ]
+    metadata = {
+        "B19013": {
+            "title": "Median Household Income in the Past 12 Months",
+            "denominator_column_id": None,
+            "columns": {"B19013001": {"name": "Median household income"}},
+        }
+    }
+    result = aggregate_tables(components, metadata)
+    b = result["B19013"]
+    # The median column must NOT appear in the aggregated estimates...
+    assert "B19013001" not in b["estimate"]
+    # ...and must be reported as suppressed with a reason.
+    suppressed_ids = [s["column_id"] for s in b["suppressed"]]
+    assert "B19013001" in suppressed_ids
+
+
+def _rows():
+    return [
+        {"full_geoid": "14000US36061000100", "display_name": "Tract A", "area_frac": 1.0},
+        {"full_geoid": "14000US36061000200", "display_name": "Tract B", "area_frac": 0.02},
+        {"full_geoid": "14000US36061000300", "display_name": "Tract C", "area_frac": 0.6},
+    ]
+
+
+def test_aggregate_tables_with_weights():
+    """Each component's own weight apportions its contribution."""
+    result = aggregate_tables(_two_components(weights=(0.5, 1.0)), _COUNT_META)
+    b = result["B01001"]
+    # B01001001 estimates [100, 200] weighted 0.5/1.0 -> 250
+    assert math.isclose(b["estimate"]["B01001001"], 250.0)
+    assert math.isclose(b["error"]["B01001001"], math.sqrt((0.5 * 20) ** 2 + (1.0 * 30) ** 2))
+
+
+def test_aggregate_tables_weights_align_after_skipping_none():
+    """A skipped (None) component drops its weight too, because the weight lives
+    with the component that actually contributes to each column."""
+    components = [
+        _component({"B01001": {"estimate": {"B01001001": 100}, "error": {"B01001001": 20}}}, 0.5),
+        _component({"B01001": {"estimate": {"B01001001": None}, "error": {"B01001001": None}}}, 1.0),
+    ]
+    metadata = {
+        "B01001": {"title": "Sex by Age", "denominator_column_id": "B01001001",
+                   "columns": {"B01001001": {"name": "Total"}}}
+    }
+    result = aggregate_tables(components, metadata)
+    b = result["B01001"]
+    # Only the first component contributes: 0.5 * 100 = 50, moe 0.5 * 20 = 10
+    assert math.isclose(b["estimate"]["B01001001"], 50.0)
+    assert math.isclose(b["error"]["B01001001"], 10.0)
+
+
+def test_aggregate_tables_skips_none_valued_components():
+    """A component with a None estimate/MoE for a column (release has no value)
+    is left out of that column's aggregate rather than crashing the sum."""
+    components = [
+        _component({"B01001": {"estimate": {"B01001001": 100}, "error": {"B01001001": 20}}}),
+        _component({"B01001": {"estimate": {"B01001001": None}, "error": {"B01001001": None}}}),
+    ]
+    metadata = {
+        "B01001": {"title": "Sex by Age", "denominator_column_id": "B01001001",
+                   "columns": {"B01001001": {"name": "Total"}}}
+    }
+    result = aggregate_tables(components, metadata)
+    b = result["B01001"]
+    assert b["estimate"]["B01001001"] == 100
+    assert math.isclose(b["error"]["B01001001"], 20.0)
+
+
+def test_select_components_threshold_zero_keeps_all_intersecting():
+    comps = select_components(_rows(), threshold=0.0)
+    assert [c["geoid"] for c in comps] == [
+        "14000US36061000100", "14000US36061000200", "14000US36061000300"
+    ]
+    assert comps[0]["name"] == "Tract A"
+    assert comps[0]["area_frac"] == 1.0
+
+
+def test_select_components_threshold_filters_below_cutoff():
+    comps = select_components(_rows(), threshold=0.5)
+    assert [c["geoid"] for c in comps] == [
+        "14000US36061000100", "14000US36061000300"
+    ]
