@@ -16,7 +16,7 @@ def get_sql_config(session):
             bind.url.database)
 
 
-def create_excel_download(session, data, table_metadata, valid_geo_ids, file_ident, out_filename, format):
+def create_excel_download(session, data, table_metadata, valid_geo_ids, file_ident, out_filename, format, tiger_release):
     def excel_helper(sheet, table_id, table, option):
         """
         Create excel sheet.
@@ -61,8 +61,8 @@ def create_excel_download(session, data, table_metadata, valid_geo_ids, file_ide
         # this SQL echoed in OGR export but no geom so copying instead of factoring out
         # plus different binding when using SQLAlchemy
         result = session.execute(text(
-            """SELECT full_geoid,display_name
-                     FROM tiger2022.census_name_lookup
+            f"""SELECT full_geoid,display_name
+                     FROM {tiger_release}.census_name_lookup
                      WHERE full_geoid IN :geoids
                      ORDER BY full_geoid"""),
             {'geoids': tuple(valid_geo_ids)}
@@ -146,7 +146,7 @@ def create_excel_download(session, data, table_metadata, valid_geo_ids, file_ide
     wb.save(out_filename)
 
 
-def create_ogr_download(session, data, table_metadata, valid_geo_ids, file_ident, out_filename, format):
+def create_ogr_download(session, data, table_metadata, valid_geo_ids, file_ident, out_filename, format, tiger_release):
     from osgeo import ogr
     from osgeo import osr
     format_info = supported_formats[format]
@@ -162,6 +162,8 @@ def create_ogr_download(session, data, table_metadata, valid_geo_ids, file_ident
     out_driver = ogr.GetDriverByName(driver_name)
     out_srs = osr.SpatialReference()
     out_srs.ImportFromEPSG(4326)
+    # GDAL 3+ defaults EPSG:4326 to lat/lon order; KML export fails unless we use lon/lat
+    out_srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
     out_data = out_driver.CreateDataSource(out_filename)
     # See http://gis.stackexchange.com/questions/53920/ogr-createlayer-returns-typeerror
     out_layer = out_data.CreateLayer(file_ident, srs=out_srs, geom_type=ogr.wkbMultiPolygon)
@@ -178,8 +180,8 @@ def create_ogr_download(session, data, table_metadata, valid_geo_ids, file_ident
                 out_layer.CreateField(ogr.FieldDefn(column_id + ", Error", ogr.OFTReal))
 
     # this SQL echoed in Excel export but no geom so copying instead of factoring out
-    sql = """SELECT geom,full_geoid,display_name
-             FROM tiger2022.census_name_lookup
+    sql = f"""SELECT geom,full_geoid,display_name
+             FROM {tiger_release}.census_name_lookup
              WHERE full_geoid IN (%s)
              ORDER BY full_geoid""" % ', '.join("'%s'" % g for g in valid_geo_ids)
     in_layer = conn.ExecuteSQL(sql)
