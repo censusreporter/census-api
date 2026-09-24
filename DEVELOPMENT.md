@@ -50,8 +50,9 @@ command above.
 
 To prevent that, pin it: `brew pin gdal` (and `brew unpin gdal` when you choose to upgrade).
 
-Note that the Pipfile pins `gdal==3.6.2` to match the Dokku container (Debian's `gdal-bin`), so `pipenv install`/`pipenv sync`
-on a Mac will try to build 3.6.2 and fail against Homebrew's GDAL. After a sync, rerun the command above.
+Note that the Pipfile pins `gdal` to whatever version `gdal-bin` provides in the Dockerfile's base image
+(`==3.10.3` for `python:3.11-trixie`), which won't match Homebrew's, so `pipenv install`/`pipenv sync` on a Mac
+will try to build that version and fail. After a sync, rerun the command above.
 
 
 

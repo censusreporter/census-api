@@ -173,14 +173,19 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
     - `git push dokku`
 
 - Purge the Cloudflare cache for the `censusreporter.org` zone
-  - Most API responses are cached at the edge for a year (see `IMMUTABLE_CACHE_SECONDS` in
+  - Most API responses are cached at the edge for a year (see `CDN_CACHE_SECONDS` in
     `api.py`), on the assumption that the underlying data never changes except through this
     release process. This is the point where that assumption stops holding for URLs that
     resolve `latest`/`default_table_search_release` (and any old cached responses for the
     release you just replaced in `allowed_releases`), so purge now.
-  - Cloudflare dashboard: Caching -> Configuration -> Purge Cache -> Purge Everything (Pro plan
-    doesn't support tag-based purging, so this is simplest and safest rather than trying to
-    enumerate every affected URL)
+  - Cloudflare dashboard: Caching -> Configuration -> Purge Cache. Purge Everything is simplest.
+    Purge by prefix also works on the Pro plan and is narrower; these two cover everything that
+    carries table data:
+    - `api.censusreporter.org/1.0/data/show/`
+    - `api.censusreporter.org/1.0/data/download/`
+  - Browsers only hold these for a day (`BROWSER_CACHE_SECONDS`), so client caches catch up on
+    their own. That wasn't true before Sept 2026, when responses were sent `immutable` with a
+    one-year max-age and a data correction could stay in someone's browser for months.
 
 - Update the Postgres full text index (from the EC2 instance)
   - review and update the schemas in `full-text-search/metadata_script.sql`; commit any changes
