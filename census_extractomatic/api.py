@@ -15,7 +15,9 @@ from collections import OrderedDict
 from flask_caching import Cache
 from flask_cors import CORS, cross_origin
 from flask_sqlalchemy import SQLAlchemy
+from psycopg2.errors import QueryCanceled
 from sqlalchemy import text
+from sqlalchemy.exc import DBAPIError
 from itertools import groupby
 from werkzeug.exceptions import HTTPException
 import math
@@ -224,11 +226,42 @@ geoid_re = re.compile(r"^[\dA-Z]{5}US[\d\-A-Z]*$")
 table_re = re.compile(r"^[BC]\d{5,6}(?:[A-Z]{1,3})?$")
 
 
+# Interactive endpoints get a short Postgres statement timeout so one expensive query can't
+# hold a DB backend (and a gunicorn worker) for minutes. Bulk endpoints keep the server default.
+INTERACTIVE_STATEMENT_TIMEOUT_MS = 5000
+NO_STATEMENT_TIMEOUT_PREFIXES = (
+    '/1.0/data/download/',
+    '/1.0/aggregate/',
+    '/1.0/user_geo/',
+)
+
+
+@app.before_request
+def set_interactive_statement_timeout():
+    timeout_ms = current_app.config.get('INTERACTIVE_STATEMENT_TIMEOUT_MS', INTERACTIVE_STATEMENT_TIMEOUT_MS)
+    path = request.path
+    if not timeout_ms or not (path.startswith('/1.') or path.startswith('/2.')):
+        return
+    if path.startswith(NO_STATEMENT_TIMEOUT_PREFIXES):
+        return
+
+    # SET LOCAL only lasts for this request's transaction, so it can't leak to other
+    # requests through the connection pool
+    db.session.execute(text("SET LOCAL statement_timeout = %d" % int(timeout_ms)))
+
+
 @app.errorhandler(400)
 @app.errorhandler(404)
 @app.errorhandler(500)
 @cross_origin(origins='*')
 def jsonify_error_handler(error):
+    original_error = getattr(error, 'original_exception', None)
+    if isinstance(original_error, DBAPIError) and isinstance(original_error.orig, QueryCanceled):
+        app.logger.warning("Statement timeout on %s", request.full_path)
+        resp = jsonify(error="That query took too long. Try requesting fewer geographies or tables.")
+        resp.status_code = 503
+        return resp
+
     if isinstance(error, ClientRequestValidationException):
         resp = jsonify(error=error.description, errors=error.errors)
         resp.status_code = error.code
