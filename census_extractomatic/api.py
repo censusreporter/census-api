@@ -738,12 +738,12 @@ def show_specified_geo_data(release):
         release = allowed_tiger[0]
     if release not in allowed_tiger:
         abort(404, "Unknown TIGER release")
-    geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids, release_to_expand_with)
+    max_geoids = current_app.config.get('MAX_GEOIDS_TO_SHOW', 3000)
+    geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids, release_to_expand_with, max_geoids)
 
     if not geo_ids:
         abort(404, 'None of the geo_ids specified were valid: %s' % ', '.join(geo_ids))
 
-    max_geoids = current_app.config.get('MAX_GEOIDS_TO_SHOW', 3000)
     if len(geo_ids) > max_geoids:
         abort(400, 'You requested %s geoids. The maximum is %s. Please contact us for bulk data.' % (len(geo_ids), max_geoids))
 
@@ -1433,13 +1433,14 @@ def get_child_geoids_by_prefix(release, parent_geoid, child_summary_level):
     return result.mappings().fetchall()
 
 
-def expand_geoids(geoid_list, release):
+def expand_geoids(geoid_list, release, max_geoids=None):
     # Look for geoid "groups" of the form `child_sumlevel|parent_geoid`.
     # These will expand into a list of geoids like the old comparison endpoint used to
     expanded_geoids = set()
     explicit_geoids = set()
     child_parent_map = {}
-    for geoid_str in geoid_list:
+    # Repeated entries would just repeat the same expansion query
+    for geoid_str in dict.fromkeys(geoid_list):
         if not expandable_geoid_re.match(geoid_str):
             continue
 
@@ -1452,6 +1453,11 @@ def expand_geoids(geoid_list, release):
                 child_parent_map[child_geoid] = parent_geoid
         else:
             explicit_geoids.add(geoid_str)
+
+        # Fail fast: don't run the remaining expansions (or retry on the next release)
+        # for a request that's already over the limit
+        if max_geoids is not None and len(expanded_geoids | explicit_geoids) > max_geoids:
+            abort(400, 'You requested too many geoids. The maximum is %s. Please contact us for bulk data.' % max_geoids)
 
     # Since the expanded geoids were sourced from the database they don't need to be checked
     valid_geo_ids = set(expanded_geoids)
@@ -1501,9 +1507,10 @@ def show_specified_data(acs):
     expand_errors = []
     valid_geo_ids = set()
     requested_geo_ids = request.qwargs.geo_ids
+    max_geoids = current_app.config.get('MAX_GEOIDS_TO_SHOW', 1000)
     for release in acs_to_try:
         try:
-            this_valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release)
+            this_valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release, max_geoids)
 
             if this_valid_geo_ids:
                 releases_to_use.append(release)
@@ -1518,7 +1525,6 @@ def show_specified_data(acs):
     if not valid_geo_ids:
         abort(404, 'None of the geo_ids specified were valid: %s' % ', '.join(requested_geo_ids))
 
-    max_geoids = current_app.config.get('MAX_GEOIDS_TO_SHOW', 1000)
     if len(valid_geo_ids) > max_geoids:
         abort(400, 'You requested %s geoids. The maximum is %s. Please contact us for bulk data.' % (len(valid_geo_ids), max_geoids))
 
@@ -1892,9 +1898,10 @@ def download_specified_data(acs):
     expand_errors = []
     valid_geo_ids = set()
     requested_geo_ids = request.qwargs.geo_ids
+    max_geoids = current_app.config.get('MAX_GEOIDS_TO_DOWNLOAD', 1000)
     for release in acs_to_try:
         try:
-            this_valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release)
+            this_valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release, max_geoids)
 
             if this_valid_geo_ids:
                 releases_to_use.append(release)
@@ -1909,7 +1916,6 @@ def download_specified_data(acs):
     if not valid_geo_ids:
         abort(404, 'None of the geo_ids specified were valid: %s' % ', '.join(valid_geo_ids))
 
-    max_geoids = current_app.config.get('MAX_GEOIDS_TO_DOWNLOAD', 1000)
     if len(valid_geo_ids) > max_geoids:
         abort(400, 'You requested %s geoids. The maximum is %s. Please contact us for bulk data.' % (len(valid_geo_ids), max_geoids))
 
