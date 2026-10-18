@@ -15,7 +15,9 @@ from collections import OrderedDict
 from flask_caching import Cache
 from flask_cors import CORS, cross_origin
 from flask_sqlalchemy import SQLAlchemy
+from psycopg2.errors import QueryCanceled
 from sqlalchemy import text
+from sqlalchemy.exc import DBAPIError
 from itertools import groupby
 from werkzeug.exceptions import HTTPException
 import math
@@ -125,6 +127,50 @@ PARENT_CHILD_CONTAINMENT = {
     '150': ['101'],
 }
 
+# Sizes of `sumlevel|parent_geoid` expansions that are too big to
+# ever be useful, so requests for them can be rejected without querying the database.
+# Only expansions over 5000 geoids are listed; the counts are only compared to the
+# MAX_GEOIDS_* limits, so they don't need to track each release exactly. Measured on
+# acs2024_5yr. To refresh (they change very little year to year), count geoheader rows:
+#   SELECT sumlevel, count(*) FROM geoheader WHERE component='00' GROUP BY 1 HAVING count(*) > 5000;
+# and the same grouped by the state/county FIPS in the geoid for state/county parents.
+KNOWN_LARGE_EXPANSIONS = {
+    # nation -> all <child sumlevel>
+    ('01000US', '150'): 242297,
+    ('01000US', '140'): 85382,
+    ('01000US', '070'): 73111,
+    ('01000US', '060'): 36421,
+    ('01000US', '155'): 33791,
+    ('01000US', '860'): 33772,
+    ('01000US', '160'): 32330,
+    ('01000US', '970'): 10901,
+    ('01000US', '622'): 8461,
+    ('01000US', '612'): 5557,
+    # states -> block groups / tracts
+    ('04000US06', '150'): 25607,
+    ('04000US48', '150'): 18638,
+    ('04000US36', '150'): 16031,
+    ('04000US12', '150'): 13388,
+    ('04000US42', '150'): 10173,
+    ('04000US17', '150'): 9898,
+    ('04000US39', '150'): 9472,
+    ('04000US26', '150'): 8386,
+    ('04000US13', '150'): 7446,
+    ('04000US37', '150'): 7111,
+    ('04000US34', '150'): 6599,
+    ('04000US51', '150'): 5963,
+    ('04000US53', '150'): 5311,
+    ('04000US18', '150'): 5290,
+    ('04000US25', '150'): 5116,
+    ('04000US29', '150'): 5031,
+    ('04000US06', '140'): 9129,
+    ('04000US48', '140'): 6896,
+    ('04000US36', '140'): 5397,
+    ('04000US12', '140'): 5160,
+    # counties -> block groups
+    ('05000US06037', '150'): 6591,
+}
+
 SUMLEV_NAMES = {
     "010": {"name": "nation", "plural": ""},
     "020": {"name": "region", "plural": "regions"},
@@ -229,11 +275,42 @@ geoid_re = re.compile(r"^[\dA-Z]{5}US[\d\-A-Z]*$")
 table_re = re.compile(r"^[BC]\d{5,6}(?:[A-Z]{1,3})?$")
 
 
+# Interactive endpoints get a short Postgres statement timeout so one expensive query can't
+# hold a DB backend (and a gunicorn worker) for minutes. Bulk endpoints keep the server default.
+INTERACTIVE_STATEMENT_TIMEOUT_MS = 5000
+NO_STATEMENT_TIMEOUT_PREFIXES = (
+    '/1.0/data/download/',
+    '/1.0/aggregate/',
+    '/1.0/user_geo/',
+)
+
+
+@app.before_request
+def set_interactive_statement_timeout():
+    timeout_ms = current_app.config.get('INTERACTIVE_STATEMENT_TIMEOUT_MS', INTERACTIVE_STATEMENT_TIMEOUT_MS)
+    path = request.path
+    if not timeout_ms or not (path.startswith('/1.') or path.startswith('/2.')):
+        return
+    if path.startswith(NO_STATEMENT_TIMEOUT_PREFIXES):
+        return
+
+    # SET LOCAL only lasts for this request's transaction, so it can't leak to other
+    # requests through the connection pool
+    db.session.execute(text("SET LOCAL statement_timeout = %d" % int(timeout_ms)))
+
+
 @app.errorhandler(400)
 @app.errorhandler(404)
 @app.errorhandler(500)
 @cross_origin(origins='*')
 def jsonify_error_handler(error):
+    original_error = getattr(error, 'original_exception', None)
+    if isinstance(original_error, DBAPIError) and isinstance(original_error.orig, QueryCanceled):
+        app.logger.warning("Statement timeout on %s", request.full_path)
+        resp = jsonify(error="That query took too long. Try requesting fewer geographies or tables.")
+        resp.status_code = 503
+        return resp
+
     if isinstance(error, ClientRequestValidationException):
         resp = jsonify(error=error.description, errors=error.errors)
         resp.status_code = error.code
@@ -743,12 +820,12 @@ def show_specified_geo_data(release):
         release = allowed_tiger[0]
     if release not in allowed_tiger:
         abort(404, "Unknown TIGER release")
-    geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids, release_to_expand_with)
+    max_geoids = current_app.config.get('MAX_GEOIDS_TO_SHOW', 3000)
+    geo_ids, child_parent_map = expand_geoids(request.qwargs.geo_ids, release_to_expand_with, max_geoids)
 
     if not geo_ids:
         abort(404, 'None of the geo_ids specified were valid: %s' % ', '.join(geo_ids))
 
-    max_geoids = current_app.config.get('MAX_GEOIDS_TO_SHOW', 3000)
     if len(geo_ids) > max_geoids:
         abort(400, 'You requested %s geoids. The maximum is %s. Please contact us for bulk data.' % (len(geo_ids), max_geoids))
 
@@ -1438,25 +1515,37 @@ def get_child_geoids_by_prefix(release, parent_geoid, child_summary_level):
     return result.mappings().fetchall()
 
 
-def expand_geoids(geoid_list, release):
+def expand_geoids(geoid_list, release, max_geoids=None):
     # Look for geoid "groups" of the form `child_sumlevel|parent_geoid`.
     # These will expand into a list of geoids like the old comparison endpoint used to
     expanded_geoids = set()
     explicit_geoids = set()
     child_parent_map = {}
-    for geoid_str in geoid_list:
+    # Repeated entries would just repeat the same expansion query
+    for geoid_str in dict.fromkeys(geoid_list):
         if not expandable_geoid_re.match(geoid_str):
             continue
 
         geoid_split = geoid_str.split('|')
         if len(geoid_split) == 2 and len(geoid_split[0]) == 3:
             (child_summary_level, parent_geoid) = geoid_split
+
+            # Skip the database for expansions we already know are over the limit
+            known_size = KNOWN_LARGE_EXPANSIONS.get((parent_geoid.upper(), child_summary_level))
+            if max_geoids is not None and known_size and known_size > max_geoids:
+                abort(400, 'You requested too many geoids. The maximum is %s. Please contact us for bulk data.' % max_geoids)
+
             child_geoid_list = [child_geoid['geoid'] for child_geoid in get_child_geoids(release, parent_geoid, child_summary_level)]
             expanded_geoids.update(child_geoid_list)
             for child_geoid in child_geoid_list:
                 child_parent_map[child_geoid] = parent_geoid
         else:
             explicit_geoids.add(geoid_str)
+
+        # Fail fast: don't run the remaining expansions (or retry on the next release)
+        # for a request that's already over the limit
+        if max_geoids is not None and len(expanded_geoids | explicit_geoids) > max_geoids:
+            abort(400, 'You requested too many geoids. The maximum is %s. Please contact us for bulk data.' % max_geoids)
 
     # Since the expanded geoids were sourced from the database they don't need to be checked
     valid_geo_ids = set(expanded_geoids)
@@ -1506,9 +1595,10 @@ def show_specified_data(acs):
     expand_errors = []
     valid_geo_ids = set()
     requested_geo_ids = request.qwargs.geo_ids
+    max_geoids = current_app.config.get('MAX_GEOIDS_TO_SHOW', 1000)
     for release in acs_to_try:
         try:
-            this_valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release)
+            this_valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release, max_geoids)
 
             if this_valid_geo_ids:
                 releases_to_use.append(release)
@@ -1523,7 +1613,6 @@ def show_specified_data(acs):
     if not valid_geo_ids:
         abort(404, 'None of the geo_ids specified were valid: %s' % ', '.join(requested_geo_ids))
 
-    max_geoids = current_app.config.get('MAX_GEOIDS_TO_SHOW', 1000)
     if len(valid_geo_ids) > max_geoids:
         abort(400, 'You requested %s geoids. The maximum is %s. Please contact us for bulk data.' % (len(valid_geo_ids), max_geoids))
 
@@ -1897,9 +1986,10 @@ def download_specified_data(acs):
     expand_errors = []
     valid_geo_ids = set()
     requested_geo_ids = request.qwargs.geo_ids
+    max_geoids = current_app.config.get('MAX_GEOIDS_TO_DOWNLOAD', 1000)
     for release in acs_to_try:
         try:
-            this_valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release)
+            this_valid_geo_ids, child_parent_map = expand_geoids(requested_geo_ids, release, max_geoids)
 
             if this_valid_geo_ids:
                 releases_to_use.append(release)
@@ -1914,7 +2004,6 @@ def download_specified_data(acs):
     if not valid_geo_ids:
         abort(404, 'None of the geo_ids specified were valid: %s' % ', '.join(valid_geo_ids))
 
-    max_geoids = current_app.config.get('MAX_GEOIDS_TO_DOWNLOAD', 1000)
     if len(valid_geo_ids) > max_geoids:
         abort(400, 'You requested %s geoids. The maximum is %s. Please contact us for bulk data.' % (len(valid_geo_ids), max_geoids))
 

@@ -168,6 +168,7 @@ If this is a new release year, you'll want to set up the new TIGER geodata scrip
   - Add the new release to the `allowed_releases` list. Usually you want to replace the existing release with the newer one you just imported. You might want to move the older release of the same type to the bottom of the list so that people can use it for specific requests.
   - If you are updating a 5yr release, you probably want to update the `default_table_search_release` variables, too.
   - Add an entry for the `ACS_NAMES` dict for the new release.
+  - Optionally refresh `KNOWN_LARGE_EXPANSIONS` (the query is in the comment above it). Counts change very little between years, so this can wait.
   - Commit the changes
   - Push to the `dokku.censusreporter.org` remote
     - `git push dokku`
