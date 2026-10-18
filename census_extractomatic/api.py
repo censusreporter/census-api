@@ -122,7 +122,7 @@ PARENT_CHILD_CONTAINMENT = {
     '150': ['101'],
 }
 
-# Sizes of `sumlevel|parent_geoid` expansions in the 5-year releases that are too big to
+# Sizes of `sumlevel|parent_geoid` expansions that are too big to
 # ever be useful, so requests for them can be rejected without querying the database.
 # Only expansions over 5000 geoids are listed; the counts are only compared to the
 # MAX_GEOIDS_* limits, so they don't need to track each release exactly. Measured on
@@ -1525,10 +1525,9 @@ def expand_geoids(geoid_list, release, max_geoids=None):
         if len(geoid_split) == 2 and len(geoid_split[0]) == 3:
             (child_summary_level, parent_geoid) = geoid_split
 
-            # Skip the database for expansions we already know are over the limit.
-            # The 1-year releases only cover places with 65k+ people, so they're always small.
+            # Skip the database for expansions we already know are over the limit
             known_size = KNOWN_LARGE_EXPANSIONS.get((parent_geoid.upper(), child_summary_level))
-            if max_geoids is not None and release.endswith('_5yr') and known_size and known_size > max_geoids:
+            if max_geoids is not None and known_size and known_size > max_geoids:
                 abort(400, 'You requested too many geoids. The maximum is %s. Please contact us for bulk data.' % max_geoids)
 
             child_geoid_list = [child_geoid['geoid'] for child_geoid in get_child_geoids(release, parent_geoid, child_summary_level)]

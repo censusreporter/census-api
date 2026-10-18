@@ -56,11 +56,11 @@ def test_known_large_expansion_is_rejected_without_querying(expansion_calls):
     assert expansion_calls == []
 
 
-def test_known_large_expansion_is_still_expanded_for_1yr_releases(expansion_calls):
-    with api.app.app_context():
+def test_known_large_expansion_is_rejected_for_1yr_releases_too(expansion_calls):
+    with api.app.app_context(), pytest.raises(BadRequest):
         api.expand_geoids(['150|01000US'], 'acs2024_1yr', max_geoids=10000)
 
-    assert expansion_calls == ['150']
+    assert expansion_calls == []
 
 
 def test_known_large_expansion_under_a_higher_limit_is_expanded(expansion_calls):
