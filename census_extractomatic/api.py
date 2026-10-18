@@ -122,6 +122,50 @@ PARENT_CHILD_CONTAINMENT = {
     '150': ['101'],
 }
 
+# Sizes of `sumlevel|parent_geoid` expansions in the 5-year releases that are too big to
+# ever be useful, so requests for them can be rejected without querying the database.
+# Only expansions over 5000 geoids are listed; the counts are only compared to the
+# MAX_GEOIDS_* limits, so they don't need to track each release exactly. Measured on
+# acs2024_5yr. To refresh (they change very little year to year), count geoheader rows:
+#   SELECT sumlevel, count(*) FROM geoheader WHERE component='00' GROUP BY 1 HAVING count(*) > 5000;
+# and the same grouped by the state/county FIPS in the geoid for state/county parents.
+KNOWN_LARGE_EXPANSIONS = {
+    # nation -> all <child sumlevel>
+    ('01000US', '150'): 242297,
+    ('01000US', '140'): 85382,
+    ('01000US', '070'): 73111,
+    ('01000US', '060'): 36421,
+    ('01000US', '155'): 33791,
+    ('01000US', '860'): 33772,
+    ('01000US', '160'): 32330,
+    ('01000US', '970'): 10901,
+    ('01000US', '622'): 8461,
+    ('01000US', '612'): 5557,
+    # states -> block groups / tracts
+    ('04000US06', '150'): 25607,
+    ('04000US48', '150'): 18638,
+    ('04000US36', '150'): 16031,
+    ('04000US12', '150'): 13388,
+    ('04000US42', '150'): 10173,
+    ('04000US17', '150'): 9898,
+    ('04000US39', '150'): 9472,
+    ('04000US26', '150'): 8386,
+    ('04000US13', '150'): 7446,
+    ('04000US37', '150'): 7111,
+    ('04000US34', '150'): 6599,
+    ('04000US51', '150'): 5963,
+    ('04000US53', '150'): 5311,
+    ('04000US18', '150'): 5290,
+    ('04000US25', '150'): 5116,
+    ('04000US29', '150'): 5031,
+    ('04000US06', '140'): 9129,
+    ('04000US48', '140'): 6896,
+    ('04000US36', '140'): 5397,
+    ('04000US12', '140'): 5160,
+    # counties -> block groups
+    ('05000US06037', '150'): 6591,
+}
+
 SUMLEV_NAMES = {
     "010": {"name": "nation", "plural": ""},
     "020": {"name": "region", "plural": "regions"},
@@ -1480,6 +1524,13 @@ def expand_geoids(geoid_list, release, max_geoids=None):
         geoid_split = geoid_str.split('|')
         if len(geoid_split) == 2 and len(geoid_split[0]) == 3:
             (child_summary_level, parent_geoid) = geoid_split
+
+            # Skip the database for expansions we already know are over the limit.
+            # The 1-year releases only cover places with 65k+ people, so they're always small.
+            known_size = KNOWN_LARGE_EXPANSIONS.get((parent_geoid.upper(), child_summary_level))
+            if max_geoids is not None and release.endswith('_5yr') and known_size and known_size > max_geoids:
+                abort(400, 'You requested too many geoids. The maximum is %s. Please contact us for bulk data.' % max_geoids)
+
             child_geoid_list = [child_geoid['geoid'] for child_geoid in get_child_geoids(release, parent_geoid, child_summary_level)]
             expanded_geoids.update(child_geoid_list)
             for child_geoid in child_geoid_list:

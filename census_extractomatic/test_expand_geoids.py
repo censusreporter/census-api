@@ -47,3 +47,24 @@ def test_repeated_groups_are_only_expanded_once(expansion_calls):
 
     assert expansion_calls == ['040']
     assert len(valid_geo_ids) == 6
+
+
+def test_known_large_expansion_is_rejected_without_querying(expansion_calls):
+    with api.app.app_context(), pytest.raises(BadRequest):
+        api.expand_geoids(['150|01000US'], 'acs2024_5yr', max_geoids=10000)
+
+    assert expansion_calls == []
+
+
+def test_known_large_expansion_is_still_expanded_for_1yr_releases(expansion_calls):
+    with api.app.app_context():
+        api.expand_geoids(['150|01000US'], 'acs2024_1yr', max_geoids=10000)
+
+    assert expansion_calls == ['150']
+
+
+def test_known_large_expansion_under_a_higher_limit_is_expanded(expansion_calls):
+    with api.app.app_context():
+        api.expand_geoids(['150|04000US17'], 'acs2024_5yr', max_geoids=20000)
+
+    assert expansion_calls == ['150']
